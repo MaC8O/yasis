@@ -9,7 +9,7 @@
     </div>
 
     <x-card>
-        <table class="w-full text-sm">
+        <table class="rt w-full text-sm">
             <thead>
                 <tr class="text-left text-neutral-500 border-b border-neutral-200">
                     <th class="py-2 font-semibold">Date</th>
@@ -21,10 +21,10 @@
             <tbody>
                 @forelse ($records as $record)
                     <tr class="border-b border-neutral-100 last:border-0">
-                        <td class="py-2.5">{{ $record->attendance_date->format('Y-m-d') }}</td>
-                        <td class="py-2.5"><x-badge :color="$record->status === 'Present' ? 'green' : ($record->status === 'Absent' ? 'pink' : 'yellow')">{{ $record->status }}</x-badge></td>
-                        <td class="py-2.5 text-neutral-500">{{ $record->section->name }}</td>
-                        <td class="py-2.5 text-neutral-500">{{ $record->remark ?? '—' }}</td>
+                        <td data-label="Date" class="py-2.5">{{ $record->attendance_date->format('Y-m-d') }}</td>
+                        <td data-label="Status" class="py-2.5"><x-badge :color="$record->status === 'Present' ? 'green' : ($record->status === 'Absent' ? 'pink' : 'yellow')">{{ $record->status }}</x-badge></td>
+                        <td data-label="Section" class="py-2.5 text-neutral-500">{{ $record->section->name }}</td>
+                        <td data-label="Remark" class="py-2.5 text-neutral-500">{{ $record->remark ?? '—' }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="4" class="py-4 text-neutral-400">No attendance recorded yet.</td></tr>

@@ -8,7 +8,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <x-card title="Grade snapshot" subtitle="Current term weighted scores by subject.">
-            <table class="w-full text-sm">
+            <table class="rt w-full text-sm">
                 <thead>
                     <tr class="text-left text-neutral-500 border-b border-neutral-200">
                         <th class="py-2 font-semibold">Subject</th>
@@ -19,9 +19,9 @@
                 <tbody>
                     @forelse ($snapshot as $row)
                         <tr class="border-b border-neutral-100 last:border-0">
-                            <td class="py-2.5">{{ $row->subject }}</td>
-                            <td class="py-2.5">{{ $row->result['pct'] !== null ? $row->result['pct'].'%' : '—' }}</td>
-                            <td class="py-2.5">{{ $row->result['letter'] ?? '—' }}</td>
+                            <td data-label="Subject" class="py-2.5">{{ $row->subject }}</td>
+                            <td data-label="Score" class="py-2.5">{{ $row->result['pct'] !== null ? $row->result['pct'].'%' : '—' }}</td>
+                            <td data-label="Letter" class="py-2.5">{{ $row->result['letter'] ?? '—' }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="3" class="py-4 text-neutral-400">No grades recorded yet.</td></tr>

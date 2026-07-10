@@ -9,7 +9,7 @@
     </div>
 
     <x-card title="Guardian statement" subtitle="Imported transaction lines, with restricted items hidden.">
-        <table class="w-full text-sm">
+        <table class="rt w-full text-sm">
             <thead>
                 <tr class="text-left text-neutral-500 border-b border-neutral-200">
                     <th class="py-2 font-semibold">Date</th>
@@ -21,10 +21,10 @@
             <tbody>
                 @forelse ($records as $record)
                     <tr class="border-b border-neutral-100 last:border-0">
-                        <td class="py-2.5">{{ $record->txn_date->format('Y-m-d') }}</td>
-                        <td class="py-2.5">{{ number_format($record->amount) }}</td>
-                        <td class="py-2.5">{{ number_format($record->balance) }}</td>
-                        <td class="py-2.5"><x-badge :color="$record->status === 'Paid' ? 'green' : ($record->status === 'Partial' ? 'yellow' : 'pink')">{{ $record->status }}</x-badge></td>
+                        <td data-label="Date" class="py-2.5">{{ $record->txn_date->format('Y-m-d') }}</td>
+                        <td data-label="Amount" class="py-2.5">{{ number_format($record->amount) }}</td>
+                        <td data-label="Balance" class="py-2.5">{{ number_format($record->balance) }}</td>
+                        <td data-label="Status" class="py-2.5"><x-badge :color="$record->status === 'Paid' ? 'green' : ($record->status === 'Partial' ? 'yellow' : 'pink')">{{ $record->status }}</x-badge></td>
                     </tr>
                 @empty
                     <tr><td colspan="4" class="py-4 text-neutral-400">No fee records available yet.</td></tr>
