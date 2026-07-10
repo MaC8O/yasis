@@ -92,6 +92,51 @@ class DashboardChartsTest extends TestCase
             ->assertSee('Attendance rate — my classes');
     }
 
+    public function test_vp_student_and_guardian_dashboards_render_their_charts(): void
+    {
+        $this->seedRoles();
+        $department = $this->seedDepartment();
+        $term = $this->seedAcademicCalendar();
+        $vp = $this->makeStaff('vp_academic', 'VP_Academic');
+        $teacher = $this->makeStaff('teacher', 'Teacher', 'teacher@test.local');
+
+        $section = Section::create(['academic_year_id' => $term->academic_year_id, 'department_id' => $department->id, 'name' => 'Grade 9-A', 'capacity' => 30]);
+
+        $studentUser = \App\Models\User::create([
+            'name' => 'Aye Min', 'email' => 'aye@test.local',
+            'password' => \Illuminate\Support\Facades\Hash::make('password'), 'status' => 'Active',
+        ]);
+        $studentUser->assignRole('student');
+        $student = Student::create([
+            'user_id' => $studentUser->id,
+            'student_id_number' => 'S-3', 'first_name' => 'Aye', 'last_name' => 'Min',
+            'date_of_birth' => now()->subYears(14), 'gender' => 'F',
+            'department_id' => $department->id, 'enrollment_status' => 'Enrolled', 'admission_date' => now()->subYear(),
+        ]);
+        Enrollment::create(['student_id' => $student->id, 'section_id' => $section->id, 'status' => 'Active']);
+        AttendanceRecord::create([
+            'student_id' => $student->id, 'section_id' => $section->id, 'term_id' => $term->id,
+            'attendance_date' => today()->subDay()->toDateString(), 'status' => 'Present', 'recorded_by' => $teacher->id,
+        ]);
+
+        $guardianUser = \App\Models\User::create([
+            'name' => 'Daw Mya', 'email' => 'mom@test.local',
+            'password' => \Illuminate\Support\Facades\Hash::make('password'), 'status' => 'Active',
+        ]);
+        $guardianUser->assignRole('guardian');
+        $guardian = \App\Models\Guardian::create(['user_id' => $guardianUser->id, 'relationship' => 'Mother', 'phone' => '0911']);
+        $guardian->students()->attach($student->id, ['is_primary' => true]);
+
+        $this->actingAs($vp->user)->get('/vp_academic/dashboard')
+            ->assertOk()->assertSee('Department performance');
+
+        $this->actingAs($studentUser)->get('/student/dashboard')
+            ->assertOk()->assertSee('My attendance this year')->assertSee('My results by subject');
+
+        $this->actingAs($guardianUser)->get('/guardian/dashboard')
+            ->assertOk()->assertSee('attendance this year')->assertSee('days recorded');
+    }
+
     public function test_hr_and_registrar_and_treasurer_dashboards_render_with_no_data(): void
     {
         $this->seedRoles();

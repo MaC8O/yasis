@@ -14,6 +14,10 @@
         <a href="{{ route('guardian.notices.index') }}" class="bg-white border border-neutral-200 rounded-2xl px-5 py-4 font-semibold text-sm hover:border-[#1F573D]">Notices</a>
     </div>
 
+    <x-card :title="$child->first_name.'’s attendance this year'" subtitle="Every recorded school day, by status.">
+        <x-chart.donut :segments="$attendanceSegments" center-label="days recorded" />
+    </x-card>
+
     <x-card title="Notify School of Absence" subtitle="Let the school know in advance when your child will be away.">
         <a href="{{ route('guardian.absence-notices.index', ['child' => $child->id]) }}" class="inline-block bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Notify Absence</a>
     </x-card>

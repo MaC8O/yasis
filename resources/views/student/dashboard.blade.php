@@ -45,6 +45,16 @@
         </x-card>
     </div>
 
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <x-card title="My results by subject" subtitle="Current term weighted score per subject.">
+            <x-chart.bar-list :items="$subjectResults" :max="100" />
+        </x-card>
+
+        <x-card title="My attendance this year" subtitle="Every recorded school day, by status.">
+            <x-chart.donut :segments="$attendanceSegments" center-label="days recorded" />
+        </x-card>
+    </div>
+
     <x-card title="Attendance snapshot" subtitle="Recent records remain visible from the Student portal.">
         <div class="flex flex-wrap gap-2">
             @forelse ($recentAttendance as $record)

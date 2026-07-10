@@ -5,26 +5,13 @@
     </div>
 
     <x-card title="Department performance" subtitle="Average assessed score across all recorded grades.">
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="text-left text-neutral-500 border-b border-neutral-200">
-                    <th class="py-2 font-semibold">Department</th>
-                    <th class="py-2 font-semibold">Average</th>
-                    <th class="py-2 font-semibold">Graded entries</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($departmentPerformance as $row)
-                    <tr class="border-b border-neutral-100 last:border-0">
-                        <td class="py-2.5">{{ $row->department }}</td>
-                        <td class="py-2.5 font-semibold">{{ $row->average !== null ? $row->average.'%' : '—' }}</td>
-                        <td class="py-2.5 text-neutral-500">{{ $row->gradedCount }}</td>
-                    </tr>
-                @empty
-                    <tr><td colspan="3" class="py-4 text-neutral-400">No academic departments found.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
+        <x-chart.bar-list :max="100"
+            :items="collect($departmentPerformance)->filter(fn ($row) => $row->average !== null)
+                ->map(fn ($row) => ['label' => $row->department, 'value' => $row->average, 'display' => $row->average.'%'])" />
+        @php $ungraded = collect($departmentPerformance)->filter(fn ($row) => $row->average === null); @endphp
+        @if ($ungraded->isNotEmpty())
+            <p class="text-xs text-neutral-400 mt-3">No grades recorded yet: {{ $ungraded->pluck('department')->implode(', ') }}.</p>
+        @endif
     </x-card>
 
     <div class="flex gap-3">

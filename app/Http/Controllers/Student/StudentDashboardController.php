@@ -44,6 +44,19 @@ class StudentDashboardController extends Controller
             'snapshot' => $snapshot->take(3),
             'notices' => $notices,
             'recentAttendance' => $attendance->sortByDesc('attendance_date')->take(3),
+            'attendanceSegments' => [
+                ['label' => 'Present', 'value' => $attendance->where('status', 'Present')->count(), 'color' => '#1F573D'],
+                ['label' => 'Tardy', 'value' => $attendance->where('status', 'Tardy')->count(), 'color' => '#A8841B'],
+                ['label' => 'Excused', 'value' => $attendance->where('status', 'Excused')->count(), 'color' => '#2E5AAC'],
+                ['label' => 'Absent', 'value' => $attendance->where('status', 'Absent')->count(), 'color' => '#B0392B'],
+            ],
+            'subjectResults' => $snapshot
+                ->filter(fn ($row) => ($row->result['pct'] ?? null) !== null)
+                ->map(fn ($row) => [
+                    'label' => $row->subject,
+                    'value' => $row->result['pct'],
+                    'display' => $row->result['pct'].'%'.(($row->result['letter'] ?? null) ? ' ('.$row->result['letter'].')' : ''),
+                ])->values(),
         ]);
     }
 }

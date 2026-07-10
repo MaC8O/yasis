@@ -39,6 +39,12 @@ class GuardianDashboardController extends Controller
             'attendanceRate' => $attendanceRate,
             'latestGpa' => $gpas->isNotEmpty() ? round($gpas->avg(), 2) : null,
             'feeStatus' => $feeSummary?->status ?? 'No records',
+            'attendanceSegments' => [
+                ['label' => 'Present', 'value' => $attendance->where('status', 'Present')->count(), 'color' => '#1F573D'],
+                ['label' => 'Tardy', 'value' => $attendance->where('status', 'Tardy')->count(), 'color' => '#A8841B'],
+                ['label' => 'Excused', 'value' => $attendance->where('status', 'Excused')->count(), 'color' => '#2E5AAC'],
+                ['label' => 'Absent', 'value' => $attendance->where('status', 'Absent')->count(), 'color' => '#B0392B'],
+            ],
         ]);
     }
 }
