@@ -16,7 +16,7 @@
                         @foreach ($needsReview as $record)
                             <tr class="border-b border-neutral-100 last:border-0">
                                 <td class="py-2.5">{{ $record->attendance_date->format('M j, Y') }}</td>
-                                <td class="py-2.5">{{ $record->student->first_name }} {{ $record->student->last_name }}</td>
+                                <td class="py-2.5">{{ $record->student->name }}</td>
                                 <td class="py-2.5 text-neutral-500">{{ $record->section->name }}</td>
                                 <td class="py-2.5"><x-badge color="pink">Absent</x-badge></td>
                                 <td class="py-2.5 text-right">
@@ -84,7 +84,7 @@
                     @forelse ($records as $record)
                         <tr class="border-b border-neutral-100 last:border-0">
                             <td class="py-2.5">{{ $record->attendance_date->format('M j, Y') }}</td>
-                            <td class="py-2.5">{{ $record->student->first_name }} {{ $record->student->last_name }}</td>
+                            <td class="py-2.5">{{ $record->student->name }}</td>
                             <td class="py-2.5 text-neutral-500">{{ $record->section->name }}</td>
                             <td class="py-2.5">
                                 <x-badge :color="$record->status === 'Present' ? 'green' : ($record->status === 'Excused' ? 'blue' : ($record->status === 'Tardy' ? 'yellow' : 'pink'))">

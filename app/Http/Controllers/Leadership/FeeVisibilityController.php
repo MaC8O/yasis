@@ -15,7 +15,7 @@ class FeeVisibilityController extends Controller
 
         return view('leadership.fees.index', [
             'role' => $role,
-            'summaries' => $summaries->sortBy(fn ($s) => $s->student->first_name)->values(),
+            'summaries' => $summaries->sortBy(fn ($s) => $s->student->name)->values(),
             'outstandingTotal' => $summaries->sum('balance'),
             'paidTotal' => $summaries->sum('paid'),
             'byDepartment' => $service->outstandingByDepartment(),

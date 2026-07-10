@@ -39,7 +39,7 @@ class FeeImportTemplateTest extends TestCase
 
         Student::create([
             'student_id_number' => 'YAS-2026-0001',
-            'first_name' => 'Aye', 'last_name' => 'Min',
+            'name' => 'Aye Min',
             'date_of_birth' => now()->subYears(14), 'gender' => 'M',
             'department_id' => $department->id,
             'enrollment_status' => 'Enrolled', 'admission_date' => now()->subYear(),

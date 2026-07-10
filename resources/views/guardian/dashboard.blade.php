@@ -14,7 +14,7 @@
         <a href="{{ route('guardian.notices.index') }}" class="bg-white border border-neutral-200 rounded-2xl px-5 py-4 font-semibold text-sm hover:border-[#1F573D]">Notices</a>
     </div>
 
-    <x-card :title="$child->first_name.'’s attendance this year'" subtitle="Every recorded school day, by status.">
+    <x-card :title="$child->name.'’s attendance this year'" subtitle="Every recorded school day, by status.">
         <x-chart.donut :segments="$attendanceSegments" center-label="days recorded" />
     </x-card>
 

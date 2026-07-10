@@ -35,8 +35,7 @@ class GuardianLinkManagementTest extends TestCase
     {
         return Student::create([
             'student_id_number' => 'S-'.fake()->unique()->numberBetween(1000, 99999),
-            'first_name' => 'Aye',
-            'last_name' => 'Min',
+            'name' => 'Aye Min',
             'date_of_birth' => now()->subYears(14),
             'gender' => 'F',
             'department_id' => $departmentId,

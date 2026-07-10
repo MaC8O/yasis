@@ -36,7 +36,7 @@
             <tbody>
                 @forelse ($summaries as $summary)
                     <tr class="border-b border-neutral-100 last:border-0">
-                        <td class="py-2.5">{{ $summary->student->first_name }} {{ $summary->student->last_name }}</td>
+                        <td class="py-2.5">{{ $summary->student->name }}</td>
                         <td class="py-2.5">{{ number_format($summary->total_billed) }}</td>
                         <td class="py-2.5">{{ number_format($summary->balance) }}</td>
                         <td class="py-2.5"><x-badge :color="$summary->status === 'Paid' ? 'green' : ($summary->status === 'Partial' ? 'yellow' : 'pink')">{{ $summary->status }}</x-badge></td>

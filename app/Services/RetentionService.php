@@ -27,8 +27,7 @@ class RetentionService
         DB::transaction(function () use ($student, $reason, $actor) {
             $student->update([
                 'student_id_number' => 'ERASED-'.$student->id,
-                'first_name' => 'Erased',
-                'last_name' => 'Record '.$student->id,
+                'name' => 'Erased Record '.$student->id,
                 'date_of_birth' => null,
                 'gender' => null,
                 'religious_background' => null,
@@ -53,7 +52,7 @@ class RetentionService
         if ($orphaned->isNotEmpty()) {
             throw ValidationException::withMessages([
                 'identifier' => 'Cannot erase: this guardian is the only guardian of an enrolled student ('
-                    .$orphaned->map(fn ($s) => "{$s->first_name} {$s->last_name}")->join(', ')
+                    .$orphaned->map(fn ($s) => "{$s->name}")->join(', ')
                     .'). Link another guardian first.',
             ]);
         }

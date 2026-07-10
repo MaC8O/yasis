@@ -268,8 +268,7 @@ class K12StructureSeeder extends Seeder
                     $student = Student::firstOrCreate(
                         ['student_id_number' => $idNumber],
                         [
-                            'first_name' => $first,
-                            'last_name' => $last,
+                            'name' => $first.' '.$last,
                             'date_of_birth' => now()->subYears($gradeAges[$grade])->subMonths(($counter % 10) + 1)->toDateString(),
                             'gender' => $counter % 2 === 0 ? 'Male' : 'Female',
                             'religious_background' => $religions[$counter % count($religions)],

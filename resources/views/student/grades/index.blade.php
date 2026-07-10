@@ -1,4 +1,4 @@
-<x-app-layout title="My Grades" subtitle="Subject grades and category breakdown." :badge="$student->first_name.' '.$student->last_name" role="student">
+<x-app-layout title="My Grades" subtitle="Subject grades and category breakdown." :badge="$student->name" role="student">
     <x-card>
         <form method="GET" class="flex gap-4 items-end">
             <div>

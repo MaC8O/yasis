@@ -18,8 +18,7 @@ class DocumentRequestController extends Controller
         $query = DocumentRequest::with(['student', 'preparedBy.user']);
 
         if ($search = $request->string('search')->trim()->value()) {
-            $query->whereHas('student', fn ($q) => $q->where('first_name', 'like', "%{$search}%")
-                ->orWhere('last_name', 'like', "%{$search}%")
+            $query->whereHas('student', fn ($q) => $q->where('name', 'like', "%{$search}%")
                 ->orWhere('student_id_number', 'like', "%{$search}%"));
         }
 
@@ -57,7 +56,7 @@ class DocumentRequestController extends Controller
 
         $audit->log($request->user(), 'Prepared document request', 'DocumentRequest', $doc->id);
 
-        return redirect()->route('registrar.documents.index')->with('status', "{$data['type']} draft created for {$student->first_name} {$student->last_name}.");
+        return redirect()->route('registrar.documents.index')->with('status', "{$data['type']} draft created for {$student->name}.");
     }
 
     public function submitForApproval(Request $request, DocumentRequest $documentRequest, AuditService $audit)

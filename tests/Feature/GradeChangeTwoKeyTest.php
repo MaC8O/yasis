@@ -38,7 +38,7 @@ class GradeChangeTwoKeyTest extends TestCase
         $subject = Subject::create(['code' => 'MATH9', 'name' => 'Mathematics', 'department_id' => $department->id]);
         TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => $teacher->id]);
 
-        $student = Student::create(['student_id_number' => 'GC-0001', 'first_name' => 'Fix', 'last_name' => 'MyGrade', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
+        $student = Student::create(['student_id_number' => 'GC-0001', 'name' => 'Fix MyGrade', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
         Enrollment::create(['student_id' => $student->id, 'section_id' => $section->id, 'status' => 'Active']);
 
         $category = AssessmentCategory::create(['section_id' => $section->id, 'subject_id' => $subject->id, 'term_id' => $term->id, 'name' => 'Test', 'weight_pct' => 100]);

@@ -14,7 +14,7 @@
                     @forelse ($section->enrollments as $i => $enrollment)
                         <tr class="border-b border-neutral-100 last:border-0">
                             <td class="py-2.5">
-                                {{ $enrollment->student->first_name }} {{ $enrollment->student->last_name }}
+                                {{ $enrollment->student->name }}
                                 <input type="hidden" name="actions[{{ $i }}][student_id]" value="{{ $enrollment->student_id }}">
                             </td>
                             <td class="py-2.5">

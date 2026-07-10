@@ -20,7 +20,7 @@ class DataExportController extends Controller
     protected array $tables = [
         'users' => ['id', 'name', 'email', 'status', 'last_login_at', 'created_at'],
         'staff_profiles' => ['id', 'staff_id_number', 'role_type', 'job_title', 'department_id', 'status', 'joined_date', 'phone'],
-        'students' => ['id', 'user_id', 'student_id_number', 'first_name', 'last_name', 'date_of_birth', 'gender', 'religious_background', 'admission_date', 'department_id', 'enrollment_status'],
+        'students' => ['id', 'user_id', 'student_id_number', 'name', 'date_of_birth', 'gender', 'religious_background', 'admission_date', 'department_id', 'enrollment_status'],
         'guardians' => ['id', 'user_id', 'relationship', 'phone'],
         'student_guardian' => ['id', 'student_id', 'guardian_id', 'is_primary'],
         'departments' => ['id', 'name', 'level'],

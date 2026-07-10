@@ -2,14 +2,9 @@
     <x-card>
         <form method="POST" action="{{ route('registrar.students.update', $student) }}" class="grid grid-cols-2 gap-4">
             @csrf @method('PUT')
-            <div>
-                <label class="block text-sm font-semibold mb-1">First name</label>
-                <input type="text" name="first_name" value="{{ old('first_name', $student->first_name) }}" required
-                    class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
-            </div>
-            <div>
-                <label class="block text-sm font-semibold mb-1">Last name</label>
-                <input type="text" name="last_name" value="{{ old('last_name', $student->last_name) }}" required
+            <div class="col-span-2">
+                <label class="block text-sm font-semibold mb-1">Full name</label>
+                <input type="text" name="name" value="{{ old('name', $student->name) }}" required
                     class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
             <div>

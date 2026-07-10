@@ -12,8 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->nullable()->unique()->constrained('users')->nullOnDelete();
             $table->string('student_id_number', 30)->unique();
-            $table->string('first_name');
-            $table->string('last_name');
+            // Myanmar names are not split into given/family parts — store one full name.
+            $table->string('name');
             $table->date('date_of_birth')->nullable();
             $table->string('gender', 20)->nullable();
             $table->date('admission_date');

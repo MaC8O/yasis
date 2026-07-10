@@ -27,7 +27,8 @@ class SectionController extends Controller
             $query->where('department_id', $departmentId);
         }
 
-        $sections = $query->orderBy('name')->get();
+        // Natural order so grades read 1,2,…,12 rather than the alphabetical 1,10,11,12,2,…
+        $sections = $query->orderByRaw('LENGTH(name), name')->get();
 
         // Active students not yet placed in any section of the active year (§7.5 "place students").
         $unplacedStudents = Student::where('enrollment_status', 'Enrolled')
@@ -36,7 +37,7 @@ class SectionController extends Controller
                     ->whereHas('section', fn ($s) => $s->where('academic_year_id', $activeYear?->id));
             })
             ->with('department')
-            ->orderBy('last_name')->orderBy('first_name')
+            ->orderBy('name')
             ->get();
 
         return view('registrar.sections.index', [
@@ -114,7 +115,7 @@ class SectionController extends Controller
 
         if ($inactive = $students->firstWhere('enrollment_status', '!=', 'Enrolled')) {
             return back()->withErrors([
-                'student_ids' => "{$inactive->first_name} {$inactive->last_name} is not an active student and cannot be placed.",
+                'student_ids' => "{$inactive->name} is not an active student and cannot be placed.",
             ]);
         }
 
@@ -128,7 +129,7 @@ class SectionController extends Controller
             $student = $alreadyPlaced->student;
 
             return back()->withErrors([
-                'student_ids' => "{$student->first_name} {$student->last_name} is already placed in a section for this academic year.",
+                'student_ids' => "{$student->name} is already placed in a section for this academic year.",
             ]);
         }
 

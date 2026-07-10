@@ -8,7 +8,7 @@
     </x-card>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <x-card title="New absence notice" :subtitle="'For '.$child->first_name.' · '.($child->department->name ?? '')">
+        <x-card title="New absence notice" :subtitle="'For '.$child->name.' · '.($child->department->name ?? '')">
             <form method="POST" action="{{ route('guardian.absence-notices.store') }}" class="space-y-4">
                 @csrf
                 <input type="hidden" name="student_id" value="{{ $child->id }}">
@@ -31,7 +31,7 @@
             </form>
         </x-card>
 
-        <x-card title="My notices" :subtitle="'Status of past requests for '.$child->first_name.'.'">
+        <x-card title="My notices" :subtitle="'Status of past requests for '.$child->name.'.'">
             <div class="space-y-4">
                 @forelse ($notices as $notice)
                     <div x-data="{ editing: false }">

@@ -76,7 +76,7 @@ class ValidateMatchController extends Controller
 
         $audit->log($request->user(), 'Resolved unmatched fee row', 'ImportedFeeRecord', $importedFeeRecord->id);
 
-        return back()->with('status', "Row mapped to {$student->first_name} {$student->last_name}.");
+        return back()->with('status', "Row mapped to {$student->name}.");
     }
 
     public function publish(Request $request, ImportBatch $importBatch, AuditService $audit)

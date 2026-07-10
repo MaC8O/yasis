@@ -189,8 +189,7 @@ class DatabaseSeeder extends Seeder
             ['student_id_number' => 'YAS-2026-0001'],
             [
                 'user_id' => $studentUser->id,
-                'first_name' => 'Saw Htoo',
-                'last_name' => 'Aung',
+                'name' => 'Saw Htoo Aung',
                 'date_of_birth' => '2011-03-14',
                 'gender' => 'Male',
                 'religious_background' => 'Seventh-day Adventist',
@@ -205,8 +204,7 @@ class DatabaseSeeder extends Seeder
             ['student_id_number' => 'YAS-2026-0002'],
             [
                 'user_id' => null,
-                'first_name' => 'Su Su',
-                'last_name' => 'Aung',
+                'name' => 'Su Su Aung',
                 'date_of_birth' => '2013-07-22',
                 'gender' => 'Female',
                 'religious_background' => 'Other Christian',
@@ -226,8 +224,7 @@ class DatabaseSeeder extends Seeder
             ['student_id_number' => 'YAS-2026-0003'],
             [
                 'user_id' => null,
-                'first_name' => 'Naw Paw',
-                'last_name' => 'Eh',
+                'name' => 'Naw Paw Eh',
                 'date_of_birth' => '2012-01-10',
                 'gender' => 'Female',
                 'religious_background' => 'Buddhist',

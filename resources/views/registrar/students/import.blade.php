@@ -16,7 +16,7 @@
                 <input type="file" name="file" required accept=".xlsx,.xls,.csv" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
             <p class="text-xs text-neutral-500">
-                Required columns: <code>student_id_number</code>, <code>first_name</code>, <code>last_name</code>, <code>department</code>.
+                Required columns: <code>student_id_number</code>, <code>name</code>, <code>department</code>.
                 Optional: <code>section</code>, <code>date_of_birth</code>, <code>gender</code>, <code>religious_background</code>, <code>admission_date</code>,
                 <code>guardian_name</code>, <code>guardian_email</code>, <code>guardian_relationship</code>, <code>guardian_phone</code>.
             </p>

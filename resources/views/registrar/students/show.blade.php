@@ -1,4 +1,4 @@
-<x-app-layout :title="$student->first_name.' '.$student->last_name" :subtitle="$student->student_id_number" badge="Registrar" role="registrar">
+<x-app-layout :title="$student->name" :subtitle="$student->student_id_number" badge="Registrar" role="registrar">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <x-card title="Profile">
             <dl class="text-sm space-y-2">

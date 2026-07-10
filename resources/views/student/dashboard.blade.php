@@ -1,4 +1,4 @@
-<x-app-layout title="Student Dashboard" subtitle="Quick overview of your academic progress, schedule, attendance, and notices." :badge="$student->first_name.' '.$student->last_name" role="student">
+<x-app-layout title="Student Dashboard" subtitle="Quick overview of your academic progress, schedule, attendance, and notices." :badge="$student->name" role="student">
     <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <x-stat-tile label="Term GPA" color="blue">{{ $termGpa ?? '—' }}</x-stat-tile>
         <x-stat-tile label="Attendance rate" color="green">{{ $attendanceRate !== null ? $attendanceRate.'%' : '—' }}</x-stat-tile>

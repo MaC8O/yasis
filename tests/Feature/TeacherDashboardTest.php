@@ -27,8 +27,8 @@ class TeacherDashboardTest extends TestCase
         $subject = Subject::create(['code' => 'MATH9', 'name' => 'Mathematics', 'department_id' => $department->id]);
         TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => $teacher->id]);
 
-        $chronic = Student::create(['student_id_number' => 'C-0001', 'first_name' => 'Chronic', 'last_name' => 'Absentee', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
-        $regular = Student::create(['student_id_number' => 'C-0002', 'first_name' => 'Regular', 'last_name' => 'Attender', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
+        $chronic = Student::create(['student_id_number' => 'C-0001', 'name' => 'Chronic Absentee', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
+        $regular = Student::create(['student_id_number' => 'C-0002', 'name' => 'Regular Attender', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
         Enrollment::create(['student_id' => $chronic->id, 'section_id' => $section->id, 'status' => 'Active']);
         Enrollment::create(['student_id' => $regular->id, 'section_id' => $section->id, 'status' => 'Active']);
 

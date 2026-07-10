@@ -4,7 +4,7 @@
 <body style="font-family: sans-serif; color: #1a1a1a;">
     <p>Dear Guardian,</p>
     <p>
-        This is to notify you that <strong>{{ $record->student->first_name }} {{ $record->student->last_name }}</strong>
+        This is to notify you that <strong>{{ $record->student->name }}</strong>
         was marked <strong>{{ $record->status }}</strong> on {{ $record->attendance_date->format('F j, Y') }}
         for {{ $record->section->name }}.
     </p>

@@ -74,7 +74,7 @@
                             <tr class="border-b border-neutral-100 last:border-0 {{ $row->is_held ? 'opacity-60' : '' }}">
                                 <td class="py-2.5">
                                     @if ($row->student)
-                                        {{ $row->student->first_name }} {{ $row->student->last_name }}
+                                        {{ $row->student->name }}
                                     @else
                                         <span class="text-neutral-500">{{ $row->raw_student_key ?: '—' }}</span>
                                         <x-badge color="yellow">Unmatched</x-badge>

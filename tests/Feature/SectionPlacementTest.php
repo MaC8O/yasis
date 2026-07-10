@@ -21,8 +21,7 @@ class SectionPlacementTest extends TestCase
     {
         return Student::create([
             'student_id_number' => 'S-'.fake()->unique()->numberBetween(1000, 99999),
-            'first_name' => $first,
-            'last_name' => $last,
+            'name' => $first.' '.$last,
             'date_of_birth' => now()->subYears(14),
             'gender' => 'M',
             'department_id' => $departmentId,

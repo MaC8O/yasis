@@ -1,4 +1,4 @@
-<x-app-layout title="My Schedule" subtitle="Subjects and teachers for your enrolled section." :badge="$student->first_name.' '.$student->last_name" role="student">
+<x-app-layout title="My Schedule" subtitle="Subjects and teachers for your enrolled section." :badge="$student->name" role="student">
     <x-card>
         <p class="text-xs text-neutral-400 mb-4">
             A period-by-period weekly timetable isn't part of this release — this lists your assigned subjects and teachers instead.

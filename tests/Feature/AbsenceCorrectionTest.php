@@ -31,7 +31,7 @@ class AbsenceCorrectionTest extends TestCase
         $teacher = $this->makeStaff('teacher', 'Teacher', 'teacher@test.local');
 
         $section = Section::create(['academic_year_id' => $term->academic_year_id, 'department_id' => $department->id, 'name' => 'Grade 9-A', 'capacity' => 35]);
-        $student = Student::create(['student_id_number' => 'A-0001', 'first_name' => 'Ab', 'last_name' => 'Sent', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
+        $student = Student::create(['student_id_number' => 'A-0001', 'name' => 'Ab Sent', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
         Enrollment::create(['student_id' => $student->id, 'section_id' => $section->id, 'status' => 'Active']);
 
         $guardianUser = User::create(['name' => 'Guardian', 'email' => 'g@test.local', 'password' => Hash::make('password'), 'status' => 'Active']);
@@ -104,6 +104,6 @@ class AbsenceCorrectionTest extends TestCase
         $this->actingAs($registrar->user)->get('/registrar/attendance-corrections')
             ->assertOk()
             ->assertSee('Needs review')
-            ->assertSee($student->first_name);
+            ->assertSee($student->name);
     }
 }

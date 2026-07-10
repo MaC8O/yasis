@@ -7,7 +7,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 /**
  * Reads the Registrar's bulk student-registration Excel/CSV as raw rows keyed by header name.
- * Expected columns: student_id_number, first_name, last_name, department (required),
+ * Expected columns: student_id_number, name, department (required),
  * date_of_birth, gender, religious_background, admission_date, section,
  * guardian_name, guardian_email, guardian_relationship, guardian_phone (all optional).
  */

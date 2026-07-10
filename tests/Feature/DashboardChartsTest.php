@@ -48,7 +48,7 @@ class DashboardChartsTest extends TestCase
 
         $section = Section::create(['academic_year_id' => $term->academic_year_id, 'department_id' => $department->id, 'name' => 'Grade 9-A', 'capacity' => 30]);
         $student = Student::create([
-            'student_id_number' => 'S-1', 'first_name' => 'Aye', 'last_name' => 'Min',
+            'student_id_number' => 'S-1', 'name' => 'Aye Min',
             'date_of_birth' => now()->subYears(14), 'gender' => 'F',
             'department_id' => $department->id, 'enrollment_status' => 'Enrolled', 'admission_date' => now()->subYear(),
         ]);
@@ -77,7 +77,7 @@ class DashboardChartsTest extends TestCase
         TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => $teacher->id]);
 
         $student = Student::create([
-            'student_id_number' => 'S-2', 'first_name' => 'Htoo', 'last_name' => 'Paw',
+            'student_id_number' => 'S-2', 'name' => 'Htoo Paw',
             'date_of_birth' => now()->subYears(14), 'gender' => 'M',
             'department_id' => $department->id, 'enrollment_status' => 'Enrolled', 'admission_date' => now()->subYear(),
         ]);
@@ -109,7 +109,7 @@ class DashboardChartsTest extends TestCase
         $studentUser->assignRole('student');
         $student = Student::create([
             'user_id' => $studentUser->id,
-            'student_id_number' => 'S-3', 'first_name' => 'Aye', 'last_name' => 'Min',
+            'student_id_number' => 'S-3', 'name' => 'Aye Min',
             'date_of_birth' => now()->subYears(14), 'gender' => 'F',
             'department_id' => $department->id, 'enrollment_status' => 'Enrolled', 'admission_date' => now()->subYear(),
         ]);

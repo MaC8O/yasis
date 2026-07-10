@@ -56,7 +56,7 @@ class RegistrarAnnouncementTest extends TestCase
             $guardian = Guardian::create(['user_id' => $user->id, 'relationship' => 'Mother', 'phone' => '0911']);
             $student = Student::create([
                 'student_id_number' => 'S-'.fake()->unique()->numberBetween(1000, 99999),
-                'first_name' => 'Kid', 'last_name' => 'Of '.$email,
+                'name' => 'Kid Of '.$email,
                 'date_of_birth' => now()->subYears(10), 'gender' => 'M',
                 'department_id' => $departmentId,
                 'enrollment_status' => 'Enrolled', 'admission_date' => now()->subYear(),

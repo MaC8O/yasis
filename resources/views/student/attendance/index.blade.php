@@ -1,4 +1,4 @@
-<x-app-layout title="Attendance" subtitle="Your daily attendance history." :badge="$student->first_name.' '.$student->last_name" role="student">
+<x-app-layout title="Attendance" subtitle="Your daily attendance history." :badge="$student->name" role="student">
     <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <x-stat-tile label="Present" color="green">{{ $counts['Present'] }}</x-stat-tile>
         <x-stat-tile label="Absent" color="pink">{{ $counts['Absent'] }}</x-stat-tile>

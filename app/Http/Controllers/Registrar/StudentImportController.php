@@ -26,8 +26,8 @@ class StudentImportController extends Controller
 
     public function template(): Response
     {
-        $csv = "student_id_number,first_name,last_name,department,section,date_of_birth,gender,religious_background,admission_date,guardian_name,guardian_email,guardian_relationship,guardian_phone\n"
-            ."YAS-2026-0101,Aye,Chan,High School,Grade 9-A,2011-05-02,Female,Buddhist,2026-06-01,Daw Aye Aye,daw.ayeaye@example.com,Mother,+95 900-222-333\n";
+        $csv = "student_id_number,name,department,section,date_of_birth,gender,religious_background,admission_date,guardian_name,guardian_email,guardian_relationship,guardian_phone\n"
+            ."YAS-2026-0101,Aye Chan,High School,Grade 9-A,2011-05-02,Female,Buddhist,2026-06-01,Daw Aye Aye,daw.ayeaye@example.com,Mother,+95 900-222-333\n";
 
         return response($csv, 200, [
             'Content-Type' => 'text/csv',
@@ -53,12 +53,11 @@ class StudentImportController extends Controller
             $rowNum = $i + 2;
 
             $studentIdNumber = trim((string) ($row['student_id_number'] ?? ''));
-            $firstName = trim((string) ($row['first_name'] ?? ''));
-            $lastName = trim((string) ($row['last_name'] ?? ''));
+            $name = trim((string) ($row['name'] ?? ''));
             $departmentName = trim((string) ($row['department'] ?? ''));
 
-            if ($studentIdNumber === '' || $firstName === '' || $lastName === '' || $departmentName === '') {
-                $errors[] = "Row {$rowNum}: missing required field (student_id_number, first_name, last_name, department).";
+            if ($studentIdNumber === '' || $name === '' || $departmentName === '') {
+                $errors[] = "Row {$rowNum}: missing required field (student_id_number, name, department).";
 
                 continue;
             }
@@ -87,8 +86,7 @@ class StudentImportController extends Controller
 
             $student = Student::create([
                 'student_id_number' => $studentIdNumber,
-                'first_name' => $firstName,
-                'last_name' => $lastName,
+                'name' => $name,
                 'date_of_birth' => trim((string) ($row['date_of_birth'] ?? '')) ?: null,
                 'gender' => trim((string) ($row['gender'] ?? '')) ?: null,
                 'religious_background' => trim((string) ($row['religious_background'] ?? '')) ?: null,
@@ -137,7 +135,7 @@ class StudentImportController extends Controller
                 }
             }
 
-            $created[] = "Row {$rowNum}: {$studentIdNumber} — {$firstName} {$lastName}";
+            $created[] = "Row {$rowNum}: {$studentIdNumber} — {$name}";
         }
 
         $audit->log($request->user(), 'Bulk-imported students ('.count($created).' created)', 'Student');

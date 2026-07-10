@@ -29,7 +29,7 @@
             @forelse ($transcripts as $doc)
                 <div class="flex items-center justify-between border-b border-neutral-100 last:border-0 pb-4">
                     <div>
-                        <p class="font-semibold text-sm">{{ $doc->student->first_name }} {{ $doc->student->last_name }}</p>
+                        <p class="font-semibold text-sm">{{ $doc->student->name }}</p>
                         <p class="text-xs text-neutral-500">Prepared by {{ $doc->preparedBy->user->name ?? '—' }}</p>
                     </div>
                     <div class="flex gap-3">
@@ -55,7 +55,7 @@
                 <div class="flex items-center justify-between border-b border-neutral-100 last:border-0 pb-4">
                     <div>
                         <p class="font-semibold text-sm">
-                            {{ $req->student->first_name }} {{ $req->student->last_name }} ·
+                            {{ $req->student->name }} ·
                             {{ $req->assessment->category->subject->name ?? '' }} — {{ $req->assessment->name }}
                             ({{ $req->term->name }}):
                             {{ $req->old_score !== null ? $req->old_score + 0 : 'no score' }} → <span class="text-[#1F573D]">{{ $req->new_score + 0 }}</span>

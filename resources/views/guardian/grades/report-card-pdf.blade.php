@@ -18,7 +18,7 @@
         <h1>Yangon Adventist Seminary</h1>
         <p>Report Card — {{ $term->name }}</p>
     </div>
-    <div class="title">{{ $child->first_name }} {{ $child->last_name }} — {{ $child->student_id_number }}</div>
+    <div class="title">{{ $child->name }} — {{ $child->student_id_number }}</div>
     <table>
         <thead><tr><th>Subject</th><th>Score</th><th>Letter</th></tr></thead>
         <tbody>

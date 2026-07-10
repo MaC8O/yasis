@@ -122,7 +122,7 @@ class GuardianController extends Controller
             $audit->log($request->user(), 'Linked guardian to student', 'Guardian', $guardian->id);
         });
 
-        return back()->with('status', "Linked to {$student->first_name} {$student->last_name}.");
+        return back()->with('status', "Linked to {$student->name}.");
     }
 
     /** §7.4: unlink a student — never allowed to leave the student guardian-less. */
@@ -132,7 +132,7 @@ class GuardianController extends Controller
 
         if ($student->guardians()->count() <= 1) {
             return back()->withErrors([
-                'link' => "Cannot unlink: this is the only guardian of {$student->first_name} {$student->last_name}. Link another guardian first.",
+                'link' => "Cannot unlink: this is the only guardian of {$student->name}. Link another guardian first.",
             ]);
         }
 
@@ -150,7 +150,7 @@ class GuardianController extends Controller
             $audit->log($request->user(), 'Unlinked guardian from student', 'Guardian', $guardian->id);
         });
 
-        return back()->with('status', "Unlinked from {$student->first_name} {$student->last_name}.");
+        return back()->with('status', "Unlinked from {$student->name}.");
     }
 
     /** §7.4: setting a new primary flips the previous primary off atomically. */

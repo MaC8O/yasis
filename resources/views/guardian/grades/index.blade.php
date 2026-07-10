@@ -1,4 +1,4 @@
-@php $gradesSubtitle = "Guardian read-only view of {$child->first_name}'s subject grades and category breakdown."; @endphp
+@php $gradesSubtitle = "Guardian read-only view of {$child->name}'s subject grades and category breakdown."; @endphp
 <x-app-layout title="Grades & Reports" :subtitle="$gradesSubtitle" badge="Student view" role="guardian">
     <x-child-switcher :children="$children" :child="$child" route="guardian.grades.index" />
 

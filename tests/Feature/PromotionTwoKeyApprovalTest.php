@@ -32,8 +32,8 @@ class PromotionTwoKeyApprovalTest extends TestCase
         $fromSection = Section::create(['academic_year_id' => $term->academic_year_id, 'department_id' => $department->id, 'name' => 'Grade 9-A', 'capacity' => 35]);
         $toSection = Section::create(['academic_year_id' => $term->academic_year_id, 'department_id' => $department->id, 'name' => 'Grade 10-A', 'capacity' => 35]);
 
-        $promotee = Student::create(['student_id_number' => 'P-0001', 'first_name' => 'Promote', 'last_name' => 'Me', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
-        $graduate = Student::create(['student_id_number' => 'P-0002', 'first_name' => 'Graduate', 'last_name' => 'Me', 'admission_date' => now()->subYears(4), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
+        $promotee = Student::create(['student_id_number' => 'P-0001', 'name' => 'Promote Me', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
+        $graduate = Student::create(['student_id_number' => 'P-0002', 'name' => 'Graduate Me', 'admission_date' => now()->subYears(4), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
 
         $promoteeEnrollment = Enrollment::create(['student_id' => $promotee->id, 'section_id' => $fromSection->id, 'status' => 'Active']);
         $graduateEnrollment = Enrollment::create(['student_id' => $graduate->id, 'section_id' => $fromSection->id, 'status' => 'Active']);

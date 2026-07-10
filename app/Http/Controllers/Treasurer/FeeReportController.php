@@ -45,7 +45,7 @@ class FeeReportController extends Controller
             foreach ($rows as $row) {
                 fputcsv($out, [
                     $row->student->student_id_number,
-                    $row->student->first_name.' '.$row->student->last_name,
+                    $row->student->name,
                     $row->student->department->name ?? '',
                     $row->total_billed,
                     $row->paid,

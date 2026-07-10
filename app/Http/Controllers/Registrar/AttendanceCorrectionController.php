@@ -85,6 +85,6 @@ class AttendanceCorrectionController extends Controller
             $attendanceRecord->id
         );
 
-        return back()->with('status', "Classification corrected: {$attendanceRecord->student->first_name} {$attendanceRecord->student->last_name}, {$attendanceRecord->attendance_date->format('M j')} — {$original} → {$data['status']}.");
+        return back()->with('status', "Classification corrected: {$attendanceRecord->student->name}, {$attendanceRecord->attendance_date->format('M j')} — {$original} → {$data['status']}.");
     }
 }

@@ -5,7 +5,7 @@
                 @foreach ($pendingAcknowledgement as $notice)
                     <div class="flex items-center justify-between bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3">
                         <div>
-                            <p class="font-semibold text-sm">{{ $notice->student->first_name }} {{ $notice->student->last_name }}</p>
+                            <p class="font-semibold text-sm">{{ $notice->student->name }}</p>
                             <p class="text-xs text-neutral-500">{{ $notice->from_date->format('M j') }} – {{ $notice->to_date->format('M j') }} · {{ $notice->reason ?? 'No reason given' }}</p>
                         </div>
                         <form method="POST" action="{{ route('teacher.attendance.acknowledge', $notice) }}">
@@ -69,7 +69,7 @@
                         @endphp
                         <tr class="border-b border-neutral-100 last:border-0">
                             <td class="py-2.5">{{ $student->student_id_number }}</td>
-                            <td class="py-2.5 font-semibold">{{ $student->first_name }} {{ $student->last_name }}</td>
+                            <td class="py-2.5 font-semibold">{{ $student->name }}</td>
                             <input type="hidden" name="statuses[{{ $loop->index }}][student_id]" value="{{ $student->id }}">
                             @foreach (['Present', 'Absent', 'Tardy', 'Excused'] as $status)
                                 <td class="py-2.5 text-center">

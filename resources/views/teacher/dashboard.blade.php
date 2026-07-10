@@ -36,7 +36,7 @@
                     <x-badge color="blue">{{ $gradebookTasksCount }} gradebook(s) need category weights</x-badge>
                 @endif
                 @foreach ($pendingNotices as $notice)
-                    <x-badge color="yellow">Absence notice to acknowledge · {{ $notice->student->first_name }} {{ $notice->student->last_name }} ({{ $notice->from_date->format('M j') }}{{ $notice->from_date->ne($notice->to_date) ? '–'.$notice->to_date->format('M j') : '' }})</x-badge>
+                    <x-badge color="yellow">Absence notice to acknowledge · {{ $notice->student->name }} ({{ $notice->from_date->format('M j') }}{{ $notice->from_date->ne($notice->to_date) ? '–'.$notice->to_date->format('M j') : '' }})</x-badge>
                 @endforeach
             </div>
             <a href="{{ route('teacher.attendance.index') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Take attendance</a>
@@ -46,7 +46,7 @@
     @if ($consecutiveAbsentees->isNotEmpty())
         <div class="bg-red-50 border border-red-200 text-red-900 text-sm rounded-xl px-5 py-3">
             <span class="font-semibold">Consecutive absences (3+ days):</span>
-            {{ $consecutiveAbsentees->map(fn ($s) => $s->first_name.' '.$s->last_name)->implode(', ') }}
+            {{ $consecutiveAbsentees->map(fn ($s) => $s->name)->implode(', ') }}
             — consider contacting the guardian or the Registrar's office.
         </div>
     @endif

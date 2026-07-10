@@ -22,8 +22,7 @@ class StudentController extends Controller
         $query = Student::query()->with(['department', 'guardians.user', 'enrollments.section']);
 
         if ($search = $request->string('search')->trim()->value()) {
-            $query->where(fn ($q) => $q->where('first_name', 'like', "%{$search}%")
-                ->orWhere('last_name', 'like', "%{$search}%")
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")
                 ->orWhere('student_id_number', 'like', "%{$search}%"));
         }
 
@@ -32,7 +31,7 @@ class StudentController extends Controller
         }
 
         return view('registrar.students.index', [
-            'students' => $query->orderBy('last_name')->paginate(15)->withQueryString(),
+            'students' => $query->orderBy('name')->paginate(15)->withQueryString(),
             'departments' => Department::orderBy('name')->get(),
             'filters' => $request->only(['search', 'department']),
             'stats' => [
@@ -48,7 +47,8 @@ class StudentController extends Controller
     {
         return view('registrar.students.create', [
             'departments' => Department::orderBy('name')->get(),
-            'sections' => Section::with('department')->whereHas('academicYear', fn ($q) => $q->where('is_active', true))->orderBy('name')->get(),
+            // Natural order so grades read 1,2,…,12 (not the alphabetical 1,10,11,12,2,…) and every grade up to 12 is visible.
+            'sections' => Section::with('department')->whereHas('academicYear', fn ($q) => $q->where('is_active', true))->orderByRaw('LENGTH(name), name')->get(),
             'guardians' => Guardian::with('user')->get(),
         ]);
     }
@@ -57,8 +57,7 @@ class StudentController extends Controller
     {
         $data = $request->validate([
             'student_id_number' => ['required', 'string', 'max:30', 'unique:students,student_id_number'],
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'date_of_birth' => ['nullable', 'date'],
             'gender' => ['nullable', 'string', 'max:20'],
             'admission_date' => ['required', 'date'],
@@ -74,8 +73,7 @@ class StudentController extends Controller
 
         $student = Student::create([
             'student_id_number' => $data['student_id_number'],
-            'first_name' => $data['first_name'],
-            'last_name' => $data['last_name'],
+            'name' => $data['name'],
             'date_of_birth' => $data['date_of_birth'] ?? null,
             'gender' => $data['gender'] ?? null,
             'admission_date' => $data['admission_date'],
@@ -116,7 +114,7 @@ class StudentController extends Controller
 
         $audit->log($request->user(), 'Registered student', 'Student', $student->id);
 
-        return redirect()->route('registrar.students.index')->with('status', "{$student->first_name} {$student->last_name} registered.");
+        return redirect()->route('registrar.students.index')->with('status', "{$student->name} registered.");
     }
 
     public function show(Student $student)
@@ -137,8 +135,7 @@ class StudentController extends Controller
     public function update(Request $request, Student $student, AuditService $audit)
     {
         $data = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'date_of_birth' => ['nullable', 'date'],
             'gender' => ['nullable', 'string', 'max:20'],
             'department_id' => ['required', 'exists:departments,id'],
@@ -164,7 +161,7 @@ class StudentController extends Controller
         $audit->log($request->user(), 'Transferred/dropped student', 'Student', $student->id);
 
         return redirect()->route('registrar.students.show', $student)
-            ->with('status', "{$student->first_name} marked Transferred. A Transfer/Leaving Certificate draft was created.");
+            ->with('status', "{$student->name} marked Transferred. A Transfer/Leaving Certificate draft was created.");
     }
 
     public function graduate(Request $request, Student $student, AuditService $audit)
@@ -187,6 +184,6 @@ class StudentController extends Controller
         $audit->log($request->user(), 'Processed graduation/exit', 'Student', $student->id);
 
         return redirect()->route('registrar.students.show', $student)
-            ->with('status', "{$student->first_name} marked Graduated. Completion Certificate and final transcript drafts were created.");
+            ->with('status', "{$student->name} marked Graduated. Completion Certificate and final transcript drafts were created.");
     }
 }

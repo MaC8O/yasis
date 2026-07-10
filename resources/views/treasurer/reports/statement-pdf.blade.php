@@ -24,7 +24,7 @@
 
     <table class="meta">
         <tr><td class="label">Student ID</td><td>{{ $student->student_id_number }}</td></tr>
-        <tr><td class="label">Student Name</td><td>{{ $student->first_name }} {{ $student->last_name }}</td></tr>
+        <tr><td class="label">Student Name</td><td>{{ $student->name }}</td></tr>
         <tr><td class="label">Department</td><td>{{ $student->department->name ?? '—' }}</td></tr>
         <tr><td class="label">Statement Date</td><td>{{ now()->format('F j, Y') }}</td></tr>
     </table>

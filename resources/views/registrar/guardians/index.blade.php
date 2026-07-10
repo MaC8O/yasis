@@ -1,6 +1,6 @@
 <x-app-layout title="Guardian Management" subtitle="Link guardians to students and manage parent portal access." badge="Registrar" role="registrar">
     @if ($linkStudent)
-        <x-card title="Link a guardian to {{ $linkStudent->first_name }} {{ $linkStudent->last_name }}" subtitle="Pick a guardian below and use its 'Link student' action, or add a new guardian.">
+        <x-card title="Link a guardian to {{ $linkStudent->name }}" subtitle="Pick a guardian below and use its 'Link student' action, or add a new guardian.">
             <p class="text-sm text-neutral-500">Student ID: <span class="font-semibold text-neutral-800">{{ $linkStudent->student_id_number }}</span></p>
         </x-card>
     @endif

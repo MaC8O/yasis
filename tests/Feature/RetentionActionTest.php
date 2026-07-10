@@ -24,8 +24,7 @@ class RetentionActionTest extends TestCase
         return Student::create([
             'user_id' => $portalUser?->id,
             'student_id_number' => 'YAS-2026-'.fake()->unique()->numberBetween(1000, 9999),
-            'first_name' => 'Aye',
-            'last_name' => 'Min',
+            'name' => 'Aye Min',
             'date_of_birth' => now()->subYears(14),
             'gender' => 'F',
             'religious_background' => 'Buddhist',
@@ -68,7 +67,7 @@ class RetentionActionTest extends TestCase
 
         $student->refresh();
         $this->assertSame('ERASED-'.$student->id, $student->student_id_number);
-        $this->assertSame('Erased', $student->first_name);
+        $this->assertSame('Erased Record '.$student->id, $student->name);
         $this->assertNull($student->date_of_birth);
         $this->assertNull($student->gender);
         $this->assertNull($student->religious_background);
@@ -157,7 +156,7 @@ class RetentionActionTest extends TestCase
             'reason' => '',
         ])->assertSessionHasErrors('reason');
 
-        $this->assertSame('Aye', $student->fresh()->first_name);
+        $this->assertSame('Aye Min', $student->fresh()->name);
     }
 
     public function test_non_admins_cannot_action_retention_requests(): void

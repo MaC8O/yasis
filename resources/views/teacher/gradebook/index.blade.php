@@ -45,7 +45,7 @@
                     <label class="block text-sm font-semibold mb-1">Student</label>
                     <select name="student_id" required class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
                         @foreach ($roster as $student)
-                            <option value="{{ $student->id }}">{{ $student->first_name }} {{ $student->last_name }}</option>
+                            <option value="{{ $student->id }}">{{ $student->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -81,7 +81,7 @@
                     <tbody>
                         @foreach ($changeRequests as $req)
                             <tr class="border-b border-neutral-100 last:border-0">
-                                <td class="py-2.5">{{ $req->student->first_name }} {{ $req->student->last_name }}</td>
+                                <td class="py-2.5">{{ $req->student->name }}</td>
                                 <td class="py-2.5 text-neutral-500">{{ $req->assessment->name }}</td>
                                 <td class="py-2.5">{{ $req->old_score !== null ? $req->old_score + 0 : '—' }} → <span class="font-semibold">{{ $req->new_score + 0 }}</span></td>
                                 <td class="py-2.5 text-neutral-500">{{ $req->reason }}</td>
@@ -183,7 +183,7 @@
                     <tbody>
                         @forelse ($roster as $student)
                             <tr class="border-b border-neutral-100 last:border-0">
-                                <td class="py-2.5 font-semibold">{{ $student->first_name }} {{ $student->last_name }}</td>
+                                <td class="py-2.5 font-semibold">{{ $student->name }}</td>
                                 @foreach ($allAssessments as $assessment)
                                     @php $grade = $assessment->grades->firstWhere('student_id', $student->id); @endphp
                                     <td class="py-2.5">
@@ -219,7 +219,7 @@
                     <input type="hidden" name="student_id" value="{{ $student->id }}">
                     <input type="hidden" name="term_id" value="{{ $term?->id }}">
                     <div class="flex-1">
-                        <label class="block text-xs font-semibold text-neutral-500 mb-1">{{ $student->first_name }} {{ $student->last_name }}</label>
+                        <label class="block text-xs font-semibold text-neutral-500 mb-1">{{ $student->name }}</label>
                         <input type="text" name="comment" value="{{ $comments[$student->id]->comment ?? '' }}" placeholder="Consistent effort this term..."
                             class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
                     </div>

@@ -17,7 +17,7 @@ class AbsenceAlertMail extends Mailable
 
     public function build()
     {
-        return $this->subject('Attendance alert — '.$this->record->student->first_name.' '.$this->record->student->last_name)
+        return $this->subject('Attendance alert — '.$this->record->student->name)
             ->view('emails.absence-alert');
     }
 }

@@ -10,13 +10,9 @@
                 <label class="block text-sm font-semibold mb-1">Admission date</label>
                 <input type="date" name="admission_date" value="{{ now()->toDateString() }}" required class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
-            <div>
-                <label class="block text-sm font-semibold mb-1">First name</label>
-                <input type="text" name="first_name" required class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
-            </div>
-            <div>
-                <label class="block text-sm font-semibold mb-1">Last name</label>
-                <input type="text" name="last_name" required class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
+            <div class="sm:col-span-2">
+                <label class="block text-sm font-semibold mb-1">Full name</label>
+                <input type="text" name="name" required placeholder="e.g. Saw Htoo Aung" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
             <div class="sm:col-span-2">
                 <label class="block text-sm font-semibold mb-1">Department</label>

@@ -39,7 +39,7 @@ class AbsenceExcusedFlowTest extends TestCase
 
         $student = Student::create([
             'student_id_number' => 'T-STU-0001',
-            'first_name' => 'Test', 'last_name' => 'Student',
+            'name' => 'Test Student',
             'admission_date' => now()->subYear(),
             'department_id' => $department->id,
             'enrollment_status' => 'Enrolled',
@@ -95,7 +95,7 @@ class AbsenceExcusedFlowTest extends TestCase
         $this->seedRoles();
         $department = $this->seedDepartment();
         $student = Student::create([
-            'student_id_number' => 'T-STU-0002', 'first_name' => 'Past', 'last_name' => 'Notice',
+            'student_id_number' => 'T-STU-0002', 'name' => 'Past Notice',
             'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled',
         ]);
         $guardianUser = User::create(['name' => 'G2', 'email' => 'g2@test.local', 'password' => Hash::make('password'), 'status' => 'Active']);

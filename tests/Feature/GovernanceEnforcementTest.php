@@ -36,7 +36,7 @@ class GovernanceEnforcementTest extends TestCase
         $subject = Subject::create(['code' => 'MATH9', 'name' => 'Mathematics', 'department_id' => $department->id]);
         TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => $teacher->id]);
 
-        $student = Student::create(['student_id_number' => 'G-0001', 'first_name' => 'Grade', 'last_name' => 'Me', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
+        $student = Student::create(['student_id_number' => 'G-0001', 'name' => 'Grade Me', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
         Enrollment::create(['student_id' => $student->id, 'section_id' => $section->id, 'status' => 'Active']);
 
         $category = AssessmentCategory::create(['section_id' => $section->id, 'subject_id' => $subject->id, 'term_id' => $term->id, 'name' => 'Quiz', 'weight_pct' => 100]);
@@ -100,7 +100,7 @@ class GovernanceEnforcementTest extends TestCase
         $registrar = $this->makeStaff('registrar', 'Registrar', 'registrar@test.local');
 
         $section = Section::create(['academic_year_id' => $term->academic_year_id, 'department_id' => $department->id, 'name' => 'Grade 9-A', 'capacity' => 35]);
-        $student = Student::create(['student_id_number' => 'W-0001', 'first_name' => 'Window', 'last_name' => 'Closed', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
+        $student = Student::create(['student_id_number' => 'W-0001', 'name' => 'Window Closed', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
         Enrollment::create(['student_id' => $student->id, 'section_id' => $section->id, 'status' => 'Active']);
 
         SystemSetting::set('promotion_window_open', '0');
@@ -118,7 +118,7 @@ class GovernanceEnforcementTest extends TestCase
         $department = $this->seedDepartment();
         $registrar = $this->makeStaff('registrar', 'Registrar', 'registrar@test.local');
 
-        $student = Student::create(['student_id_number' => 'T-0001', 'first_name' => 'Tran', 'last_name' => 'Script', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
+        $student = Student::create(['student_id_number' => 'T-0001', 'name' => 'Tran Script', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
 
         $doc = DocumentRequest::create([
             'student_id' => $student->id, 'type' => 'Transcript', 'status' => 'Ready',

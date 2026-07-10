@@ -15,7 +15,7 @@ class ImportedFeeRecordController extends Controller
         $summaries = $service->studentSummaries();
 
         if ($search = $request->string('search')->trim()->value()) {
-            $summaries = $summaries->filter(fn ($s) => str_contains(strtolower($s->student->first_name.' '.$s->student->last_name), strtolower($search))
+            $summaries = $summaries->filter(fn ($s) => str_contains(strtolower($s->student->name), strtolower($search))
                 || str_contains(strtolower($s->student->student_id_number), strtolower($search)));
         }
 
@@ -24,7 +24,7 @@ class ImportedFeeRecordController extends Controller
         }
 
         return view('treasurer.records.index', [
-            'summaries' => $summaries->sortBy(fn ($s) => $s->student->first_name)->values(),
+            'summaries' => $summaries->sortBy(fn ($s) => $s->student->name)->values(),
             'filters' => $request->only(['search', 'status']),
             'stats' => [
                 'studentSummaries' => $summaries->count(),

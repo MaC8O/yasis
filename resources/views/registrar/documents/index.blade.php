@@ -39,7 +39,7 @@
             <tbody>
                 @forelse ($documents as $doc)
                     <tr class="border-b border-neutral-100 last:border-0">
-                        <td class="py-2.5">{{ $doc->student->first_name }} {{ $doc->student->last_name }}</td>
+                        <td class="py-2.5">{{ $doc->student->name }}</td>
                         <td class="py-2.5">{{ $doc->type }}</td>
                         <td class="py-2.5"><x-badge :color="in_array($doc->status, ['Printed', 'Ready']) ? 'blue' : (in_array($doc->status, ['Pending Approval', 'Approved']) ? 'yellow' : 'green')">{{ $doc->status }}</x-badge></td>
                         <td class="py-2.5 text-neutral-500">{{ $doc->preparedBy->user->name ?? '—' }}</td>

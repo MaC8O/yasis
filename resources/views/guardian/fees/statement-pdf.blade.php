@@ -17,7 +17,7 @@
         <h1>Yangon Adventist Seminary</h1>
         <p>Guardian Fee Statement</p>
     </div>
-    <div class="title">{{ $child->first_name }} {{ $child->last_name }} — {{ $child->student_id_number }}</div>
+    <div class="title">{{ $child->name }} — {{ $child->student_id_number }}</div>
     <table>
         <thead><tr><th>Date</th><th>Amount</th><th>Balance</th><th>Status</th></tr></thead>
         <tbody>

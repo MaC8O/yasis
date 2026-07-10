@@ -72,7 +72,7 @@
             <tbody>
                 @forelse ($guardian->students as $student)
                     <tr class="border-b border-neutral-100 last:border-0">
-                        <td class="py-2.5">{{ $student->first_name }} {{ $student->last_name }}</td>
+                        <td class="py-2.5">{{ $student->name }}</td>
                         <td class="py-2.5 text-neutral-500">{{ $student->department?->name }}</td>
                         <td class="py-2.5">
                             @if ($student->pivot->is_primary)
@@ -89,7 +89,7 @@
                                 </form>
                             @endunless
                             <form method="POST" action="{{ route('registrar.guardians.unlink', [$guardian, $student]) }}" class="inline"
-                                  onsubmit="return confirm('Unlink {{ $student->first_name }} {{ $student->last_name }} from this guardian?');">
+                                  onsubmit="return confirm('Unlink {{ $student->name }} from this guardian?');">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="text-xs font-semibold text-[#B0392B] hover:underline">Unlink</button>
                             </form>

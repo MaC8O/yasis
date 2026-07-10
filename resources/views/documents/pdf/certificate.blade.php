@@ -27,7 +27,7 @@
 
     <table class="meta">
         <tr><td class="label">Student ID</td><td>{{ $doc->student->student_id_number }}</td></tr>
-        <tr><td class="label">Student Name</td><td>{{ $doc->student->first_name }} {{ $doc->student->last_name }}</td></tr>
+        <tr><td class="label">Student Name</td><td>{{ $doc->student->name }}</td></tr>
         <tr><td class="label">Department</td><td>{{ $doc->student->department->name ?? '—' }}</td></tr>
         <tr><td class="label">Admission Date</td><td>{{ $doc->student->admission_date->format('F j, Y') }}</td></tr>
         <tr><td class="label">Document Date</td><td>{{ now()->format('F j, Y') }}</td></tr>
@@ -36,21 +36,21 @@
     <div class="body-text">
         @switch($doc->type)
             @case('Transfer/Leaving Certificate')
-                This is to certify that <strong>{{ $doc->student->first_name }} {{ $doc->student->last_name }}</strong>
+                This is to certify that <strong>{{ $doc->student->name }}</strong>
                 (Student ID: {{ $doc->student->student_id_number }}) was a bona fide student of Yangon Adventist Seminary
                 and has been transferred / has left the institution as of the date of this certificate. This certificate
                 is issued upon request for the purpose of transfer to another institution.
                 @break
 
             @case('Completion Certificate')
-                This is to certify that <strong>{{ $doc->student->first_name }} {{ $doc->student->last_name }}</strong>
+                This is to certify that <strong>{{ $doc->student->name }}</strong>
                 (Student ID: {{ $doc->student->student_id_number }}) has successfully completed the required course of
                 study at Yangon Adventist Seminary and has been marked as graduated from the {{ $doc->student->department->name ?? '' }}
                 department. This certificate is issued in recognition of that achievement.
                 @break
 
             @case('Enrollment Certificate')
-                This is to certify that <strong>{{ $doc->student->first_name }} {{ $doc->student->last_name }}</strong>
+                This is to certify that <strong>{{ $doc->student->name }}</strong>
                 (Student ID: {{ $doc->student->student_id_number }}) is currently a bona fide, enrolled student of
                 Yangon Adventist Seminary in the {{ $doc->student->department->name ?? '' }} department. This certificate
                 is issued upon request for official purposes.

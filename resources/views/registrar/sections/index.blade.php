@@ -83,7 +83,7 @@
                     @foreach ($unplacedStudents as $student)
                         <label class="flex items-center gap-2 text-sm py-1.5 px-2 rounded hover:bg-neutral-50 cursor-pointer">
                             <input type="checkbox" name="student_ids[]" value="{{ $student->id }}" class="rounded border-neutral-300 text-[#1F573D]">
-                            <span class="font-semibold">{{ $student->first_name }} {{ $student->last_name }}</span>
+                            <span class="font-semibold">{{ $student->name }}</span>
                             <span class="text-neutral-400 text-xs">{{ $student->student_id_number }} · {{ $student->department?->name }}</span>
                         </label>
                     @endforeach

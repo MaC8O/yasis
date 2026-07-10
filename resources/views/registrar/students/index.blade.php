@@ -47,7 +47,7 @@
                     @forelse ($students as $student)
                         <tr class="border-b border-neutral-100 last:border-0">
                             <td class="py-2.5">{{ $student->student_id_number }}</td>
-                            <td class="py-2.5">{{ $student->first_name }} {{ $student->last_name }}</td>
+                            <td class="py-2.5">{{ $student->name }}</td>
                             <td class="py-2.5 text-neutral-500">{{ $student->department?->name }}{{ optional($student->enrollments->first())->section ? ' · '.$student->enrollments->first()->section->name : '' }}</td>
                             <td class="py-2.5 text-neutral-500">{{ $student->guardiansList() ?: '—' }}</td>
                             <td class="py-2.5">

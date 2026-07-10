@@ -21,17 +21,16 @@ class StudentBulkImportTest extends TestCase
 
         Student::create([
             'student_id_number' => 'YAS-2026-0099',
-            'first_name' => 'Existing',
-            'last_name' => 'Student',
+            'name' => 'Existing Student',
             'admission_date' => now(),
             'department_id' => $department->id,
             'enrollment_status' => 'Enrolled',
         ]);
 
-        $csv = "student_id_number,first_name,last_name,department,section,date_of_birth,gender,religious_background,admission_date,guardian_name,guardian_email,guardian_relationship,guardian_phone\n"
-            ."YAS-2026-0201,New,Student,High School,,2011-01-01,Male,Buddhist,2026-06-01,Daw Test,daw.test@example.com,Mother,+95 900-000-111\n"
-            ."YAS-2026-0099,Duplicate,Row,High School,,,,,,,,,\n"
-            ."YAS-2026-0202,No,Department,Unknown Dept,,,,,,,,,\n";
+        $csv = "student_id_number,name,department,section,date_of_birth,gender,religious_background,admission_date,guardian_name,guardian_email,guardian_relationship,guardian_phone\n"
+            ."YAS-2026-0201,New Student,High School,,2011-01-01,Male,Buddhist,2026-06-01,Daw Test,daw.test@example.com,Mother,+95 900-000-111\n"
+            ."YAS-2026-0099,Duplicate Row,High School,,,,,,,,,\n"
+            ."YAS-2026-0202,No Department,Unknown Dept,,,,,,,,,\n";
 
         $file = UploadedFile::fake()->createWithContent('students.csv', $csv);
 
@@ -40,7 +39,7 @@ class StudentBulkImportTest extends TestCase
 
         $response->assertRedirect(route('registrar.students.import'));
 
-        $this->assertDatabaseHas('students', ['student_id_number' => 'YAS-2026-0201', 'first_name' => 'New']);
+        $this->assertDatabaseHas('students', ['student_id_number' => 'YAS-2026-0201', 'name' => 'New Student']);
         $this->assertSame(1, Student::where('student_id_number', 'YAS-2026-0099')->count());
         $this->assertDatabaseMissing('students', ['student_id_number' => 'YAS-2026-0202']);
 

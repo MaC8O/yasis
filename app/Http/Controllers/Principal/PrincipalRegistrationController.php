@@ -21,8 +21,7 @@ class PrincipalRegistrationController extends Controller
     {
         $data = $request->validate([
             'student_id_number' => ['required', 'string', 'max:30', 'unique:students,student_id_number'],
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'department_id' => ['required', 'exists:departments,id'],
             'admission_date' => ['required', 'date'],
         ]);
@@ -32,6 +31,6 @@ class PrincipalRegistrationController extends Controller
         $audit->log($request->user(), 'Assisted student registration', 'Student', $student->id);
 
         return redirect()->route('principal.dashboard')
-            ->with('status', "{$student->first_name} {$student->last_name} registered. The Registrar can complete guardian linking and section placement.");
+            ->with('status', "{$student->name} registered. The Registrar can complete guardian linking and section placement.");
     }
 }
