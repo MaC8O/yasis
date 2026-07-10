@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DataExportController;
 use App\Http\Controllers\Admin\GradeScaleController;
+use App\Http\Controllers\Admin\RetentionActionController;
 use App\Http\Controllers\Admin\SystemSettingsController;
 use App\Http\Controllers\Admin\UserImportController;
 use App\Http\Controllers\Admin\UserManagementController;
@@ -117,6 +118,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     Route::get('/settings', [SystemSettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings', [SystemSettingsController::class, 'update'])->name('settings.update');
+
+    Route::post('/retention-actions', [RetentionActionController::class, 'store'])->name('retention-actions.store');
 
     Route::get('/export-snapshot', [DataExportController::class, 'download'])->name('export-snapshot');
 });

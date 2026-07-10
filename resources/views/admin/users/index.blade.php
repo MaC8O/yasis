@@ -115,4 +115,32 @@
 
         <p class="text-xs text-neutral-400 mt-4">Per-user actions: Edit · Reset password / Re-send login · Deactivate / Reactivate.</p>
     </x-card>
+
+    <x-card title="Data Retention" subtitle="Action an erasure/retention request against a named student or guardian. PII is scrubbed and portal access revoked — history is retained anonymized, never hard-deleted. Every action is audited.">
+        <form method="POST" action="{{ route('admin.retention-actions.store') }}" x-data="{ type: '{{ old('subject_type', 'student') }}' }"
+              onsubmit="return confirm('Erase this record? PII will be scrubbed and portal access revoked. This cannot be undone.');"
+              class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+            @csrf
+            <div>
+                <label class="block text-sm font-semibold mb-1">Subject</label>
+                <select name="subject_type" x-model="type" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
+                    <option value="student">Student</option>
+                    <option value="guardian">Guardian</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold mb-1" x-text="type === 'student' ? 'Student ID' : 'Guardian email'"></label>
+                <input type="text" name="identifier" value="{{ old('identifier') }}" required
+                       x-bind:placeholder="type === 'student' ? 'YAS-2026-0001' : 'guardian@example.com'"
+                       class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold mb-1">Reason (required, audited)</label>
+                <input type="text" name="reason" value="{{ old('reason') }}" required maxlength="200"
+                       placeholder="e.g. Family erasure request, retention period lapsed"
+                       class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
+            </div>
+            <button type="submit" class="bg-[#B0392B] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Erase record</button>
+        </form>
+    </x-card>
 </x-app-layout>
