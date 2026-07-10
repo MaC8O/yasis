@@ -201,6 +201,7 @@ Route::middleware(['auth', 'role:treasurer'])->prefix('treasurer')->name('treasu
     Route::get('/dashboard', [TreasurerDashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/info/source-prep', [FinanceInfoController::class, 'sourcePrep'])->name('info.source-prep');
+    Route::get('/import-template', [FinanceInfoController::class, 'importTemplate'])->name('import-template');
     Route::get('/info/visibility-rules', [FinanceInfoController::class, 'visibilityRules'])->name('info.visibility-rules');
 
     Route::get('/import', [FeeImportController::class, 'index'])->name('import.index');

@@ -33,5 +33,8 @@
         </ul>
     </x-card>
 
-    <a href="{{ route('treasurer.import.index') }}" class="inline-block bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-3 text-sm">Go to Import Records</a>
+    <div class="flex flex-wrap gap-3">
+        <a href="{{ route('treasurer.import-template') }}" class="inline-block border border-[#1F573D] text-[#1F573D] font-semibold rounded-lg px-6 py-3 text-sm hover:bg-[#1F573D]/5">Download import template (CSV)</a>
+        <a href="{{ route('treasurer.import.index') }}" class="inline-block bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-3 text-sm">Go to Import Records</a>
+    </div>
 </x-app-layout>
