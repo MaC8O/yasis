@@ -52,6 +52,47 @@
         </form>
     </x-card>
 
+    <x-card title="Place students" subtitle="Active students not yet placed in a section for this academic year.">
+        @error('student_ids')
+            <div class="mb-4 rounded-lg border border-[#F2D9D4] bg-[#F2D9D4]/50 px-4 py-3 text-sm text-[#B0392B]">{{ $message }}</div>
+        @enderror
+        @error('student_ids.*')
+            <div class="mb-4 rounded-lg border border-[#F2D9D4] bg-[#F2D9D4]/50 px-4 py-3 text-sm text-[#B0392B]">{{ $message }}</div>
+        @enderror
+
+        @if ($unplacedStudents->isEmpty())
+            <p class="text-sm text-neutral-400">Every active student is placed in a section for this academic year.</p>
+        @elseif ($sections->isEmpty())
+            <p class="text-sm text-neutral-400">Create a section above before placing students.</p>
+        @else
+            <form method="POST" action="#" x-data="{ section: '{{ $sections->first()->id }}' }"
+                  x-bind:action="'{{ url('registrar/sections') }}/' + section + '/enroll'"
+                  class="space-y-4">
+                @csrf
+                <div class="sm:w-72">
+                    <label class="block text-sm font-semibold mb-1">Section</label>
+                    <select x-model="section" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
+                        @foreach ($sections as $section)
+                            <option value="{{ $section->id }}">
+                                {{ $section->name }} ({{ $section->enrollments->count() }}/{{ $section->capacity }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto border border-neutral-100 rounded-lg p-3">
+                    @foreach ($unplacedStudents as $student)
+                        <label class="flex items-center gap-2 text-sm py-1.5 px-2 rounded hover:bg-neutral-50 cursor-pointer">
+                            <input type="checkbox" name="student_ids[]" value="{{ $student->id }}" class="rounded border-neutral-300 text-[#1F573D]">
+                            <span class="font-semibold">{{ $student->first_name }} {{ $student->last_name }}</span>
+                            <span class="text-neutral-400 text-xs">{{ $student->student_id_number }} · {{ $student->department?->name }}</span>
+                        </label>
+                    @endforeach
+                </div>
+                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Place selected students</button>
+            </form>
+        @endif
+    </x-card>
+
     <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <x-stat-tile label="Sections" color="blue">{{ $stats['sections'] }}</x-stat-tile>
         <x-stat-tile label="Assigned teachers" color="blue">{{ $stats['assignedTeachers'] }}</x-stat-tile>

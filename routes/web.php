@@ -145,6 +145,7 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
     Route::get('/sections', [SectionController::class, 'index'])->name('sections.index');
     Route::post('/sections', [SectionController::class, 'store'])->name('sections.store');
     Route::put('/sections/{section}', [SectionController::class, 'update'])->name('sections.update');
+    Route::post('/sections/{section}/enroll', [SectionController::class, 'enroll'])->name('sections.enroll');
 
     Route::get('/teaching-assignments', [TeachingAssignmentController::class, 'index'])->name('teaching-assignments.index');
     Route::post('/teaching-assignments', [TeachingAssignmentController::class, 'store'])->name('teaching-assignments.store');
