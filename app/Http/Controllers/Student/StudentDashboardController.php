@@ -45,7 +45,7 @@ class StudentDashboardController extends Controller
             'notices' => $notices,
             'recentAttendance' => $attendance->sortByDesc('attendance_date')->take(3),
             'attendanceSegments' => [
-                ['label' => 'Present', 'value' => $attendance->where('status', 'Present')->count(), 'color' => '#1F573D'],
+                ['label' => 'Present', 'value' => $attendance->where('status', 'Present')->count(), 'color' => '#2E8B57'],
                 ['label' => 'Tardy', 'value' => $attendance->where('status', 'Tardy')->count(), 'color' => '#A8841B'],
                 ['label' => 'Excused', 'value' => $attendance->where('status', 'Excused')->count(), 'color' => '#2E5AAC'],
                 ['label' => 'Absent', 'value' => $attendance->where('status', 'Absent')->count(), 'color' => '#B0392B'],

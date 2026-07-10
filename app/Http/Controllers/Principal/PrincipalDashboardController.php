@@ -65,7 +65,7 @@ class PrincipalDashboardController extends Controller
         return view('principal.dashboard', [
             'attendanceTrend' => $attendanceTrend,
             'feeStatusSegments' => [
-                ['label' => 'Paid', 'value' => $feeDistribution['paid'], 'color' => '#1F573D'],
+                ['label' => 'Paid', 'value' => $feeDistribution['paid'], 'color' => '#2E8B57'],
                 ['label' => 'Partial', 'value' => $feeDistribution['partial'], 'color' => '#A8841B'],
                 ['label' => 'Outstanding', 'value' => $feeDistribution['outstanding'], 'color' => '#B0392B'],
             ],
