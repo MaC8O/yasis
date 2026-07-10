@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Principal;
+namespace App\Http\Controllers\Registrar;
 
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
@@ -8,11 +8,15 @@ use App\Models\Department;
 use App\Services\AnnouncementService;
 use Illuminate\Http\Request;
 
-class PrincipalAnnouncementController extends Controller
+/**
+ * ui-spec §7.8: registrar-scoped announcement composer/list — parity with the
+ * Principal composer, used for registration/records notices.
+ */
+class RegistrarAnnouncementController extends Controller
 {
     public function index()
     {
-        return view('principal.announcements.index', [
+        return view('registrar.announcements.index', [
             'departments' => Department::whereIn('level', ['Secondary', 'Primary', 'Early Years'])->orderBy('name')->get(),
             'announcements' => Announcement::latest('published_at')->take(10)->get(),
         ]);

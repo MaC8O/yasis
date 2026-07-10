@@ -43,6 +43,7 @@ return [
             ['label' => 'Guardians', 'route' => 'registrar.guardians.index'],
             ['label' => 'Sections', 'route' => 'registrar.sections.index'],
             ['label' => 'Transcripts', 'route' => 'registrar.documents.index'],
+            ['label' => 'Announcements', 'route' => 'registrar.announcements.index'],
             ['label' => 'Promotions', 'route' => 'registrar.promotions.index'],
             ['label' => 'Absence Corrections', 'route' => 'registrar.attendance-corrections.index'],
             ['label' => 'Teacher Assignment', 'route' => 'registrar.teaching-assignments.index'],

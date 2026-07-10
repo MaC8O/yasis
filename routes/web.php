@@ -34,6 +34,7 @@ use App\Http\Controllers\Registrar\AttendanceCorrectionController;
 use App\Http\Controllers\Registrar\DocumentRequestController;
 use App\Http\Controllers\Registrar\GuardianController;
 use App\Http\Controllers\Registrar\PromotionBatchController;
+use App\Http\Controllers\Registrar\RegistrarAnnouncementController;
 use App\Http\Controllers\Registrar\RegistrarDashboardController;
 use App\Http\Controllers\Registrar\SectionController;
 use App\Http\Controllers\Registrar\StudentController;
@@ -173,6 +174,9 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
     Route::get('/promotions', [PromotionBatchController::class, 'index'])->name('promotions.index');
     Route::get('/promotions/{section}/create', [PromotionBatchController::class, 'create'])->name('promotions.create');
     Route::post('/promotions/{section}', [PromotionBatchController::class, 'store'])->name('promotions.store');
+
+    Route::get('/announcements', [RegistrarAnnouncementController::class, 'index'])->name('announcements.index');
+    Route::post('/announcements', [RegistrarAnnouncementController::class, 'store'])->name('announcements.store');
 
     Route::get('/attendance-corrections', [AttendanceCorrectionController::class, 'index'])->name('attendance-corrections.index');
     Route::put('/attendance-corrections/{attendanceRecord}', [AttendanceCorrectionController::class, 'update'])->name('attendance-corrections.update');
