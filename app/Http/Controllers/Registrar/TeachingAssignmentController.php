@@ -9,6 +9,7 @@ use App\Models\StaffProfile;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Services\AuditService;
+use App\Services\TeachingAssignmentService;
 use Illuminate\Http\Request;
 
 class TeachingAssignmentController extends Controller
@@ -27,7 +28,7 @@ class TeachingAssignmentController extends Controller
         ]);
     }
 
-    public function store(Request $request, AuditService $audit)
+    public function store(Request $request, TeachingAssignmentService $service)
     {
         $data = $request->validate([
             'section_id' => ['required', 'exists:sections,id'],
@@ -35,8 +36,7 @@ class TeachingAssignmentController extends Controller
             'teacher_id' => ['required', 'exists:staff_profiles,id'],
         ]);
 
-        $assignment = TeachingAssignment::firstOrCreate($data);
-        $audit->log($request->user(), 'Assigned teacher to section/subject', 'TeachingAssignment', $assignment->id);
+        $service->assign($data['section_id'], $data['subject_id'], $data['teacher_id'], $request->user());
 
         return back()->with('status', 'Teaching assignment saved.');
     }

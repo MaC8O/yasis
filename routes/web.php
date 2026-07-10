@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DataExportController;
 use App\Http\Controllers\Admin\GradeScaleController;
 use App\Http\Controllers\Admin\RetentionActionController;
 use App\Http\Controllers\Admin\SystemSettingsController;
+use App\Http\Controllers\Admin\TeacherAssignmentController as AdminTeacherAssignmentController;
 use App\Http\Controllers\Admin\UserImportController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Auth\AuthController;
@@ -102,6 +103,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/users/{user}/photo', [UserManagementController::class, 'uploadPhoto'])->name('users.photo.upload');
     Route::delete('/users/{user}/photo', [UserManagementController::class, 'deletePhoto'])->name('users.photo.delete');
     Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+
+    Route::get('/teacher-assignments', [AdminTeacherAssignmentController::class, 'index'])->name('teacher-assignments.index');
+    Route::post('/teacher-assignments', [AdminTeacherAssignmentController::class, 'storeAssignment'])->name('teacher-assignments.store');
+    Route::put('/teacher-assignments/{teachingAssignment}', [AdminTeacherAssignmentController::class, 'reassign'])->name('teacher-assignments.reassign');
+    Route::delete('/teacher-assignments/{teachingAssignment}', [AdminTeacherAssignmentController::class, 'destroyAssignment'])->name('teacher-assignments.destroy');
+    Route::put('/teacher-assignments/sections/{section}/homeroom', [AdminTeacherAssignmentController::class, 'setHomeroom'])->name('teacher-assignments.homeroom');
 
     Route::get('/academic-year', [AcademicYearController::class, 'index'])->name('academic-year.index');
     Route::post('/academic-year', [AcademicYearController::class, 'store'])->name('academic-year.store');

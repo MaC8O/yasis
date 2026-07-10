@@ -10,6 +10,7 @@ use App\Models\StaffProfile;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Services\AuditService;
+use App\Services\TeachingAssignmentService;
 use Illuminate\Http\Request;
 
 /**
@@ -62,7 +63,7 @@ class SubjectCatalogController extends Controller
         return back()->with('status', "Subject {$code} removed.");
     }
 
-    public function storeAssignment(Request $request, AuditService $audit)
+    public function storeAssignment(Request $request, TeachingAssignmentService $service)
     {
         $data = $request->validate([
             'section_id' => ['required', 'exists:sections,id'],
@@ -70,8 +71,7 @@ class SubjectCatalogController extends Controller
             'teacher_id' => ['required', 'exists:staff_profiles,id'],
         ]);
 
-        $assignment = TeachingAssignment::firstOrCreate($data);
-        $audit->log($request->user(), 'Assigned teacher to section/subject', 'TeachingAssignment', $assignment->id);
+        $service->assign($data['section_id'], $data['subject_id'], $data['teacher_id'], $request->user());
 
         return back()->with('status', 'Teaching assignment saved.');
     }

@@ -8,6 +8,7 @@ return [
         'items' => [
             ['label' => 'Dashboard', 'route' => 'admin.dashboard'],
             ['label' => 'User Management', 'route' => 'admin.users.index'],
+            ['label' => 'Teacher Class Assignment', 'route' => 'admin.teacher-assignments.index'],
             ['label' => 'Academic Year', 'route' => 'admin.academic-year.index'],
             ['label' => 'Grade Scale', 'route' => 'admin.grade-scale.index'],
             ['label' => 'Audit Logs', 'route' => 'admin.audit-logs.index'],
