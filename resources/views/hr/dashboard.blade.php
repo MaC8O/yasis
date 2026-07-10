@@ -9,23 +9,12 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <x-card title="Headcount by department" subtitle="Across teaching and non-teaching roles.">
-            @php $maxCount = $headcountByDepartment->max('staff_profiles_count') ?: 1; @endphp
-            <div class="space-y-3">
-                @forelse ($headcountByDepartment as $department)
-                    <div>
-                        <div class="flex justify-between text-sm mb-1">
-                            <span>{{ $department->name }}</span>
-                            <span class="font-semibold">{{ $department->staff_profiles_count }}</span>
-                        </div>
-                        <div class="h-3 rounded-full bg-neutral-100 overflow-hidden">
-                            <div class="h-full rounded-full bg-[#1F573D]" style="width: {{ $department->staff_profiles_count / $maxCount * 100 }}%"></div>
-                        </div>
-                    </div>
-                @empty
-                    <p class="text-sm text-neutral-400">No staff assigned to a department yet.</p>
-                @endforelse
-            </div>
-            <a href="{{ route('hr_office.staff.index') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Open staff records</a>
+            <x-chart.bar-list :items="$headcountByDepartment->map(fn ($d) => ['label' => $d->name, 'value' => $d->staff_profiles_count])" />
+            <a href="{{ route('hr_office.staff.index') }}" class="inline-block mt-5 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Open staff records</a>
+        </x-card>
+
+        <x-card title="Leave requests — {{ now()->year }}" subtitle="Decisions this calendar year plus the live pending queue.">
+            <x-chart.donut :segments="$leaveStatusSegments" center-label="requests" />
         </x-card>
 
         <x-card title="Pending leave requests" subtitle="Awaiting your decision.">

@@ -66,7 +66,21 @@ class TeacherDashboardController extends Controller
             ->with('student')
             ->get();
 
+        // Attendance rate per section over the last 10 recorded school days.
+        $sectionAttendance = $allSections->map(function ($section) {
+            $rows = AttendanceRecord::where('section_id', $section->id)
+                ->where('attendance_date', '>=', today()->subDays(14))->get();
+
+            return [
+                'label' => $section->name,
+                'value' => $rows->count() > 0
+                    ? round($rows->whereIn('status', ['Present', 'Tardy', 'Excused'])->count() / $rows->count() * 100, 1)
+                    : 0,
+            ];
+        })->filter(fn ($row) => $row['value'] > 0)->values();
+
         return view('teacher.dashboard', [
+            'sectionAttendance' => $sectionAttendance,
             'consecutiveAbsentees' => $consecutiveAbsentees,
             'pendingNotices' => $pendingNotices,
             'assignedClasses' => $allSections->count(),

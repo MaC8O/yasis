@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Registrar;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\AttendanceRecord;
 use App\Models\AuditLog;
 use App\Models\DocumentRequest;
 use App\Models\Guardian;
 use App\Models\PromotionBatch;
+use App\Models\Section;
 use App\Models\Student;
 
 class RegistrarDashboardController extends Controller
@@ -36,6 +38,10 @@ class RegistrarDashboardController extends Controller
             'pendingPromotions' => PromotionBatch::where('status', 'Pending')->count(),
             'recentActivity' => AuditLog::with('user')->whereIn('entity_type', ['Student', 'Guardian', 'DocumentRequest', 'PromotionBatch'])
                 ->latest('created_at')->take(8)->get(),
+            'enrollmentByClass' => Section::whereHas('academicYear', fn ($q) => $q->where('is_active', true))
+                ->withCount(['enrollments' => fn ($q) => $q->where('status', 'Active')])
+                ->orderBy('id')->get()
+                ->map(fn ($s) => ['label' => $s->name, 'value' => $s->enrollments_count]),
         ]);
     }
 }

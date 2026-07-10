@@ -8,25 +8,21 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <x-card title="Enrollment by department" subtitle="Board-ready student numbers.">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-neutral-500 border-b border-neutral-200">
-                        <th class="py-2 font-semibold">Department</th>
-                        <th class="py-2 font-semibold">Students</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($enrollmentByDepartment as $department)
-                        <tr class="border-b border-neutral-100 last:border-0">
-                            <td class="py-2.5">{{ $department->name }}</td>
-                            <td class="py-2.5">{{ $department->students_count }}</td>
-                        </tr>
-                    @endforeach
-                    <tr class="font-bold"><td class="py-2.5">Total</td><td class="py-2.5">{{ $totalEnrollment }}</td></tr>
-                </tbody>
-            </table>
-            <a href="{{ route('principal.board-reports.index') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Open Board reports</a>
+        <x-card title="Enrollment by department" subtitle="Board-ready student numbers — {{ $totalEnrollment }} enrolled in total.">
+            <x-chart.bar-list :items="$enrollmentByDepartment->map(fn ($d) => ['label' => $d->name, 'value' => $d->students_count])" />
+            <a href="{{ route('principal.board-reports.index') }}" class="inline-block mt-5 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Open Board reports</a>
+        </x-card>
+
+        <x-card title="Attendance — recent school days" subtitle="School-wide share of students present, tardy, or excused.">
+            <x-chart.trend :points="$attendanceTrend" suffix="%" :ymax="100" />
+        </x-card>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <x-card title="Fee collection status" subtitle="Imported fee records by account status (read-only).">
+            <x-chart.donut :segments="$feeStatusSegments" center-label="total billed"
+                :center="number_format(collect($feeStatusSegments)->sum('value') / 1000000, 1).'M'"
+                :format="fn ($v) => number_format($v / 1000000, 1).'M'" />
         </x-card>
 
         <x-card title="Approval queue" subtitle="Two-key items — VP has signed; awaiting you.">

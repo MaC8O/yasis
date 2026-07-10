@@ -19,58 +19,27 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <x-card title="Fee status distribution" subtitle="Share of total billed amount, by status.">
-            <div class="flex items-center gap-8">
-                <div class="relative w-40 h-40 shrink-0 rounded-full"
-                    style="background: conic-gradient(#0ca30c 0% {{ $distributionPct['paid'] }}%, #fab219 {{ $distributionPct['paid'] }}% {{ $distributionPct['paid'] + $distributionPct['partial'] }}%, #d03b3b {{ $distributionPct['paid'] + $distributionPct['partial'] }}% 100%);">
-                    <div class="absolute inset-3 rounded-full bg-white flex items-center justify-center flex-col">
-                        <span class="text-2xl font-bold">{{ $distributionPct['paid'] }}%</span>
-                        <span class="text-xs text-neutral-500">paid</span>
-                    </div>
-                </div>
-                <div class="space-y-2 text-sm">
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full inline-block" style="background:#0ca30c"></span> Paid — {{ number_format($distribution['paid']) }} ({{ $distributionPct['paid'] }}%)</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full inline-block" style="background:#fab219"></span> Partial — {{ number_format($distribution['partial']) }} ({{ $distributionPct['partial'] }}%)</div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full inline-block" style="background:#d03b3b"></span> Outstanding — {{ number_format($distribution['outstanding']) }} ({{ $distributionPct['outstanding'] }}%)</div>
-                </div>
-            </div>
+            <x-chart.donut
+                :segments="[
+                    ['label' => 'Paid', 'value' => $distribution['paid'], 'color' => '#1F573D'],
+                    ['label' => 'Partial', 'value' => $distribution['partial'], 'color' => '#A8841B'],
+                    ['label' => 'Outstanding', 'value' => $distribution['outstanding'], 'color' => '#B0392B'],
+                ]"
+                :center="$distributionPct['paid'].'%'"
+                center-label="paid" />
         </x-card>
 
         <x-card title="Outstanding balance by department">
-            @php $maxDept = $byDepartment->max('outstanding') ?: 1; @endphp
-            <div class="space-y-3">
-                @forelse ($byDepartment as $row)
-                    <div>
-                        <div class="flex justify-between text-sm mb-1">
-                            <span>{{ $row->department }}</span>
-                            <span class="font-semibold">{{ number_format($row->outstanding) }}</span>
-                        </div>
-                        <div class="h-3 rounded-full bg-neutral-100 overflow-hidden">
-                            <div class="h-full rounded-full" style="width: {{ $row->outstanding / $maxDept * 100 }}%; background:#2a78d6"></div>
-                        </div>
-                    </div>
-                @empty
-                    <p class="text-sm text-neutral-400">No outstanding balances.</p>
-                @endforelse
-            </div>
+            <x-chart.bar-list
+                :items="collect($byDepartment)->map(fn ($row) => ['label' => $row->department, 'value' => $row->outstanding])"
+                color="#B0392B" label-width="w-32" />
         </x-card>
     </div>
 
-    <x-card title="Collection rate by period">
-        <div class="space-y-3">
-            @forelse ($byPeriod as $row)
-                <div>
-                    <div class="flex justify-between text-sm mb-1">
-                        <span>{{ $row->period }}</span>
-                        <span class="font-semibold">{{ $row->rate }}%</span>
-                    </div>
-                    <div class="h-3 rounded-full bg-neutral-100 overflow-hidden">
-                        <div class="h-full rounded-full" style="width: {{ $row->rate }}%; background:#2a78d6"></div>
-                    </div>
-                </div>
-            @empty
-                <p class="text-sm text-neutral-400">No published periods yet.</p>
-            @endforelse
-        </div>
+    <x-card title="Collection rate by period" subtitle="Collected share of billed amounts per import period.">
+        <x-chart.bar-list
+            :items="collect($byPeriod)->map(fn ($row) => ['label' => $row->period, 'value' => $row->rate, 'display' => $row->rate.'%'])"
+            :max="100" label-width="w-24" />
     </x-card>
 
     <p class="text-xs text-neutral-400">

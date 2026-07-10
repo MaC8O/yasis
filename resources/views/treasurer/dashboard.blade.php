@@ -50,21 +50,9 @@
         </table>
     </x-card>
 
-    <x-card title="Collection rate by period">
-        <div class="space-y-3">
-            @forelse ($byPeriod as $row)
-                <div>
-                    <div class="flex justify-between text-sm mb-1">
-                        <span>{{ $row->period }}</span>
-                        <span class="font-semibold">{{ $row->rate }}%</span>
-                    </div>
-                    <div class="h-3 rounded-full bg-neutral-100 overflow-hidden">
-                        <div class="h-full rounded-full" style="width: {{ $row->rate }}%; background:#2a78d6"></div>
-                    </div>
-                </div>
-            @empty
-                <p class="text-sm text-neutral-400">No published periods yet.</p>
-            @endforelse
-        </div>
+    <x-card title="Collection rate by period" subtitle="Collected share of billed amounts per import period.">
+        <x-chart.bar-list
+            :items="collect($byPeriod)->map(fn ($row) => ['label' => $row->period, 'value' => $row->rate, 'display' => $row->rate.'%'])"
+            :max="100" label-width="w-24" />
     </x-card>
 </x-app-layout>

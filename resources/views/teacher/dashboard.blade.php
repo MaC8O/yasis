@@ -51,6 +51,13 @@
         </div>
     @endif
 
+    @if ($sectionAttendance->isNotEmpty())
+        <x-card title="Attendance rate — my classes" subtitle="Present, tardy, or excused over the last two weeks of recorded days.">
+            <x-chart.bar-list :max="100" label-width="w-32"
+                :items="$sectionAttendance->map(fn ($row) => $row + ['display' => $row['value'].'%'])" />
+        </x-card>
+    @endif
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <x-card title="Gradebook overview" subtitle="Weighted categories for assigned classes.">
             <table class="w-full text-sm">

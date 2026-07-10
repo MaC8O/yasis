@@ -34,6 +34,16 @@
         </x-card>
     </div>
 
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <x-card title="Sign-ins — last 14 days" subtitle="Successful logins per day.">
+            <x-chart.trend :points="$loginTrend" />
+        </x-card>
+
+        <x-card title="Accounts by role">
+            <x-chart.bar-list :items="$usersByRole" label-width="w-28" />
+        </x-card>
+    </div>
+
     <x-card title="Recent activity" subtitle="Security and system activity overview.">
         <table class="w-full text-sm">
             <thead>

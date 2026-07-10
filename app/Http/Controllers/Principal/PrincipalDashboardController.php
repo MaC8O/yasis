@@ -47,7 +47,28 @@ class PrincipalDashboardController extends Controller
 
         $staffToday = StaffAttendance::where('attendance_date', today()->toDateString())->get();
 
+        // School-wide attendance rate per school day, most recent 10 recorded days.
+        $attendanceTrend = AttendanceRecord::where('attendance_date', '>=', today()->subDays(21))
+            ->get()
+            ->groupBy(fn ($r) => $r->attendance_date instanceof \Carbon\CarbonInterface ? $r->attendance_date->toDateString() : (string) $r->attendance_date)
+            ->sortKeys()
+            ->take(-10)
+            ->map(fn ($rows, $date) => [
+                'label' => \Carbon\Carbon::parse($date)->format('M j'),
+                'value' => round($rows->whereIn('status', ['Present', 'Tardy', 'Excused'])->count() / max($rows->count(), 1) * 100, 1),
+            ])
+            ->values()
+            ->all();
+
+        $feeDistribution = $feeService->statusDistribution();
+
         return view('principal.dashboard', [
+            'attendanceTrend' => $attendanceTrend,
+            'feeStatusSegments' => [
+                ['label' => 'Paid', 'value' => $feeDistribution['paid'], 'color' => '#1F573D'],
+                ['label' => 'Partial', 'value' => $feeDistribution['partial'], 'color' => '#A8841B'],
+                ['label' => 'Outstanding', 'value' => $feeDistribution['outstanding'], 'color' => '#B0392B'],
+            ],
             'activeYear' => $activeYear,
             'totalEnrollment' => $totalEnrollment,
             'enrollmentByDepartment' => $enrollmentByDepartment,

@@ -52,6 +52,10 @@
         </x-card>
     </div>
 
+    <x-card title="Enrollment by class" subtitle="Active placements per section, Nursery through Grade 12.">
+        <x-chart.bar-list :items="$enrollmentByClass" label-width="w-32" />
+    </x-card>
+
     <x-card title="Recent record activity" subtitle="Latest registrar actions.">
         <table class="w-full text-sm">
             <thead>

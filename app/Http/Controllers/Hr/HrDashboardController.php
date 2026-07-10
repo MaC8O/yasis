@@ -26,6 +26,11 @@ class HrDashboardController extends Controller
             'pendingRequests' => LeaveRequest::where('status', 'Pending')->with(['staff.user', 'leaveType'])->latest()->take(3)->get(),
             'headcountByDepartment' => Department::withCount(['staffProfiles' => fn ($q) => $q->whereIn('status', ['Active', 'On Leave', 'Probation'])])
                 ->having('staff_profiles_count', '>', 0)->orderByDesc('staff_profiles_count')->get(),
+            'leaveStatusSegments' => [
+                ['label' => 'Approved', 'value' => LeaveRequest::where('status', 'Approved')->whereYear('from_date', now()->year)->count(), 'color' => '#1F573D'],
+                ['label' => 'Pending', 'value' => LeaveRequest::where('status', 'Pending')->count(), 'color' => '#A8841B'],
+                ['label' => 'Rejected', 'value' => LeaveRequest::where('status', 'Rejected')->whereYear('from_date', now()->year)->count(), 'color' => '#B0392B'],
+            ],
             'activeYear' => AcademicYear::where('is_active', true)->first(),
         ]);
     }
