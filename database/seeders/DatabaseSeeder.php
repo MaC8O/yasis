@@ -419,5 +419,9 @@ class DatabaseSeeder extends Seeder
             ['student_id' => $childA->id, 'guardian_id' => $guardian->id, 'from_date' => today()->addDays(20)->toDateString(), 'to_date' => today()->addDays(20)->toDateString()],
             ['reason' => 'Travel', 'status' => 'Cancelled']
         );
+
+        // Full K-12 ladder (Nursery → Grade 12), subject catalogue, homeroom
+        // teachers, rosters, attendance history, and fee spread.
+        $this->call(K12StructureSeeder::class);
     }
 }
