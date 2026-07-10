@@ -1,4 +1,21 @@
-<x-app-layout title="Announcements" subtitle="Publish registration and records notices — school-wide or targeted." badge="Registrar" role="registrar">
+<x-app-layout title="Announcements" subtitle="Read notices addressed to staff, and publish registration and records notices." badge="Registrar" role="registrar">
+    <x-card title="Notices for you" subtitle="School-wide, all-staff, and department notices from leadership.">
+        <div class="space-y-4">
+            @forelse ($received as $notice)
+                <div class="border-b border-neutral-100 last:border-0 pb-4">
+                    <div class="flex items-center gap-2">
+                        <p class="font-semibold text-sm">{{ $notice->title }}</p>
+                        <x-badge color="blue">{{ $notice->audience_type === 'School' ? 'School-wide' : $notice->audience_type }}</x-badge>
+                    </div>
+                    <p class="text-sm text-neutral-600 mt-1">{{ $notice->body }}</p>
+                    <p class="text-xs text-neutral-400 mt-1">{{ $notice->published_at->format('M j, Y H:i') }} · {{ $notice->author->user->name ?? 'School' }}</p>
+                </div>
+            @empty
+                <p class="text-sm text-neutral-400">No notices addressed to you yet.</p>
+            @endforelse
+        </div>
+    </x-card>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <x-card title="New announcement" subtitle="Choose an audience, then publish." x-data="{ audience: 'All' }">
             <form method="POST" action="{{ route('registrar.announcements.store') }}" class="space-y-4">

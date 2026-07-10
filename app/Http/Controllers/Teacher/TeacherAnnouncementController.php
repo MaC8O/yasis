@@ -18,6 +18,7 @@ class TeacherAnnouncementController extends Controller
         return view('teacher.announcements.index', [
             'sections' => $sections,
             'announcements' => Announcement::where('author_id', $teacher->id)->latest('published_at')->get(),
+            'received' => Announcement::visibleToStaff($teacher)->with('author.user')->latest('published_at')->get(),
         ]);
     }
 

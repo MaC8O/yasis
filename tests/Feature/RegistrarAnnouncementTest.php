@@ -73,6 +73,26 @@ class RegistrarAnnouncementTest extends TestCase
         $this->actingAs($elemGuardian)->get('/guardian/notices')->assertOk()->assertDontSee('HS transcript pickups');
     }
 
+    public function test_staff_targeted_announcement_reaches_teachers(): void
+    {
+        $this->seedRoles();
+        $registrar = $this->makeStaff('registrar', 'Registrar');
+        $teacher = $this->makeStaff('teacher', 'Teacher', 'teacher@test.local');
+
+        // Registrar posts to the "Staff" audience.
+        $this->actingAs($registrar->user)->post('/registrar/announcements', [
+            'audience' => 'Staff',
+            'title' => 'Staff meeting Friday',
+            'body' => 'All teaching staff to the hall at 3pm.',
+        ])->assertSessionHasNoErrors();
+
+        // The teacher sees it in their notices inbox; a school-wide one too.
+        $this->actingAs($teacher->user)->get('/teacher/announcements')
+            ->assertOk()
+            ->assertSee('Notices for you')
+            ->assertSee('Staff meeting Friday');
+    }
+
     public function test_the_composer_page_renders(): void
     {
         $this->seedRoles();

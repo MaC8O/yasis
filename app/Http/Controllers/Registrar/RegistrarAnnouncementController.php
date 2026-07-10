@@ -14,11 +14,14 @@ use Illuminate\Http\Request;
  */
 class RegistrarAnnouncementController extends Controller
 {
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
+        $registrar = $request->user()->staffProfile;
+
         return view('registrar.announcements.index', [
             'departments' => Department::whereIn('level', ['Secondary', 'Primary', 'Early Years'])->orderBy('name')->get(),
             'announcements' => Announcement::latest('published_at')->take(10)->get(),
+            'received' => Announcement::visibleToStaff($registrar)->with('author.user')->latest('published_at')->get(),
         ]);
     }
 
