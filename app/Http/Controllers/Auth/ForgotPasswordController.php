@@ -41,7 +41,17 @@ class ForgotPasswordController extends Controller
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user, $password) {
-                $user->forceFill(['password' => $password])->save();
+                // Completing the emailed setup link confirms the account: a Pending
+                // (admin-created) user becomes Active, lockout state is cleared, and
+                // any forced-reset flag is satisfied by the password they just chose.
+                $user->forceFill([
+                    'password' => $password,
+                    'status' => $user->status === 'Pending' ? 'Active' : $user->status,
+                    'must_reset_password' => false,
+                    'failed_login_attempts' => 0,
+                    'locked_until' => null,
+                    'email_verified_at' => $user->email_verified_at ?? now(),
+                ])->save();
             }
         );
 

@@ -72,6 +72,39 @@
                 </div>
             </div>
 
+            <div class="border-t border-neutral-100 pt-4" x-data="{ mode: '{{ old('password') ? 'password' : 'invite' }}', password: '{{ old('password') }}' }">
+                <label class="block text-sm font-semibold mb-2">Account activation</label>
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <label class="cursor-pointer">
+                        <input type="radio" value="invite" x-model="mode" class="peer sr-only">
+                        <span class="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-neutral-200 text-neutral-600 peer-checked:bg-[#1F573D] peer-checked:text-white peer-checked:border-[#1F573D]">Send setup email (pending until they choose a password)</span>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" value="password" x-model="mode" class="peer sr-only">
+                        <span class="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-neutral-200 text-neutral-600 peer-checked:bg-[#1F573D] peer-checked:text-white peer-checked:border-[#1F573D]">Set a password now (active immediately)</span>
+                    </label>
+                </div>
+                <div x-show="mode === 'password'" x-cloak class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Password</label>
+                        <input type="text" name="password" x-model="password" :required="mode === 'password'" minlength="8"
+                            :disabled="mode !== 'password'"
+                            class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Confirm password</label>
+                        <input type="text" name="password_confirmation" :required="mode === 'password'" minlength="8"
+                            :disabled="mode !== 'password'"
+                            class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm font-mono">
+                    </div>
+                    <button type="button"
+                        @click="password = Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%'[b % 60]).join(''); $el.closest('form').querySelector('[name=password_confirmation]').value = password"
+                        class="text-sm font-semibold text-neutral-600 hover:underline justify-self-start pb-2.5">Generate strong password</button>
+                </div>
+                <p class="text-xs text-neutral-500 mt-2" x-show="mode === 'invite'">The account is created as <span class="font-semibold">Pending</span> and becomes Active when the person completes the emailed setup link.</p>
+                <p class="text-xs text-neutral-500 mt-2" x-show="mode === 'password'" x-cloak>Hand the password over in person — it is never emailed.</p>
+            </div>
+
             <p class="text-xs text-neutral-500">
                 Guardian and Student accounts are created here as login accounts only; linking them to the actual
                 student/guardian record is done from the Registrar portal.

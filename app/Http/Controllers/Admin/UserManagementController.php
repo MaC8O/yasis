@@ -77,15 +77,18 @@ class UserManagementController extends Controller
             'staff_id_number' => ['nullable', 'required_if:role,'.implode(',', $this->staffRoles), 'string', 'max:30', 'unique:staff_profiles,staff_id_number'],
             'department_id' => ['nullable', 'exists:departments,id'],
             'joined_date' => ['nullable', 'required_if:role,'.implode(',', $this->staffRoles), 'date'],
+            'password' => ['nullable', 'confirmed', PasswordRule::min(8)],
         ]);
 
-        $temporaryPassword = Str::password(12);
+        // With an initial password the account is usable immediately (Active);
+        // without one it stays Pending until the emailed setup link is completed.
+        $hasInitialPassword = ! empty($data['password']);
 
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
-            'password' => Hash::make($temporaryPassword),
-            'status' => 'Pending',
+            'password' => Hash::make($hasInitialPassword ? $data['password'] : Str::password(12)),
+            'status' => $hasInitialPassword ? 'Active' : 'Pending',
             'date_of_birth' => $data['date_of_birth'] ?? null,
             'gender' => $data['gender'] ?? null,
             'phone' => $data['phone'] ?? null,
@@ -107,10 +110,15 @@ class UserManagementController extends Controller
 
         $audit->log($request->user(), 'Created user', 'User', $user->id);
 
+        if ($hasInitialPassword) {
+            return redirect()->route('admin.users.index')
+                ->with('status', "User created and active — {$user->email} can sign in with the password you set.");
+        }
+
         Password::sendResetLink(['email' => $user->email]);
 
         return redirect()->route('admin.users.index')
-            ->with('status', "User created and a login-setup email was sent to {$user->email}.");
+            ->with('status', "User created (pending) and a login-setup email was sent to {$user->email}. The account activates when they set their password.");
     }
 
     public function edit(User $user)
