@@ -23,6 +23,21 @@
             @endforeach
         </nav>
 
+        <div class="flex items-center gap-3 mb-4 px-1">
+            @if (auth()->user()?->photo_path)
+                <img src="{{ Storage::url(auth()->user()->photo_path) }}" alt=""
+                     class="w-9 h-9 rounded-full object-cover border border-neutral-600 shrink-0">
+            @else
+                <span class="w-9 h-9 rounded-full bg-[#C9A227] text-neutral-900 font-bold text-xs flex items-center justify-center shrink-0">
+                    {{ collect(explode(' ', auth()->user()?->name ?? '?'))->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('') }}
+                </span>
+            @endif
+            <div class="min-w-0">
+                <p class="text-sm font-semibold truncate">{{ auth()->user()?->name }}</p>
+                <p class="text-xs text-neutral-400 truncate">{{ auth()->user()?->email }}</p>
+            </div>
+        </div>
+
         <form method="POST" action="{{ route('logout') }}">
             @csrf
             <button type="submit" class="w-full bg-white text-neutral-900 font-semibold rounded-xl py-2.5 text-sm">

@@ -192,17 +192,20 @@ class UserManagementController extends Controller
         return back()->with('status', "{$user->name}'s account unlocked.");
     }
 
-    public function uploadPhoto(Request $request, User $user, AuditService $audit)
+    public function uploadPhoto(Request $request, User $user, AuditService $audit, \App\Services\AvatarService $avatars)
     {
         $request->validate([
-            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+        ], [
+            'photo.max' => 'The photo may not be larger than 10 MB.',
         ]);
 
         if ($user->photo_path) {
             Storage::disk('public')->delete($user->photo_path);
         }
 
-        $path = $request->file('photo')->store('user-photos', 'public');
+        // Center-cropped square, EXIF-rotated, resized to 512px — renders cleanly everywhere.
+        $path = $avatars->storeSquare($request->file('photo'));
         $user->update(['photo_path' => $path]);
 
         $audit->log($request->user(), 'Uploaded user photo', 'User', $user->id);

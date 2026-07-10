@@ -1,19 +1,33 @@
 <x-app-layout title="Edit User" :subtitle="$editUser->email" badge="Admin" role="admin">
     <x-card title="Profile photo">
-        <div class="flex items-center gap-6">
-            @if ($editUser->photo_path)
-                <img src="{{ Storage::url($editUser->photo_path) }}" alt="{{ $editUser->name }}"
-                    class="w-20 h-20 rounded-full object-cover border border-neutral-200">
-            @else
-                <div class="w-20 h-20 rounded-full bg-[#C9A227] text-neutral-900 font-bold text-xl flex items-center justify-center">
-                    {{ collect(explode(' ', $editUser->name))->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('') }}
-                </div>
-            @endif
+        <div class="flex items-center gap-6" x-data="{ preview: null }">
+            <div class="relative shrink-0">
+                <template x-if="preview">
+                    <img :src="preview" alt="Preview" class="w-24 h-24 rounded-full object-cover border-2 border-dashed border-[#1F573D]">
+                </template>
+                <template x-if="!preview">
+                    <div>
+                        @if ($editUser->photo_path)
+                            <img src="{{ Storage::url($editUser->photo_path) }}" alt="{{ $editUser->name }}"
+                                class="w-24 h-24 rounded-full object-cover border border-neutral-200">
+                        @else
+                            <div class="w-24 h-24 rounded-full bg-[#C9A227] text-neutral-900 font-bold text-2xl flex items-center justify-center">
+                                {{ collect(explode(' ', $editUser->name))->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('') }}
+                            </div>
+                        @endif
+                    </div>
+                </template>
+            </div>
             <div class="space-y-3">
-                <form method="POST" action="{{ route('admin.users.photo.upload', $editUser) }}" enctype="multipart/form-data" class="flex gap-3 items-center">
+                <form method="POST" action="{{ route('admin.users.photo.upload', $editUser) }}" enctype="multipart/form-data" class="flex flex-wrap gap-3 items-center">
                     @csrf
-                    <input type="file" name="photo" required accept=".jpg,.jpeg,.png,.webp" class="text-sm">
-                    <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2 text-sm">Upload</button>
+                    <label class="cursor-pointer border border-neutral-300 rounded-lg px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">
+                        Choose photo…
+                        <input type="file" name="photo" required accept=".jpg,.jpeg,.png,.webp" class="sr-only"
+                               @change="preview = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : null">
+                    </label>
+                    <span class="text-xs text-neutral-500" x-show="preview" x-cloak>Preview shown — click Upload to save.</span>
+                    <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2 text-sm" :disabled="!preview" :class="{ 'opacity-50': !preview }">Upload</button>
                 </form>
                 @if ($editUser->photo_path)
                     <form method="POST" action="{{ route('admin.users.photo.delete', $editUser) }}">
@@ -21,7 +35,7 @@
                         <button type="submit" class="text-sm font-semibold text-red-700 hover:underline">Remove photo</button>
                     </form>
                 @endif
-                <p class="text-xs text-neutral-500">JPG, PNG, or WebP · max 2 MB.</p>
+                <p class="text-xs text-neutral-500">JPG, PNG, or WebP · up to 10 MB. Photos are straightened, center-cropped to a square, and resized automatically.</p>
             </div>
         </div>
     </x-card>
