@@ -15,8 +15,7 @@ class GuardianFeeController extends Controller
     protected function visibleRecords($child)
     {
         return $child->importedFeeRecords()
-            ->where('is_restricted', false)
-            ->whereHas('importBatch', fn ($q) => $q->whereNotNull('published_at'))
+            ->familyVisible()
             ->with('importBatch')->orderBy('txn_date')->get();
     }
 

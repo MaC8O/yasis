@@ -31,7 +31,7 @@ class GuardianDashboardController extends Controller
             ? $gradeService->computeStudentResult($child, $a->section, $a->subject, $currentTerm)['gpa']
             : null)->filter();
 
-        $feeSummary = $feeService->studentSummaries()->firstWhere('student.id', $child->id);
+        $feeSummary = $feeService->studentSummaries(familyFacing: true)->firstWhere('student.id', $child->id);
 
         return view('guardian.dashboard', [
             'children' => $children,

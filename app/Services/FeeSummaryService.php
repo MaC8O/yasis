@@ -11,10 +11,14 @@ class FeeSummaryService
      * One row per student: total billed = sum of imported amounts, balance = most recent
      * record's balance (it's a running balance), paid = billed − balance, status = most
      * recent record's status (status is sourced from the accounting export, not computed here).
+     *
+     * $familyFacing limits the rows to what guardians/students may see:
+     * published batches only, no restricted (SDA) rows, no held rows.
      */
-    public function studentSummaries(): Collection
+    public function studentSummaries(bool $familyFacing = false): Collection
     {
         return ImportedFeeRecord::whereNotNull('student_id')
+            ->when($familyFacing, fn ($q) => $q->familyVisible())
             ->with('student.department')
             ->get()
             ->groupBy('student_id')
