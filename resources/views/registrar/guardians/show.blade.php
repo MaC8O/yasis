@@ -18,6 +18,29 @@
                     <button type="submit" class="text-xs font-semibold text-blue-700 hover:underline">Re-send invite</button>
                 </form>
             @endif
+
+            <form method="POST" action="{{ route('registrar.guardians.update', $guardian) }}" class="mt-5 pt-5 border-t border-neutral-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                @csrf @method('PUT')
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-neutral-500 uppercase">Name</label>
+                    <input type="text" name="name" value="{{ old('name', $guardian->user->name) }}" required class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-neutral-500 uppercase">Email</label>
+                    <input type="email" name="email" value="{{ old('email', $guardian->user->email) }}" required class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-neutral-500 uppercase">Phone</label>
+                    <input type="text" name="phone" value="{{ old('phone', $guardian->phone) }}" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-neutral-500 uppercase">Relationship</label>
+                    <input type="text" name="relationship" value="{{ old('relationship', $guardian->relationship) }}" placeholder="Mother / Father / …" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm">
+                </div>
+                <div class="sm:col-span-2">
+                    <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2 text-sm">Save contact</button>
+                </div>
+            </form>
         </x-card>
 
         <x-card title="Link another student">
@@ -51,8 +74,27 @@
                     <tr class="border-b border-neutral-100 last:border-0">
                         <td class="py-2.5">{{ $student->first_name }} {{ $student->last_name }}</td>
                         <td class="py-2.5 text-neutral-500">{{ $student->department?->name }}</td>
-                        <td class="py-2.5">{{ $student->pivot->is_primary ? 'Primary' : $guardian->relationship }}</td>
-                        <td class="py-2.5 text-right"><a href="{{ route('registrar.students.show', $student) }}" class="text-xs font-semibold text-[#1F573D] hover:underline">View</a></td>
+                        <td class="py-2.5">
+                            @if ($student->pivot->is_primary)
+                                <x-badge color="green">Primary</x-badge>
+                            @else
+                                {{ $guardian->relationship ?? '—' }}
+                            @endif
+                        </td>
+                        <td class="py-2.5 text-right space-x-3 whitespace-nowrap">
+                            @unless ($student->pivot->is_primary)
+                                <form method="POST" action="{{ route('registrar.guardians.set-primary', [$guardian, $student]) }}" class="inline">
+                                    @csrf
+                                    <button type="submit" class="text-xs font-semibold text-[#8A6D10] hover:underline">Make primary</button>
+                                </form>
+                            @endunless
+                            <form method="POST" action="{{ route('registrar.guardians.unlink', [$guardian, $student]) }}" class="inline"
+                                  onsubmit="return confirm('Unlink {{ $student->first_name }} {{ $student->last_name }} from this guardian?');">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="text-xs font-semibold text-[#B0392B] hover:underline">Unlink</button>
+                            </form>
+                            <a href="{{ route('registrar.students.show', $student) }}" class="text-xs font-semibold text-[#1F573D] hover:underline">View</a>
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="4" class="py-4 text-neutral-400">No children linked yet.</td></tr>

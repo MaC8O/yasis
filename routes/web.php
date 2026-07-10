@@ -139,7 +139,10 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
     Route::get('/guardians', [GuardianController::class, 'index'])->name('guardians.index');
     Route::post('/guardians', [GuardianController::class, 'store'])->name('guardians.store');
     Route::get('/guardians/{guardian}', [GuardianController::class, 'show'])->name('guardians.show');
+    Route::put('/guardians/{guardian}', [GuardianController::class, 'update'])->name('guardians.update');
     Route::post('/guardians/{guardian}/link', [GuardianController::class, 'link'])->name('guardians.link');
+    Route::delete('/guardians/{guardian}/links/{student}', [GuardianController::class, 'unlink'])->name('guardians.unlink');
+    Route::post('/guardians/{guardian}/links/{student}/primary', [GuardianController::class, 'setPrimary'])->name('guardians.set-primary');
     Route::post('/guardians/{guardian}/resend-invite', [GuardianController::class, 'resendInvite'])->name('guardians.resend-invite');
 
     Route::get('/sections', [SectionController::class, 'index'])->name('sections.index');
