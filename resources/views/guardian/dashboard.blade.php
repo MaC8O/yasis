@@ -14,6 +14,30 @@
         <a href="{{ route('guardian.notices.index') }}" class="bg-white border border-neutral-200 rounded-2xl px-5 py-4 font-semibold text-sm hover:border-[#1F573D]">Notices</a>
     </div>
 
+    <x-card title="Grade snapshot" subtitle="Current term weighted scores by subject.">
+        <table class="rt w-full text-sm">
+            <thead>
+                <tr class="text-left text-neutral-500 border-b border-neutral-200">
+                    <th class="py-2 font-semibold">Subject</th>
+                    <th class="py-2 font-semibold">Score</th>
+                    <th class="py-2 font-semibold">Letter</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($snapshot as $row)
+                    <tr class="border-b border-neutral-100 last:border-0">
+                        <td data-label="Subject" class="py-2.5">{{ $row->subject }}</td>
+                        <td data-label="Score" class="py-2.5">{{ $row->result['pct'] !== null ? $row->result['pct'].'%' : '—' }}</td>
+                        <td data-label="Letter" class="py-2.5">{{ $row->result['letter'] ?? '—' }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="3" class="py-4 text-neutral-400">No grades recorded yet.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+        <a href="{{ route('guardian.grades.index', ['child' => $child->id]) }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Open grades &amp; reports</a>
+    </x-card>
+
     <x-card :title="$child->name.'’s attendance this year'" subtitle="Every recorded school day, by status.">
         <x-chart.donut :segments="$attendanceSegments" center-label="days recorded" />
     </x-card>
