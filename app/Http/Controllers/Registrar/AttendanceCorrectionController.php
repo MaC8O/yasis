@@ -48,7 +48,7 @@ class AttendanceCorrectionController extends Controller
             ->get();
 
         return view('registrar.attendance.index', [
-            'records' => $query->paginate(20)->withQueryString(),
+            'records' => $query->paginate(\App\Support\PerPage::resolve($request, 20))->withQueryString(),
             'needsReview' => $needsReview,
             'sections' => Section::whereHas('academicYear', fn ($q) => $q->where('is_active', true))->orderBy('name')->get(),
             'filters' => ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'section' => $request->integer('section') ?: null, 'status' => $status ?? null],

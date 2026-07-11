@@ -111,6 +111,9 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">{{ $records->links() }}</div>
+        <div class="mt-4 flex items-center justify-between gap-4 flex-wrap">
+            <x-per-page :default="20" />
+            <div>{{ $records->links() }}</div>
+        </div>
     </x-card>
 </x-app-layout>

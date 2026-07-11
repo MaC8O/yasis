@@ -65,6 +65,9 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">{{ $students->links() }}</div>
+        <div class="mt-4 flex items-center justify-between gap-4 flex-wrap">
+            <x-per-page />
+            <div>{{ $students->links() }}</div>
+        </div>
     </x-card>
 </x-app-layout>

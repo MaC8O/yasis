@@ -57,18 +57,18 @@ class AdminUserFeaturesTest extends TestCase
         $this->seedRoles();
         $admin = $this->makeStaff('admin', 'Admin', 'admin@test.local');
 
-        for ($i = 1; $i <= 12; $i++) {
+        for ($i = 1; $i <= 20; $i++) {
             $user = User::create(['name' => "Bulk User {$i}", 'email' => "bulk{$i}@test.local", 'password' => Hash::make('password'), 'status' => 'Active']);
             $user->assignRole('teacher');
         }
 
-        $paged = $this->actingAs($admin->user)->get('/admin/users?per_page=10');
+        $paged = $this->actingAs($admin->user)->get('/admin/users?per_page=15');
         $paged->assertOk();
-        $this->assertSame(10, $paged->viewData('users')->count());
+        $this->assertSame(15, $paged->viewData('users')->count());
 
         $all = $this->actingAs($admin->user)->get('/admin/users?per_page=all');
         $all->assertOk();
-        $this->assertSame(13, $all->viewData('users')->count());
+        $this->assertSame(21, $all->viewData('users')->count());
     }
 
     public function test_user_creation_stores_personal_details(): void

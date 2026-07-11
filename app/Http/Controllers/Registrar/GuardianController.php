@@ -30,7 +30,7 @@ class GuardianController extends Controller
         }
 
         return view('registrar.guardians.index', [
-            'guardians' => $query->orderBy('id')->paginate(15)->withQueryString(),
+            'guardians' => $query->orderBy('id')->paginate(\App\Support\PerPage::resolve($request))->withQueryString(),
             'filters' => $request->only(['search', 'status']),
             'linkStudent' => $request->filled('student') ? Student::find($request->integer('student')) : null,
         ]);

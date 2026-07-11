@@ -27,7 +27,7 @@ class DocumentRequestController extends Controller
         }
 
         return view('registrar.documents.index', [
-            'documents' => $query->latest()->paginate(15)->withQueryString(),
+            'documents' => $query->latest()->paginate(\App\Support\PerPage::resolve($request))->withQueryString(),
             'types' => $this->types,
             'filters' => $request->only(['search', 'type']),
             'stats' => [

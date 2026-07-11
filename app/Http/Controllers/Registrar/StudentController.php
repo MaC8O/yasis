@@ -31,7 +31,7 @@ class StudentController extends Controller
         }
 
         return view('registrar.students.index', [
-            'students' => $query->orderBy('name')->paginate(15)->withQueryString(),
+            'students' => $query->orderBy('name')->paginate(\App\Support\PerPage::resolve($request))->withQueryString(),
             'departments' => Department::orderBy('name')->get(),
             'filters' => $request->only(['search', 'department']),
             'stats' => [

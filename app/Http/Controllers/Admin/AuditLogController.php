@@ -13,7 +13,7 @@ class AuditLogController extends Controller
     public function index(Request $request)
     {
         return view('admin.audit-logs.index', [
-            'logs' => $this->filteredQuery($request)->paginate(25)->withQueryString(),
+            'logs' => $this->filteredQuery($request)->paginate(\App\Support\PerPage::resolve($request, 20))->withQueryString(),
             'filters' => $request->only(['search', 'from', 'to']),
         ]);
     }

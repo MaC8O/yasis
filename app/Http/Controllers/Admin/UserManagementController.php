@@ -42,17 +42,10 @@ class UserManagementController extends Controller
             $query->where('status', $status);
         }
 
-        $perPage = $request->string('per_page')->value() ?: '10';
-        if (! in_array($perPage, ['10', '25', '50', 'all'], true)) {
-            $perPage = '10';
-        }
-        $pageSize = $perPage === 'all' ? max($query->count(), 1) : (int) $perPage;
-
         return view('admin.users.index', [
-            'users' => $query->orderBy('name')->paginate($pageSize)->withQueryString(),
+            'users' => $query->orderBy('name')->paginate(\App\Support\PerPage::resolve($request))->withQueryString(),
             'roles' => Role::pluck('name'),
             'filters' => $request->only(['search', 'role', 'status']),
-            'perPage' => $perPage,
         ]);
     }
 

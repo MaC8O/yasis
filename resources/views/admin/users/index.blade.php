@@ -18,9 +18,10 @@
             <div>
                 <label class="block text-sm font-semibold mb-1">Show</label>
                 <select name="per_page" onchange="this.form.submit()" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
-                    @foreach (['10' => '10', '25' => '25', '50' => '50', 'all' => 'All'] as $value => $label)
-                        <option value="{{ $value }}" @selected($perPage === $value)>{{ $label }}</option>
+                    @foreach (\App\Support\PerPage::OPTIONS as $value)
+                        <option value="{{ $value }}" @selected((string) request('per_page', '15') === (string) $value)>{{ $value }}</option>
                     @endforeach
+                    <option value="all" @selected(request('per_page') === 'all')>All</option>
                 </select>
             </div>
             <div class="sm:col-span-2 flex gap-2">

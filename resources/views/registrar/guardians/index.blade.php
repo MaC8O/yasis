@@ -66,6 +66,9 @@
                 @endforelse
             </tbody>
         </table>
-        <div class="mt-4">{{ $guardians->links() }}</div>
+        <div class="mt-4 flex items-center justify-between gap-4 flex-wrap">
+            <x-per-page />
+            <div>{{ $guardians->links() }}</div>
+        </div>
     </x-card>
 </x-app-layout>

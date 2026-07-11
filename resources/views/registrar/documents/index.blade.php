@@ -63,7 +63,10 @@
                 @endforelse
             </tbody>
         </table>
-        <div class="mt-4">{{ $documents->links() }}</div>
+        <div class="mt-4 flex items-center justify-between gap-4 flex-wrap">
+            <x-per-page />
+            <div>{{ $documents->links() }}</div>
+        </div>
     </x-card>
 
     <x-card title="Approval workflow">
