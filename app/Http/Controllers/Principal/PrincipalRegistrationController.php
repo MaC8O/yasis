@@ -13,7 +13,7 @@ class PrincipalRegistrationController extends Controller
     public function create()
     {
         return view('principal.registration.create', [
-            'departments' => Department::whereIn('level', ['Secondary', 'Primary', 'Early Years'])->orderBy('name')->get(),
+            'departments' => Department::academic()->orderBy('name')->get(),
         ]);
     }
 

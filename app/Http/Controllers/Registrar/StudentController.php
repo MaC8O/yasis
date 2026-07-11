@@ -32,7 +32,7 @@ class StudentController extends Controller
 
         return view('registrar.students.index', [
             'students' => $query->orderBy('name')->paginate(\App\Support\PerPage::resolve($request))->withQueryString(),
-            'departments' => Department::orderBy('name')->get(),
+            'departments' => Department::academic()->orderBy('name')->get(),
             'filters' => $request->only(['search', 'department']),
             'stats' => [
                 'active' => Student::where('enrollment_status', 'Enrolled')->count(),
@@ -46,7 +46,7 @@ class StudentController extends Controller
     public function create()
     {
         return view('registrar.students.create', [
-            'departments' => Department::orderBy('name')->get(),
+            'departments' => Department::academic()->orderBy('name')->get(),
             // Natural order so grades read 1,2,…,12 (not the alphabetical 1,10,11,12,2,…) and every grade up to 12 is visible.
             'sections' => Section::with('department')->whereHas('academicYear', fn ($q) => $q->where('is_active', true))->orderByRaw('LENGTH(name), name')->get(),
             'guardians' => Guardian::with('user')->get(),
@@ -128,7 +128,7 @@ class StudentController extends Controller
     {
         return view('registrar.students.edit', [
             'student' => $student,
-            'departments' => Department::orderBy('name')->get(),
+            'departments' => Department::academic()->orderBy('name')->get(),
         ]);
     }
 
