@@ -1,6 +1,20 @@
 <x-app-layout :title="$student->name" :subtitle="$student->student_id_number" badge="Registrar" role="registrar">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <x-card title="Profile">
+            <div class="flex items-center gap-4 mb-4">
+                @if ($student->photo_path)
+                    <img src="{{ Storage::url($student->photo_path) }}" alt="{{ $student->name }}"
+                         class="w-20 h-20 rounded-xl object-cover border border-neutral-200 shrink-0">
+                @else
+                    <span class="w-20 h-20 rounded-xl bg-[#1F573D] text-white font-bold text-xl flex items-center justify-center shrink-0">
+                        {{ collect(explode(' ', $student->name))->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('') }}
+                    </span>
+                @endif
+                <div>
+                    <p class="font-bold text-lg">{{ $student->name }}</p>
+                    <p class="text-sm text-neutral-500">{{ $student->student_id_number }}</p>
+                </div>
+            </div>
             <dl class="text-sm space-y-2">
                 <div class="flex justify-between"><dt class="text-neutral-500">Department</dt><dd class="font-semibold">{{ $student->department?->name }}</dd></div>
                 <div class="flex justify-between"><dt class="text-neutral-500">Birth date</dt><dd>{{ $student->date_of_birth?->format('M j, Y') ?? '—' }}</dd></div>

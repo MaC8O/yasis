@@ -19,21 +19,31 @@ class StudentController extends Controller
 {
     public function index(Request $request)
     {
+        $activeYear = \App\Models\AcademicYear::where('is_active', true)->first();
+
         $query = Student::query()->with(['department', 'guardians.user', 'enrollments.section']);
 
         if ($search = $request->string('search')->trim()->value()) {
+            // Search matches name, student ID, or the class the student is enrolled in.
             $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")
-                ->orWhere('student_id_number', 'like', "%{$search}%"));
+                ->orWhere('student_id_number', 'like', "%{$search}%")
+                ->orWhereHas('enrollments.section', fn ($s) => $s->where('name', 'like', "%{$search}%")));
         }
 
         if ($departmentId = $request->string('department')->value()) {
             $query->where('department_id', $departmentId);
         }
 
+        // Filter by a specific class/section (active-year enrollment).
+        if ($sectionId = $request->string('section')->value()) {
+            $query->whereHas('enrollments', fn ($q) => $q->where('section_id', $sectionId)->where('status', 'Active'));
+        }
+
         return view('registrar.students.index', [
             'students' => $query->orderBy('name')->paginate(\App\Support\PerPage::resolve($request))->withQueryString(),
             'departments' => Department::academic()->orderBy('name')->get(),
-            'filters' => $request->only(['search', 'department']),
+            'sections' => Section::whereHas('academicYear', fn ($q) => $q->where('is_active', true))->orderByRaw('LENGTH(name), name')->get(),
+            'filters' => $request->only(['search', 'department', 'section']),
             'stats' => [
                 'active' => Student::where('enrollment_status', 'Enrolled')->count(),
                 'newThisYear' => Student::where('enrollment_status', 'Enrolled')->whereYear('admission_date', now()->year)->count(),
@@ -53,11 +63,12 @@ class StudentController extends Controller
         ]);
     }
 
-    public function store(Request $request, AuditService $audit)
+    public function store(Request $request, AuditService $audit, \App\Services\AvatarService $avatars)
     {
         $data = $request->validate([
             'student_id_number' => ['required', 'string', 'max:30', 'unique:students,student_id_number'],
             'name' => ['required', 'string', 'max:255'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'date_of_birth' => ['nullable', 'date'],
             'gender' => ['nullable', 'string', 'max:20'],
             'admission_date' => ['required', 'date'],
@@ -74,6 +85,7 @@ class StudentController extends Controller
         $student = Student::create([
             'student_id_number' => $data['student_id_number'],
             'name' => $data['name'],
+            'photo_path' => $request->hasFile('photo') ? $avatars->storeSquare($request->file('photo'), 512, 'student-photos') : null,
             'date_of_birth' => $data['date_of_birth'] ?? null,
             'gender' => $data['gender'] ?? null,
             'admission_date' => $data['admission_date'],
@@ -132,14 +144,24 @@ class StudentController extends Controller
         ]);
     }
 
-    public function update(Request $request, Student $student, AuditService $audit)
+    public function update(Request $request, Student $student, AuditService $audit, \App\Services\AvatarService $avatars)
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'date_of_birth' => ['nullable', 'date'],
             'gender' => ['nullable', 'string', 'max:20'],
             'department_id' => ['required', 'exists:departments,id'],
         ]);
+
+        if ($request->hasFile('photo')) {
+            $old = $student->photo_path;
+            $data['photo_path'] = $avatars->storeSquare($request->file('photo'), 512, 'student-photos');
+            if ($old) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
+            }
+        }
+        unset($data['photo']);
 
         $student->update($data);
         $audit->log($request->user(), 'Edited student profile', 'Student', $student->id);

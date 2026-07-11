@@ -1,8 +1,22 @@
 <x-app-layout title="Register New Student" subtitle="Create student profile, guardian link, and enrollment." badge="Registrar" role="registrar">
-    <form method="POST" action="{{ route('registrar.students.store') }}" x-data="{ guardianMode: 'existing' }">
+    <form method="POST" action="{{ route('registrar.students.store') }}" enctype="multipart/form-data" x-data="{ guardianMode: 'existing', photo: null }">
         @csrf
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <x-card title="Student Profile" subtitle="Basic personal details.">
+                <div class="flex items-center gap-4 mb-5">
+                    <div class="w-24 h-24 rounded-xl border border-neutral-200 bg-neutral-50 overflow-hidden shrink-0 flex items-center justify-center">
+                        <template x-if="photo"><img :src="photo" alt="" class="w-full h-full object-cover"></template>
+                        <template x-if="!photo"><span class="text-[11px] text-neutral-400 text-center px-2 leading-tight">No photo</span></template>
+                    </div>
+                    <div>
+                        <label class="inline-block cursor-pointer bg-neutral-900 text-white font-semibold rounded-lg px-4 py-2 text-sm">
+                            Upload photo…
+                            <input type="file" name="photo" accept=".jpg,.jpeg,.png,.webp" class="sr-only"
+                                   @change="photo = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : null">
+                        </label>
+                        <p class="text-xs text-neutral-400 mt-1.5">JPG, PNG or WebP · up to 10 MB · cropped to a square.</p>
+                    </div>
+                </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-semibold mb-1">Student ID</label>
