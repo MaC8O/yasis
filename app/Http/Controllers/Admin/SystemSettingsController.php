@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SystemSetting;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * §6.7 System Settings — institution-wide configuration, grouped into real
@@ -92,17 +93,24 @@ class SystemSettingsController extends Controller
             $settings[$key] = SystemSetting::get($key, $field['default'] ?? '');
         }
 
+        $logoPath = SystemSetting::get('institution_logo_path');
+
         return view('admin.settings.index', [
             'schema' => $this->schema(),
             'settings' => $settings,
             'smtpConfigured' => filled(SystemSetting::get('smtp_host')),
+            'logoUrl' => $logoPath ? Storage::url($logoPath) : null,
         ]);
     }
 
     public function update(Request $request, AuditService $audit)
     {
         $fields = $this->allFields();
-        $data = $request->validate($this->rules($fields));
+        $rules = $this->rules($fields);
+        $rules['institution_logo'] = ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'];
+        $data = $request->validate($rules, [
+            'institution_logo.max' => 'The logo may not be larger than 4 MB.',
+        ]);
 
         foreach ($fields as $key => $field) {
             if ($field['type'] === 'bool') {
@@ -112,9 +120,32 @@ class SystemSettingsController extends Controller
             }
         }
 
+        $this->handleLogo($request);
+
         $audit->log($request->user(), 'Updated system settings', 'SystemSetting', null);
 
         return back()->with('status', 'System settings saved.');
+    }
+
+    /** A new upload replaces the old logo; the remove checkbox clears it. */
+    protected function handleLogo(Request $request): void
+    {
+        $old = SystemSetting::get('institution_logo_path');
+
+        if ($request->hasFile('institution_logo')) {
+            if ($old) {
+                Storage::disk('public')->delete($old);
+            }
+            $path = $request->file('institution_logo')->store('logos', 'public');
+            SystemSetting::set('institution_logo_path', $path);
+
+            return;
+        }
+
+        if ($request->boolean('remove_logo') && $old) {
+            Storage::disk('public')->delete($old);
+            SystemSetting::set('institution_logo_path', '');
+        }
     }
 
     /** Test SMTP reachability without sending mail or risking a long hang. */
