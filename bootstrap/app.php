@@ -16,8 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
         ]);
 
-        // Funnel users with a pending admin-forced reset to the set-password screen (§3.1).
+        // Idle-session timeout (§3.2), then funnel users with a pending admin-forced
+        // reset to the set-password screen (§3.1).
         $middleware->web(append: [
+            \App\Http\Middleware\EnforceSessionTimeout::class,
             \App\Http\Middleware\EnsurePasswordIsSet::class,
         ]);
     })

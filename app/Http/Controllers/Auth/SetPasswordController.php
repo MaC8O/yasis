@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Services\AuditService;
+use App\Support\SecurityPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Password;
 
 /**
  * Forced set-password screen (§3.1). After an admin resets a user's credentials
@@ -31,7 +31,7 @@ class SetPasswordController extends Controller
     public function update(Request $request, AuditService $audit)
     {
         $data = $request->validate([
-            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
+            'password' => ['required', 'confirmed', SecurityPolicy::passwordRule()],
         ]);
 
         $user = Auth::user();

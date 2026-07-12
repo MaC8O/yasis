@@ -14,7 +14,8 @@ class AuditLogController extends Controller
     {
         return view('admin.audit-logs.index', [
             'logs' => $this->filteredQuery($request)->paginate(\App\Support\PerPage::resolve($request, 20))->withQueryString(),
-            'filters' => $request->only(['search', 'from', 'to']),
+            'filters' => $request->only(['search', 'from', 'to', 'category']),
+            'categories' => AuditLog::CATEGORIES,
         ]);
     }
 
@@ -25,12 +26,13 @@ class AuditLogController extends Controller
 
         return response()->streamDownload(function () use ($request) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['When', 'User', 'Role', 'Action', 'Entity', 'Entity ID']);
+            fputcsv($out, ['When', 'Category', 'User', 'Role', 'Action', 'Entity', 'Entity ID']);
 
             $this->filteredQuery($request)->with('user')->chunk(500, function ($logs) use ($out) {
                 foreach ($logs as $log) {
                     fputcsv($out, [
                         $log->created_at->format('Y-m-d H:i:s'),
+                        $log->category,
                         $log->user?->name ?? '',
                         $log->role,
                         $log->action,
@@ -56,6 +58,10 @@ class AuditLogController extends Controller
             });
         }
 
+        if ($category = $request->string('category')->trim()->value()) {
+            $this->applyCategory($query, $category);
+        }
+
         if ($from = $request->date('from')) {
             $query->where('created_at', '>=', $from->startOfDay());
         }
@@ -65,5 +71,32 @@ class AuditLogController extends Controller
         }
 
         return $query;
+    }
+
+    /** Translate a derived category into SQL constraints (mirrors AuditLog::getCategoryAttribute). */
+    protected function applyCategory(Builder $query, string $category): void
+    {
+        if (! in_array($category, AuditLog::CATEGORIES, true)) {
+            return;
+        }
+
+        ['entities' => $entities, 'authNeedles' => $authNeedles] = AuditLog::categoryScopeConstraints($category);
+
+        $matchesAuth = function ($q) use ($authNeedles) {
+            foreach ($authNeedles as $i => $needle) {
+                $i === 0 ? $q->where('action', 'like', $needle) : $q->orWhere('action', 'like', $needle);
+            }
+        };
+
+        if ($category === 'Authentication') {
+            $query->where($matchesAuth);
+
+            return;
+        }
+
+        // Non-auth categories: entity is in the bucket AND the row isn't an auth action
+        // (auth overrides User/StaffProfile rows into the Authentication bucket).
+        $query->whereIn('entity_type', $entities)
+            ->where(fn ($q) => $q->whereNot($matchesAuth));
     }
 }

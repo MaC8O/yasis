@@ -7,6 +7,15 @@
                     class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
             <div>
+                <label class="block text-sm font-semibold mb-1">Category</label>
+                <select name="category" class="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
+                    <option value="">All categories</option>
+                    @foreach ($categories as $category)
+                        <option value="{{ $category }}" @selected(($filters['category'] ?? '') === $category)>{{ $category }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
                 <label class="block text-sm font-semibold mb-1">From</label>
                 <input type="date" name="from" value="{{ $filters['from'] ?? '' }}"
                     class="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
@@ -26,6 +35,7 @@
                 <thead>
                     <tr class="text-left text-neutral-500 border-b border-neutral-200">
                         <th class="py-2 font-semibold">Time</th>
+                        <th class="py-2 font-semibold">Category</th>
                         <th class="py-2 font-semibold">User</th>
                         <th class="py-2 font-semibold">Role</th>
                         <th class="py-2 font-semibold">Action</th>
@@ -33,16 +43,30 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        $categoryColors = [
+                            'Authentication' => 'bg-[#DCE7F9] text-[#1e3a6e]',
+                            'User Management' => 'bg-[#F5E4A8] text-[#5c4a0a]',
+                            'Academic Records' => 'bg-[#D7ECD9] text-[#1f4d2c]',
+                            'Grades & Assessment' => 'bg-[#E4DAF3] text-[#4a2d6e]',
+                            'Attendance & Leave' => 'bg-[#F6D9D9] text-[#7a2020]',
+                            'Finance' => 'bg-[#D9EEF0] text-[#155e63]',
+                            'System' => 'bg-neutral-200 text-neutral-700',
+                        ];
+                    @endphp
                     @forelse ($logs as $log)
                         <tr class="border-b border-neutral-100 last:border-0">
-                            <td class="py-2.5">{{ $log->created_at->format('M j, Y H:i') }}</td>
+                            <td class="py-2.5 whitespace-nowrap">{{ $log->created_at->format('M j, Y H:i') }}</td>
+                            <td class="py-2.5">
+                                <span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium {{ $categoryColors[$log->category] ?? 'bg-neutral-200 text-neutral-700' }}">{{ $log->category }}</span>
+                            </td>
                             <td class="py-2.5">{{ $log->user?->name ?? '—' }}</td>
                             <td class="py-2.5 text-neutral-500">{{ ucwords(str_replace('_', ' ', $log->role)) }}</td>
                             <td class="py-2.5">{{ $log->action }}</td>
                             <td class="py-2.5 text-neutral-500">{{ $log->entity_type }}{{ $log->entity_id ? " #{$log->entity_id}" : '' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="py-4 text-neutral-400">No activity recorded yet.</td></tr>
+                        <tr><td colspan="6" class="py-4 text-neutral-400">No activity recorded yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

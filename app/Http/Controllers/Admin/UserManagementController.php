@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\StaffProfile;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Support\SecurityPolicy;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Password as PasswordRule;
 use Spatie\Permission\Models\Role;
 
 class UserManagementController extends Controller
@@ -70,7 +70,7 @@ class UserManagementController extends Controller
             'staff_id_number' => ['nullable', 'required_if:role,'.implode(',', $this->staffRoles), 'string', 'max:30', 'unique:staff_profiles,staff_id_number'],
             'department_id' => ['nullable', 'exists:departments,id'],
             'joined_date' => ['nullable', 'required_if:role,'.implode(',', $this->staffRoles), 'date'],
-            'password' => ['nullable', 'confirmed', PasswordRule::min(8)],
+            'password' => ['nullable', 'confirmed', SecurityPolicy::passwordRule()],
         ]);
 
         // With an initial password the account is usable immediately (Active);
@@ -82,6 +82,8 @@ class UserManagementController extends Controller
             'email' => $data['email'],
             'password' => Hash::make($hasInitialPassword ? $data['password'] : Str::password(12)),
             'status' => $hasInitialPassword ? 'Active' : 'Pending',
+            // When the policy requires it, an admin-set initial password must be changed on first login.
+            'must_reset_password' => $hasInitialPassword && SecurityPolicy::forceResetNewAccounts(),
             'date_of_birth' => $data['date_of_birth'] ?? null,
             'gender' => $data['gender'] ?? null,
             'phone' => $data['phone'] ?? null,
@@ -220,7 +222,7 @@ class UserManagementController extends Controller
     public function setPassword(Request $request, User $user, AuditService $audit)
     {
         $data = $request->validate([
-            'password' => ['required', 'confirmed', PasswordRule::min(8)],
+            'password' => ['required', 'confirmed', SecurityPolicy::passwordRule()],
         ]);
 
         $user->forceFill([

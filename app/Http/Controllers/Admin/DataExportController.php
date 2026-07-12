@@ -49,6 +49,12 @@ class DataExportController extends Controller
         'audit_logs' => ['id', 'user_id', 'role', 'action', 'entity_type', 'entity_id', 'created_at'],
     ];
 
+    /** Table names included in the snapshot — used by the Data & Backup page. */
+    public function tableNames(): array
+    {
+        return array_keys($this->tables);
+    }
+
     public function download(Request $request, AuditService $audit)
     {
         $zipPath = tempnam(sys_get_temp_dir(), 'isms_snapshot_');

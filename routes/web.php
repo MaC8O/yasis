@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin\AcademicCalendarController;
 use App\Http\Controllers\Admin\AcademicYearController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\DataExportController;
 use App\Http\Controllers\Admin\GradeScaleController;
 use App\Http\Controllers\Admin\RetentionActionController;
@@ -12,6 +14,8 @@ use App\Http\Controllers\Admin\UserImportController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\CalendarController;
+use App\Http\Controllers\Registrar\CalendarController as RegistrarCalendarController;
 use App\Http\Controllers\Auth\SetPasswordController;
 use App\Http\Controllers\Hr\HrDashboardController;
 use App\Http\Controllers\Hr\HrLeaveManagementController;
@@ -82,6 +86,9 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 Route::middleware('auth')->group(function () {
     Route::get('/set-password', [SetPasswordController::class, 'show'])->name('password.set');
     Route::post('/set-password', [SetPasswordController::class, 'update'])->name('password.set.update');
+
+    // Read-only academic calendar available to every signed-in user (Published events only).
+    Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
 });
 
 // --- ADMIN ---
@@ -106,9 +113,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
 
     Route::get('/teacher-assignments', [AdminTeacherAssignmentController::class, 'index'])->name('teacher-assignments.index');
-    Route::post('/teacher-assignments', [AdminTeacherAssignmentController::class, 'storeAssignment'])->name('teacher-assignments.store');
-    Route::put('/teacher-assignments/{teachingAssignment}', [AdminTeacherAssignmentController::class, 'reassign'])->name('teacher-assignments.reassign');
-    Route::delete('/teacher-assignments/{teachingAssignment}', [AdminTeacherAssignmentController::class, 'destroyAssignment'])->name('teacher-assignments.destroy');
+    Route::post('/teacher-assignments/set', [AdminTeacherAssignmentController::class, 'setSubjectTeacher'])->name('teacher-assignments.set');
     Route::put('/teacher-assignments/sections/{section}/homeroom', [AdminTeacherAssignmentController::class, 'setHomeroom'])->name('teacher-assignments.homeroom');
 
     Route::get('/academic-year', [AcademicYearController::class, 'index'])->name('academic-year.index');
@@ -117,8 +122,16 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::put('/academic-year/{academicYear}', [AcademicYearController::class, 'update'])->name('academic-year.update');
     Route::delete('/academic-year/{academicYear}', [AcademicYearController::class, 'destroy'])->name('academic-year.destroy');
 
+    Route::get('/calendar', [AcademicCalendarController::class, 'index'])->name('calendar.index');
+    Route::post('/calendar', [AcademicCalendarController::class, 'store'])->name('calendar.store');
+    Route::put('/calendar/{calendarEvent}', [AcademicCalendarController::class, 'update'])->name('calendar.update');
+    Route::post('/calendar/{calendarEvent}/publish', [AcademicCalendarController::class, 'publish'])->name('calendar.publish');
+    Route::post('/calendar/{calendarEvent}/unpublish', [AcademicCalendarController::class, 'unpublish'])->name('calendar.unpublish');
+    Route::delete('/calendar/{calendarEvent}', [AcademicCalendarController::class, 'destroy'])->name('calendar.destroy');
+
     Route::get('/grade-scale', [GradeScaleController::class, 'index'])->name('grade-scale.index');
     Route::post('/grade-scale', [GradeScaleController::class, 'store'])->name('grade-scale.store');
+    Route::post('/grade-scale/departments/{department}/defaults', [GradeScaleController::class, 'loadDefaults'])->name('grade-scale.defaults');
     Route::delete('/grade-scale/{gradeScaleBand}', [GradeScaleController::class, 'destroy'])->name('grade-scale.destroy');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
@@ -126,7 +139,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     Route::get('/settings', [SystemSettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings', [SystemSettingsController::class, 'update'])->name('settings.update');
+    Route::post('/settings/test-smtp', [SystemSettingsController::class, 'testSmtp'])->name('settings.test-smtp');
 
+    Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
     Route::post('/retention-actions', [RetentionActionController::class, 'store'])->name('retention-actions.store');
 
     Route::get('/export-snapshot', [DataExportController::class, 'download'])->name('export-snapshot');
@@ -180,6 +195,12 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
 
     Route::get('/attendance-corrections', [AttendanceCorrectionController::class, 'index'])->name('attendance-corrections.index');
     Route::put('/attendance-corrections/{attendanceRecord}', [AttendanceCorrectionController::class, 'update'])->name('attendance-corrections.update');
+
+    // Academic calendar — Registrar creates/edits; Admin approves & publishes.
+    Route::get('/calendar', [RegistrarCalendarController::class, 'index'])->name('calendar.index');
+    Route::post('/calendar', [RegistrarCalendarController::class, 'store'])->name('calendar.store');
+    Route::put('/calendar/{calendarEvent}', [RegistrarCalendarController::class, 'update'])->name('calendar.update');
+    Route::delete('/calendar/{calendarEvent}', [RegistrarCalendarController::class, 'destroy'])->name('calendar.destroy');
 });
 
 // --- TEACHER ---

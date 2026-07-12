@@ -5,18 +5,13 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Support\SecurityPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /** Consecutive failed attempts before an account is locked (§3.8, Data Security). */
-    protected const MAX_ATTEMPTS = 5;
-
-    /** Lockout duration once the threshold is hit. An Admin can also unlock immediately. */
-    protected const LOCKOUT_MINUTES = 15;
-
     protected const GENERIC_ERROR = 'These credentials do not match our records.';
 
     public function showLogin()
@@ -86,14 +81,15 @@ class AuthController extends Controller
         }
 
         $attempts = $user->failed_login_attempts + 1;
+        $threshold = SecurityPolicy::lockoutThreshold();
 
-        if ($attempts >= self::MAX_ATTEMPTS) {
+        if ($attempts >= $threshold) {
             $user->forceFill([
                 'failed_login_attempts' => 0,
-                'locked_until' => now()->addMinutes(self::LOCKOUT_MINUTES),
+                'locked_until' => now()->addMinutes(SecurityPolicy::lockoutMinutes()),
             ])->save();
 
-            $audit->log($user, 'Account locked after '.self::MAX_ATTEMPTS.' failed login attempts', 'User', $user->id);
+            $audit->log($user, "Account locked after {$threshold} failed login attempts", 'User', $user->id);
 
             return;
         }

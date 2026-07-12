@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Support\SecurityPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 
@@ -35,7 +36,7 @@ class ForgotPasswordController extends Controller
         $request->validate([
             'token' => ['required'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'confirmed', 'min:8'],
+            'password' => ['required', 'confirmed', SecurityPolicy::passwordRule()],
         ]);
 
         $status = Password::reset(

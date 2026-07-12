@@ -41,20 +41,52 @@ class K12StructureSeeder extends Seeder
         $departments = Department::pluck('id', 'name');
 
         // ------------------------------------------------------------------
-        // Grade scale: descriptive (no GPA) for the lower school, per §8.4.
+        // YASIS standard grade scale (§8.4): descriptive (no GPA) for the lower
+        // school; letter grades with GPA points for the secondary school.
         // ------------------------------------------------------------------
-        foreach (['Pre-School', 'Elementary'] as $deptName) {
+        $descriptive = [
+            ['letter' => 'E', 'min_score' => 90, 'gpa_point' => null], // Excellent
+            ['letter' => 'G', 'min_score' => 80, 'gpa_point' => null], // Good
+            ['letter' => 'S', 'min_score' => 70, 'gpa_point' => null], // Satisfactory
+            ['letter' => 'P', 'min_score' => 60, 'gpa_point' => null], // Progressing
+            ['letter' => 'N', 'min_score' => 0,  'gpa_point' => null], // Needs support
+        ];
+        $secondary = [
+            ['letter' => 'A',  'min_score' => 90, 'gpa_point' => 4.0],
+            ['letter' => 'B+', 'min_score' => 85, 'gpa_point' => 3.5],
+            ['letter' => 'B',  'min_score' => 80, 'gpa_point' => 3.0],
+            ['letter' => 'C+', 'min_score' => 75, 'gpa_point' => 2.5],
+            ['letter' => 'C',  'min_score' => 70, 'gpa_point' => 2.0],
+            ['letter' => 'D',  'min_score' => 60, 'gpa_point' => 1.0],
+            ['letter' => 'F',  'min_score' => 0,  'gpa_point' => 0.0],
+        ];
+        $scaleByDept = [
+            'Pre-School' => $descriptive, 'Elementary' => $descriptive,
+            'Middle School' => $secondary, 'High School' => $secondary,
+        ];
+        foreach ($scaleByDept as $deptName => $bands) {
             $deptId = $departments[$deptName];
             GradeScaleBand::where('department_id', $deptId)->delete();
-            foreach ([
-                ['letter' => 'E', 'min_score' => 90],   // Excellent
-                ['letter' => 'G', 'min_score' => 80],   // Good
-                ['letter' => 'S', 'min_score' => 70],   // Satisfactory
-                ['letter' => 'P', 'min_score' => 60],   // Progressing
-                ['letter' => 'N', 'min_score' => 0],    // Needs support
-            ] as $band) {
-                GradeScaleBand::create(array_merge($band, ['department_id' => $deptId, 'gpa_point' => null]));
+            foreach ($bands as $band) {
+                GradeScaleBand::create(array_merge($band, ['department_id' => $deptId]));
             }
+        }
+
+        // ------------------------------------------------------------------
+        // Academic calendar: a few representative events for the active year.
+        // ------------------------------------------------------------------
+        foreach ([
+            ['title' => 'First Day of School', 'event_type' => 'Activity', 'start_date' => $year->terms()->orderBy('sequence')->value('start_date')],
+            ['title' => 'Term 1 Examinations', 'event_type' => 'Exam', 'start_date' => now()->addWeeks(2)->toDateString(), 'end_date' => now()->addWeeks(2)->addDays(4)->toDateString()],
+            ['title' => 'Parent–Teacher Conference', 'event_type' => 'Meeting', 'start_date' => now()->addWeeks(3)->toDateString()],
+            ['title' => 'Founders\' Day (YASIS Event)', 'event_type' => 'Activity', 'start_date' => now()->addWeeks(4)->toDateString()],
+            ['title' => 'Term Break', 'event_type' => 'Term Break', 'start_date' => now()->addWeeks(9)->toDateString(), 'end_date' => now()->addWeeks(10)->toDateString()],
+            ['title' => 'Christmas Holiday', 'event_type' => 'Holiday', 'start_date' => now()->startOfYear()->addMonths(11)->addDays(24)->toDateString()],
+        ] as $event) {
+            \App\Models\CalendarEvent::firstOrCreate(
+                ['title' => $event['title'], 'academic_year_id' => $year->id],
+                array_merge($event, ['academic_year_id' => $year->id])
+            );
         }
 
         // ------------------------------------------------------------------
