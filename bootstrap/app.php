@@ -12,7 +12,15 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'role' => \App\Http\Middleware\CheckRole::class,
+            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+        ]);
+
+        // Idle-session timeout (§3.2), then funnel users with a pending admin-forced
+        // reset to the set-password screen (§3.1).
+        $middleware->web(append: [
+            \App\Http\Middleware\EnforceSessionTimeout::class,
+            \App\Http\Middleware\EnsurePasswordIsSet::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

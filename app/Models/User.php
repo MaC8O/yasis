@@ -6,11 +6,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasRoles, Notifiable;
+
+    protected $guard_name = 'web';
 
     /**
      * The attributes that are mass assignable.
@@ -21,6 +24,16 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'status',
+        'must_reset_password',
+        'photo_path',
+        'date_of_birth',
+        'gender',
+        'phone',
+        'address',
+        'failed_login_attempts',
+        'locked_until',
+        'last_login_at',
     ];
 
     /**
@@ -43,17 +56,35 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'must_reset_password' => 'boolean',
+            'date_of_birth' => 'date',
+            'locked_until' => 'datetime',
+            'last_login_at' => 'datetime',
         ];
     }
 
-    public function role()
+    public function isLocked(): bool
     {
-        return $this->belongsTo(Role::class);
+        return $this->locked_until !== null && $this->locked_until->isFuture();
     }
 
-    // Helper to check user role (e.g., if($user->hasRole('teacher')))
-    public function hasRole($roleName)
+    public function staffProfile()
     {
-        return $this->role->name === $roleName;
+        return $this->hasOne(StaffProfile::class, 'id', 'id');
+    }
+
+    public function guardian()
+    {
+        return $this->hasOne(Guardian::class);
+    }
+
+    public function student()
+    {
+        return $this->hasOne(Student::class);
+    }
+
+    public function auditLogs()
+    {
+        return $this->hasMany(AuditLog::class);
     }
 }

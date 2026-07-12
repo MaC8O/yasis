@@ -9,3 +9,59 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+[x-cloak] {
+    display: none !important;
+}
+
+/*
+ * Responsive data table (spec 3.5): below the md breakpoint every data table
+ * collapses to a stack of cards — each row becomes a card of label:value pairs.
+ * Add class="rt" to the <table> and data-label="…" to each body <td>.
+ */
+@media (max-width: 767px) {
+    table.rt thead {
+        display: none;
+    }
+    table.rt,
+    table.rt tbody,
+    table.rt tr,
+    table.rt td {
+        display: block;
+        width: 100%;
+    }
+    table.rt tbody tr {
+        border: 1px solid #e5e5e5;
+        border-radius: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        margin-bottom: 0.75rem;
+        background: #fff;
+    }
+    table.rt tbody tr:last-child {
+        margin-bottom: 0;
+    }
+    table.rt tbody td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.625rem 0;
+        border-bottom: 1px solid #f1f1f0;
+        text-align: right;
+    }
+    table.rt tbody td:last-child {
+        border-bottom: 0;
+    }
+    table.rt tbody td[data-label]::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #6b7280;
+        text-align: left;
+        flex: 0 0 auto;
+    }
+    /* Empty-state / full-width cells span the card without a label column. */
+    table.rt tbody td[colspan] {
+        justify-content: flex-start;
+        text-align: left;
+    }
+}

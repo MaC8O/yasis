@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: DejaVu Sans, sans-serif; color: #1a1a1a; font-size: 13px; }
+        .header { text-align: center; border-bottom: 3px solid #1F573D; padding-bottom: 16px; margin-bottom: 24px; }
+        .header h1 { margin: 0; color: #1F573D; font-size: 20px; }
+        .title { text-align: center; font-size: 18px; font-weight: bold; margin: 24px 0; text-transform: uppercase; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; font-size: 13px; }
+        .footer { margin-top: 40px; font-size: 10px; color: #999; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Yangon Adventist Seminary</h1>
+        <p>School Board Report</p>
+    </div>
+    <div class="title">Religious Background Summary — {{ now()->format('F Y') }}</div>
+    <table>
+        <thead><tr><th>Background</th><th>Students</th><th>Share</th></tr></thead>
+        <tbody>
+            @foreach ($religious as $row)
+                <tr><td>{{ $row->background }}</td><td>{{ $row->total }}</td><td>{{ $row->share }}%</td></tr>
+            @endforeach
+        </tbody>
+    </table>
+    <div class="footer">Generated {{ now()->format('F j, Y \a\t H:i') }} for School Board review.</div>
+</body>
+</html>
