@@ -9,6 +9,7 @@ use App\Models\Assessment;
 use App\Models\AssessmentCategory;
 use App\Models\Grade;
 use App\Models\GradeChangeRequest;
+use App\Models\GradeScaleBand;
 use App\Models\ReportCardComment;
 use App\Models\Section;
 use App\Models\StaffProfile;
@@ -79,6 +80,14 @@ class TeacherGradebookController extends Controller
             ->with(['assessment', 'student'])
             ->latest()->get();
 
+        // Grade bands for the roster's department(s), so the grid can show the live letter grade
+        // client-side (as scores are typed) using the same thresholds GradeService applies on save.
+        $bandsByDept = GradeScaleBand::whereIn('department_id', $roster->pluck('department_id')->unique()->filter())
+            ->orderByDesc('min_score')
+            ->get()
+            ->groupBy('department_id')
+            ->map(fn ($bands) => $bands->map(fn ($b) => ['min' => (float) $b->min_score, 'letter' => $b->letter])->values());
+
         return view('teacher.gradebook.index', [
             'changeRequests' => $changeRequests,
             'assignments' => $assignments,
@@ -92,6 +101,7 @@ class TeacherGradebookController extends Controller
             'totalWeight' => (float) $categories->sum('weight_pct'),
             'isHomeroom' => $isHomeroom,
             'comments' => $comments,
+            'bandsByDept' => $bandsByDept,
         ]);
     }
 
@@ -145,6 +155,45 @@ class TeacherGradebookController extends Controller
         $audit->log($request->user(), 'Created assessment', 'Assessment', $assessment->id);
 
         return back()->with('status', "Assessment \"{$assessment->name}\" created.");
+    }
+
+    public function updateAssessment(Request $request, Assessment $assessment, AuditService $audit)
+    {
+        $category = $this->assertTeachesAssessment($request, $assessment);
+        $this->assertTermUnlocked($category->term);
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'max_score' => ['required', 'numeric', 'min:1', 'max:1000'],
+        ]);
+
+        // Lowering the maximum below a score already entered would make that grade impossible
+        // (>100%); block it and tell the teacher which score is in the way.
+        $highest = $assessment->grades()->max('score');
+        if ($highest !== null && (float) $data['max_score'] < (float) $highest) {
+            return back()->withErrors([
+                'max_score' => "Max score can't be below the highest score already entered ({$highest}).",
+            ]);
+        }
+
+        $assessment->update($data);
+        $audit->log($request->user(), 'Updated assessment', 'Assessment', $assessment->id);
+
+        return back()->with('status', "Item \"{$assessment->name}\" updated.");
+    }
+
+    public function destroyAssessment(Request $request, Assessment $assessment, AuditService $audit)
+    {
+        $category = $this->assertTeachesAssessment($request, $assessment);
+        $this->assertTermUnlocked($category->term);
+
+        $id = $assessment->id;
+        $name = $assessment->name;
+        $assessment->delete(); // grades cascade via the foreign key
+
+        $audit->log($request->user(), 'Deleted assessment', 'Assessment', $id);
+
+        return back()->with('status', "Item \"{$name}\" and its scores were deleted.");
     }
 
     /**
