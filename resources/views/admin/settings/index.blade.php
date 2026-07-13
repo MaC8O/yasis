@@ -25,11 +25,40 @@
             </nav>
         </x-card>
 
-        <form method="POST" action="{{ route('admin.settings.update') }}" class="space-y-6">
+        <form method="POST" action="{{ route('admin.settings.update') }}" enctype="multipart/form-data" class="space-y-6">
             @csrf
             @foreach ($schema as $name => $group)
                 <div x-show="tab === '{{ $name }}'" x-cloak class="space-y-6">
                     <x-card :title="$name" :subtitle="$group['blurb']">
+                        @if ($name === 'Institution profile')
+                            <div x-data="{ preview: null }" class="flex flex-wrap items-center gap-5 mb-6 pb-6 border-b border-neutral-100">
+                                <div class="w-24 h-24 rounded-xl border border-neutral-200 bg-neutral-50 flex items-center justify-center overflow-hidden shrink-0">
+                                    <template x-if="preview">
+                                        <img :src="preview" alt="Logo preview" class="w-full h-full object-contain">
+                                    </template>
+                                    <template x-if="!preview">
+                                        @if ($logoUrl)
+                                            <img src="{{ $logoUrl }}" alt="Institution logo" class="w-full h-full object-contain">
+                                        @else
+                                            <span class="text-xs text-neutral-400 text-center px-2">No logo</span>
+                                        @endif
+                                    </template>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold mb-1">Institution logo</p>
+                                    <p class="text-xs text-neutral-400 mb-2">PNG, JPG or WebP · up to 4 MB · shown on the app and documents.</p>
+                                    <input type="file" name="institution_logo" accept="image/png,image/jpeg,image/webp"
+                                           @change="preview = $event.target.files.length ? URL.createObjectURL($event.target.files[0]) : null"
+                                           class="block text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-[#1F573D] file:text-white file:font-semibold file:px-4 file:py-2 file:text-sm hover:file:bg-[#184630] file:cursor-pointer">
+                                    @if ($logoUrl)
+                                        <label class="flex items-center gap-2 mt-3 text-sm text-neutral-600 cursor-pointer">
+                                            <input type="checkbox" name="remove_logo" value="1" class="w-4 h-4 rounded border-neutral-300 text-red-700 focus:ring-red-700">
+                                            Remove current logo
+                                        </label>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                             @foreach ($group['fields'] as $key => $field)
                                 <div class="{{ ($field['full'] ?? false) ? 'sm:col-span-2' : '' }} {{ $field['type'] === 'bool' ? 'sm:col-span-2' : '' }}">
