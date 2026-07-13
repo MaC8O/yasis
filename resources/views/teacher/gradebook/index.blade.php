@@ -122,14 +122,26 @@
             @endforelse
         </div>
 
-        <form method="POST" action="{{ route('teacher.gradebook.categories.store') }}" class="flex gap-3 items-end">
+        @php $categoryPresets = ['Homework', 'Quiz', 'Test / Exam', 'Project', 'Classwork', 'Participation', 'Lab', 'Assignment', 'Extra Credit']; @endphp
+        <form method="POST" action="{{ route('teacher.gradebook.categories.store') }}" x-data="{ pick: 'Homework', custom: '' }" class="flex flex-wrap gap-3 items-end">
             @csrf
             <input type="hidden" name="section_id" value="{{ $section->id }}">
             <input type="hidden" name="subject_id" value="{{ $subject->id }}">
             <input type="hidden" name="term_id" value="{{ $term?->id }}">
-            <div class="flex-1">
-                <label class="block text-sm font-semibold mb-1">Category name</label>
-                <input type="text" name="name" required placeholder="Quiz" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
+            {{-- The submitted name is the preset itself, or the typed value when "Other" is chosen. --}}
+            <input type="hidden" name="name" :value="pick === 'Other' ? custom : pick">
+            <div class="w-48">
+                <label class="block text-sm font-semibold mb-1">Category type</label>
+                <select x-model="pick" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
+                    @foreach ($categoryPresets as $preset)
+                        <option value="{{ $preset }}">{{ $preset }}</option>
+                    @endforeach
+                    <option value="Other">Other (custom)…</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-40" x-show="pick === 'Other'" x-cloak>
+                <label class="block text-sm font-semibold mb-1">Custom name</label>
+                <input type="text" x-model="custom" :required="pick === 'Other'" placeholder="e.g. Group work" maxlength="255" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
             <div class="w-32">
                 <label class="block text-sm font-semibold mb-1">Weight %</label>
@@ -161,6 +173,67 @@
             <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Add Assessment</button>
         </form>
     </x-card>
+
+    @if ($allAssessments->isNotEmpty() && ! $term?->is_locked)
+        <x-card title="Bulk import scores" subtitle="Pick an assessment, download its roster template, fill the score column, and upload — one assessment at a time.">
+            @php $firstAssessment = $allAssessments->first(); @endphp
+            <div x-data="{ aid: '{{ $firstAssessment->id }}' }" class="space-y-4">
+                <div class="flex flex-wrap gap-3 items-end">
+                    <div class="flex-1 min-w-56">
+                        <label class="block text-sm font-semibold mb-1">Assessment</label>
+                        <select x-model="aid" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
+                            @foreach ($allAssessments as $assessment)
+                                <option value="{{ $assessment->id }}">{{ $assessment->name }} (max {{ rtrim(rtrim(number_format($assessment->max_score, 2), '0'), '.') }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <a :href="`{{ url('teacher/gradebook/assessments') }}/${aid}/scores-template`"
+                        class="text-sm font-semibold text-neutral-600 self-center hover:underline">Download template</a>
+                </div>
+
+                <form method="POST" :action="`{{ url('teacher/gradebook/assessments') }}/${aid}/scores-import`" enctype="multipart/form-data" class="flex flex-wrap gap-3 items-end">
+                    @csrf
+                    <div class="flex-1 min-w-56">
+                        <label class="block text-sm font-semibold mb-1">Filled template (Excel / CSV)</label>
+                        <input type="file" name="file" required accept=".xlsx,.xls,.csv" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
+                    </div>
+                    <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Upload &amp; Import</button>
+                </form>
+
+                <p class="text-xs text-neutral-500">Columns: <code>student_id_number</code> and <code>score</code> (the <code>name</code> column is for your reference). Blank scores are skipped; out-of-range or non-enrolled rows are reported and never partially saved.</p>
+            </div>
+
+            @if (session('scoreImportResults'))
+                @php $sr = session('scoreImportResults'); @endphp
+                <div class="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div>
+                        <p class="text-sm font-semibold mb-1">Saved ({{ count($sr['updated']) }}) — {{ $sr['assessment'] }}</p>
+                        @forelse ($sr['updated'] as $line)
+                            <p class="text-xs text-green-700 py-0.5">{{ $line }}</p>
+                        @empty
+                            <p class="text-xs text-neutral-400">None.</p>
+                        @endforelse
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold mb-1">Skipped ({{ count($sr['skipped']) }})</p>
+                        @forelse ($sr['skipped'] as $line)
+                            <p class="text-xs text-yellow-700 py-0.5">{{ $line }}</p>
+                        @empty
+                            <p class="text-xs text-neutral-400">None.</p>
+                        @endforelse
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold mb-1">Errors ({{ count($sr['errors']) }})</p>
+                        @forelse ($sr['errors'] as $line)
+                            <p class="text-xs text-red-700 py-0.5">{{ $line }}</p>
+                        @empty
+                            <p class="text-xs text-neutral-400">None.</p>
+                        @endforelse
+                    </div>
+                </div>
+            @endif
+        </x-card>
+    @endif
 
     <form method="POST" action="{{ route('teacher.gradebook.scores.store') }}">
         @csrf

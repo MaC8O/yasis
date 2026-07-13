@@ -217,6 +217,8 @@ Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')
     Route::post('/gradebook/categories', [TeacherGradebookController::class, 'storeCategory'])->name('gradebook.categories.store');
     Route::delete('/gradebook/categories/{assessmentCategory}', [TeacherGradebookController::class, 'destroyCategory'])->name('gradebook.categories.destroy');
     Route::post('/gradebook/assessments', [TeacherGradebookController::class, 'storeAssessment'])->name('gradebook.assessments.store');
+    Route::get('/gradebook/assessments/{assessment}/scores-template', [TeacherGradebookController::class, 'scoresTemplate'])->name('gradebook.assessments.scores-template');
+    Route::post('/gradebook/assessments/{assessment}/scores-import', [TeacherGradebookController::class, 'importScores'])->name('gradebook.assessments.scores-import');
     Route::post('/gradebook/scores', [TeacherGradebookController::class, 'saveScores'])->name('gradebook.scores.store');
     Route::post('/gradebook/comments', [TeacherGradebookController::class, 'saveComment'])->name('gradebook.comments.store');
     Route::post('/gradebook/change-requests', [GradeChangeRequestController::class, 'store'])->name('gradebook.change-requests.store');

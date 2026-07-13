@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
+use App\Imports\AssessmentScoresImport;
 use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\AssessmentCategory;
@@ -11,11 +12,14 @@ use App\Models\GradeChangeRequest;
 use App\Models\ReportCardComment;
 use App\Models\Section;
 use App\Models\StaffProfile;
+use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Term;
 use App\Services\AuditService;
 use App\Services\GradeService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class TeacherGradebookController extends Controller
 {
@@ -141,6 +145,128 @@ class TeacherGradebookController extends Controller
         $audit->log($request->user(), 'Created assessment', 'Assessment', $assessment->id);
 
         return back()->with('status', "Assessment \"{$assessment->name}\" created.");
+    }
+
+    /**
+     * A teacher may only touch an assessment that lives in a category for a section + subject
+     * they are actually assigned to teach — the same scoping the gradebook index enforces.
+     */
+    protected function assertTeachesAssessment(Request $request, Assessment $assessment): AssessmentCategory
+    {
+        $category = $assessment->category;
+        abort_if($category === null, 404);
+
+        $teacher = $request->user()->staffProfile;
+        $teaches = $this->assignments($teacher)
+            ->contains(fn ($a) => $a->section_id === $category->section_id && $a->subject_id === $category->subject_id);
+
+        abort_unless($teaches, 403, 'You are not assigned to this class and subject.');
+
+        return $category;
+    }
+
+    /**
+     * Download a per-assessment score sheet pre-filled with the section roster so the teacher
+     * only has to type the score column, then re-upload it via importScores().
+     */
+    public function scoresTemplate(Request $request, Assessment $assessment): Response
+    {
+        $category = $this->assertTeachesAssessment($request, $assessment);
+        $section = Section::findOrFail($category->section_id);
+
+        $roster = $section->enrollments()->with('student')->where('status', 'Active')->get()->pluck('student');
+
+        $csv = "student_id_number,name,score\n";
+        foreach ($roster as $student) {
+            $name = str_replace('"', '""', (string) $student->name);
+            $csv .= "{$student->student_id_number},\"{$name}\",\n";
+        }
+
+        $filename = 'scores_'.\Illuminate\Support\Str::slug($assessment->name).'.csv';
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    /**
+     * Bulk-import scores for a single assessment from the filled-in template. Rows are matched to
+     * the roster by student_id_number; a row is reported and skipped (never partially saved) when
+     * the student is not in this section, the score is blank, non-numeric, negative, or above the
+     * assessment's max score. Mirrors the Registrar's student importer for a familiar workflow.
+     */
+    public function importScores(Request $request, Assessment $assessment, AuditService $audit)
+    {
+        $category = $this->assertTeachesAssessment($request, $assessment);
+        $this->assertTermUnlocked($category->term);
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv,txt', 'max:10240'],
+        ]);
+
+        $teacher = $request->user()->staffProfile;
+        $section = Section::findOrFail($category->section_id);
+        $rosterIds = $section->enrollments()->where('status', 'Active')->pluck('student_id');
+
+        $import = new AssessmentScoresImport;
+        Excel::import($import, $request->file('file'));
+
+        $updated = [];
+        $skipped = [];
+        $errors = [];
+
+        foreach ($import->rows as $i => $row) {
+            $rowNum = $i + 2;
+
+            $idNumber = trim((string) ($row['student_id_number'] ?? ''));
+            $rawScore = trim((string) ($row['score'] ?? ''));
+
+            if ($idNumber === '') {
+                $errors[] = "Row {$rowNum}: missing student_id_number.";
+
+                continue;
+            }
+
+            if ($rawScore === '') {
+                $skipped[] = "Row {$rowNum}: {$idNumber} — blank score, skipped.";
+
+                continue;
+            }
+
+            if (! is_numeric($rawScore)) {
+                $errors[] = "Row {$rowNum}: {$idNumber} — score \"{$rawScore}\" is not a number.";
+
+                continue;
+            }
+
+            $score = (float) $rawScore;
+            if ($score < 0 || $score > (float) $assessment->max_score) {
+                $errors[] = "Row {$rowNum}: {$idNumber} — score {$rawScore} is outside 0–{$assessment->max_score}.";
+
+                continue;
+            }
+
+            $student = Student::where('student_id_number', $idNumber)->first();
+            if (! $student || ! $rosterIds->contains($student->id)) {
+                $errors[] = "Row {$rowNum}: {$idNumber} is not enrolled in {$section->name} — skipped.";
+
+                continue;
+            }
+
+            Grade::updateOrCreate(
+                ['assessment_id' => $assessment->id, 'student_id' => $student->id],
+                ['score' => $score, 'entered_by' => $teacher->id]
+            );
+
+            $updated[] = "Row {$rowNum}: {$idNumber} — {$score}";
+        }
+
+        $audit->log($request->user(), "Bulk-imported scores for assessment \"{$assessment->name}\" (".count($updated).' saved)', 'Assessment', $assessment->id);
+
+        return back()
+            ->with('status', count($updated).' score(s) imported, '.count($skipped).' skipped, '.count($errors).' error(s).')
+            ->with('scoreImportResults', ['assessment' => $assessment->name, 'updated' => $updated, 'skipped' => $skipped, 'errors' => $errors]);
     }
 
     public function saveScores(Request $request, AuditService $audit)
