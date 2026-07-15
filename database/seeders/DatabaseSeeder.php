@@ -141,6 +141,35 @@ class DatabaseSeeder extends Seeder
             );
         }
 
+        // Portal-login staff onboarded through the HR Office "Add Staff" flow (role restricted to
+        // hrAssignableRoles() — no Admin/Principal), so HR-created logins are testable end-to-end.
+        // The Active one is loginable with the demo password; the Pending one mirrors a freshly
+        // invited account that has not completed its setup link yet, for testing the invite/activation state.
+        $hrOnboardedStaff = [
+            ['role' => 'teacher', 'role_type' => 'Teacher', 'staff_id_number' => 'USR-0201', 'name' => 'Naw Eh Ler', 'email' => 'hr.teacher@yasis.edu', 'job_title' => 'Teacher', 'department' => 'High School', 'status' => 'Active'],
+            ['role' => 'treasurer', 'role_type' => 'Treasurer', 'staff_id_number' => 'USR-0202', 'name' => 'Ko Ko Naing', 'email' => 'hr.treasurer@yasis.edu', 'job_title' => 'Assistant Treasurer', 'department' => 'Finance', 'status' => 'Pending'],
+        ];
+        foreach ($hrOnboardedStaff as $demo) {
+            $user = User::firstOrCreate(
+                ['email' => $demo['email']],
+                ['name' => $demo['name'], 'password' => Hash::make('password'), 'status' => $demo['status']]
+            );
+            $user->syncRoles([$demo['role']]);
+
+            StaffProfile::firstOrCreate(
+                ['id' => $user->id],
+                [
+                    'staff_id_number' => $demo['staff_id_number'],
+                    'role_type' => $demo['role_type'],
+                    'job_title' => $demo['job_title'],
+                    'department_id' => Department::where('name', $demo['department'])->first()->id,
+                    'status' => 'Active',
+                    'joined_date' => '2026-06-01',
+                    'phone' => '+95 900-000-000',
+                ]
+            );
+        }
+
         // Non-portal auxiliary staff — not ISMS users, but tracked as personnel records by HR.
         $auxiliaryStaff = [
             ['name' => 'Kyaw Zin Oo', 'job_title' => 'Bus Driver', 'department' => 'Transportation', 'staff_id_number' => 'S008'],
