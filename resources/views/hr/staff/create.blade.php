@@ -36,7 +36,7 @@
 
             <label class="flex items-center gap-2 text-sm font-semibold">
                 <input type="checkbox" name="portal_access" value="1" x-model="portal">
-                Needs an ISMS portal login (Admin, Principal, VP Academic, Registrar, Teacher, Treasurer, or HR Office)
+                Needs an ISMS portal login (VP Academic, Registrar, Teacher, Treasurer, or HR Office). Admin and Principal accounts are created by an Administrator only.
             </label>
 
             <div x-show="portal" class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-neutral-100 pt-4">

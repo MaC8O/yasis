@@ -11,14 +11,15 @@ use App\Models\Section;
 use App\Models\Student;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\UserProvisioningService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
 class StudentImportController extends Controller
 {
+    public function __construct(private UserProvisioningService $provisioning) {}
+
     public function index()
     {
         return view('registrar.students.import');
@@ -116,13 +117,17 @@ class StudentImportController extends Controller
                 if ($guardianUser) {
                     $guardian = Guardian::where('user_id', $guardianUser->id)->first();
                 } else {
-                    $guardianUser = User::create([
-                        'name' => trim((string) ($row['guardian_name'] ?? '')) ?: $guardianEmail,
-                        'email' => $guardianEmail,
-                        'password' => Hash::make(Str::password(12)),
-                        'status' => 'Pending',
-                    ]);
-                    $guardianUser->assignRole('guardian');
+                    // Bulk import: create the account without an invite e-mail (the Registrar
+                    // re-sends invites from the guardian list); audit is the batch line below.
+                    $guardianUser = $this->provisioning->provisionAccount(
+                        [
+                            'name' => trim((string) ($row['guardian_name'] ?? '')) ?: $guardianEmail,
+                            'email' => $guardianEmail,
+                        ],
+                        'guardian',
+                        invite: false,
+                        auditAction: null,
+                    );
                     $guardian = Guardian::create([
                         'user_id' => $guardianUser->id,
                         'relationship' => trim((string) ($row['guardian_relationship'] ?? '')) ?: null,

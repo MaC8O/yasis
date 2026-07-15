@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Department;
-use App\Models\StaffProfile;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\UserProvisioningService;
 use App\Support\SecurityPolicy;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -19,11 +19,7 @@ use Spatie\Permission\Models\Role;
 
 class UserManagementController extends Controller
 {
-    protected array $staffRoles = ['admin', 'principal', 'vp_academic', 'registrar', 'teacher', 'treasurer', 'hr_office'];
-    protected array $roleTypeMap = [
-        'admin' => 'Admin', 'principal' => 'Principal', 'vp_academic' => 'VP_Academic',
-        'registrar' => 'Registrar', 'teacher' => 'Teacher', 'treasurer' => 'Treasurer', 'hr_office' => 'HR_Office',
-    ];
+    public function __construct(private UserProvisioningService $provisioning) {}
 
     public function index(Request $request)
     {
@@ -57,8 +53,10 @@ class UserManagementController extends Controller
         ]);
     }
 
-    public function store(Request $request, AuditService $audit)
+    public function store(Request $request)
     {
+        $staffRoles = $this->provisioning->staffRoles();
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
@@ -67,9 +65,9 @@ class UserManagementController extends Controller
             'gender' => ['nullable', 'in:Male,Female'],
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:255'],
-            'staff_id_number' => ['nullable', 'required_if:role,'.implode(',', $this->staffRoles), 'string', 'max:30', 'unique:staff_profiles,staff_id_number'],
+            'staff_id_number' => ['nullable', 'required_if:role,'.implode(',', $staffRoles), 'string', 'max:30', 'unique:staff_profiles,staff_id_number'],
             'department_id' => ['nullable', 'exists:departments,id'],
-            'joined_date' => ['nullable', 'required_if:role,'.implode(',', $this->staffRoles), 'date'],
+            'joined_date' => ['nullable', 'required_if:role,'.implode(',', $staffRoles), 'date'],
             'password' => ['nullable', 'confirmed', SecurityPolicy::passwordRule()],
         ]);
 
@@ -77,33 +75,25 @@ class UserManagementController extends Controller
         // without one it stays Pending until the emailed setup link is completed.
         $hasInitialPassword = ! empty($data['password']);
 
-        $user = User::create([
+        $attributes = [
             'name' => $data['name'],
             'email' => $data['email'],
-            'password' => Hash::make($hasInitialPassword ? $data['password'] : Str::password(12)),
-            'status' => $hasInitialPassword ? 'Active' : 'Pending',
-            // When the policy requires it, an admin-set initial password must be changed on first login.
-            'must_reset_password' => $hasInitialPassword && SecurityPolicy::forceResetNewAccounts(),
             'date_of_birth' => $data['date_of_birth'] ?? null,
             'gender' => $data['gender'] ?? null,
             'phone' => $data['phone'] ?? null,
             'address' => $data['address'] ?? null,
-        ]);
-        $user->assignRole($data['role']);
+        ];
 
-        if (in_array($data['role'], $this->staffRoles)) {
-            StaffProfile::create([
-                'id' => $user->id,
+        if (in_array($data['role'], $staffRoles, true)) {
+            $user = $this->provisioning->provisionStaff($attributes, $data['role'], [
                 'staff_id_number' => $data['staff_id_number'],
-                'role_type' => $this->roleTypeMap[$data['role']],
                 'department_id' => $data['department_id'] ?? null,
-                'status' => 'Active',
                 'joined_date' => $data['joined_date'],
                 'phone' => $data['phone'] ?? null,
-            ]);
+            ], $request->user(), $data['password'] ?? null);
+        } else {
+            $user = $this->provisioning->provisionAccount($attributes, $data['role'], $request->user(), $data['password'] ?? null);
         }
-
-        $audit->log($request->user(), 'Created user', 'User', $user->id);
 
         if ($hasInitialPassword) {
             return redirect()->route('admin.users.index')

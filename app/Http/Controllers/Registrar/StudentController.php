@@ -9,14 +9,14 @@ use App\Models\Enrollment;
 use App\Models\Guardian;
 use App\Models\Section;
 use App\Models\Student;
-use App\Models\User;
 use App\Services\AuditService;
+use App\Services\UserProvisioningService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class StudentController extends Controller
 {
+    public function __construct(private UserProvisioningService $provisioning) {}
+
     public function index(Request $request)
     {
         $activeYear = \App\Models\AcademicYear::where('is_active', true)->first();
@@ -96,13 +96,13 @@ class StudentController extends Controller
         if ($data['guardian_mode'] === 'existing') {
             $guardian = Guardian::findOrFail($data['guardian_id']);
         } elseif ($data['guardian_mode'] === 'new') {
-            $guardianUser = User::create([
-                'name' => $data['guardian_name'],
-                'email' => $data['guardian_email'],
-                'password' => Hash::make(Str::password(12)),
-                'status' => 'Pending',
-            ]);
-            $guardianUser->assignRole('guardian');
+            // Same provisioning path as the dedicated guardian screen: a Pending account
+            // with a portal setup invite (audit is covered by the student's own log line).
+            $guardianUser = $this->provisioning->provisionAccount(
+                ['name' => $data['guardian_name'], 'email' => $data['guardian_email']],
+                'guardian',
+                auditAction: null,
+            );
             $guardian = Guardian::create([
                 'user_id' => $guardianUser->id,
                 'relationship' => $data['guardian_relationship'] ?? null,
