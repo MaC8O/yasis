@@ -296,11 +296,12 @@ class DatabaseSeeder extends Seeder
         }
         $math9 = Subject::where('code', 'MATH9')->first();
 
-        TeachingAssignment::firstOrCreate([
-            'section_id' => $grade9A->id,
-            'subject_id' => $math9->id,
-            'teacher_id' => $teacherProfile->id,
-        ]);
+        // Match on the (section_id, subject_id) unique key only; teacher_id is an attribute so
+        // a re-seed updates rather than double-inserts.
+        TeachingAssignment::firstOrCreate(
+            ['section_id' => $grade9A->id, 'subject_id' => $math9->id],
+            ['teacher_id' => $teacherProfile->id],
+        );
 
         // Leave balances, current calendar year — the demo Teacher plus a couple of auxiliary staff.
         $annual = LeaveType::where('name', 'Annual')->first();
@@ -396,7 +397,7 @@ class DatabaseSeeder extends Seeder
 
         // English teaching assignment + a full weighted gradebook (Math + English) for childA in Term 1.
         $english9 = Subject::where('code', 'ENG9')->first();
-        TeachingAssignment::firstOrCreate(['section_id' => $grade9A->id, 'subject_id' => $english9->id, 'teacher_id' => $teacherProfile->id]);
+        TeachingAssignment::firstOrCreate(['section_id' => $grade9A->id, 'subject_id' => $english9->id], ['teacher_id' => $teacherProfile->id]);
 
         foreach ([$math9->id => 'Mathematics', $english9->id => 'English'] as $subjectId => $label) {
             $quiz = AssessmentCategory::firstOrCreate(
