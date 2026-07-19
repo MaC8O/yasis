@@ -71,8 +71,11 @@ class GuardianController extends Controller
         return redirect()->route('registrar.guardians.index')->with('status', 'Guardian added and portal invite sent.');
     }
 
-    public function show(Guardian $guardian)
+    public function show(Request $request, Guardian $guardian, AuditService $audit)
     {
+        // §3.8 access logging: record who opened an individual guardian's contact record (PII).
+        $audit->log($request->user(), 'Viewed guardian record', 'Guardian', $guardian->id);
+
         return view('registrar.guardians.show', [
             'guardian' => $guardian->load(['user', 'students']),
         ]);

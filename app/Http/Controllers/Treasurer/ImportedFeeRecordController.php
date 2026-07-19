@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Treasurer;
 use App\Http\Controllers\Controller;
 use App\Models\ImportedFeeRecord;
 use App\Models\Student;
+use App\Services\AuditService;
 use App\Services\FeeSummaryService;
 use Illuminate\Http\Request;
 
@@ -35,8 +36,11 @@ class ImportedFeeRecordController extends Controller
         ]);
     }
 
-    public function show(Student $student)
+    public function show(Request $request, Student $student, AuditService $audit)
     {
+        // §3.8 access logging: record who opened a student's financial record.
+        $audit->log($request->user(), 'Viewed student financial record', 'Student', $student->id);
+
         return view('treasurer.records.show', [
             'student' => $student,
             'records' => ImportedFeeRecord::where('student_id', $student->id)->with('importBatch')->orderByDesc('txn_date')->get(),
