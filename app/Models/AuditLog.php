@@ -8,11 +8,11 @@ class AuditLog extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['user_id', 'role', 'action', 'entity_type', 'entity_id', 'created_at'];
+    protected $fillable = ['user_id', 'role', 'ip_address', 'user_agent', 'action', 'entity_type', 'entity_id', 'details', 'created_at'];
 
     protected function casts(): array
     {
-        return ['created_at' => 'datetime'];
+        return ['created_at' => 'datetime', 'details' => 'array'];
     }
 
     public function user()
