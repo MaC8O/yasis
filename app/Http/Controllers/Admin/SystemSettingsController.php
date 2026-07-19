@@ -70,6 +70,7 @@ class SystemSettingsController extends Controller
                     'session_timeout_minutes' => ['type' => 'number', 'label' => 'Session timeout (minutes)', 'default' => '30', 'help' => 'Idle users are signed out after this many minutes.'],
                     'lockout_threshold' => ['type' => 'number', 'label' => 'Failed logins before lockout', 'default' => '5'],
                     'lockout_minutes' => ['type' => 'number', 'label' => 'Lockout duration (minutes)', 'default' => '15'],
+                    'login_throttle_ip_per_min' => ['type' => 'number', 'label' => 'Failed logins per minute per IP', 'default' => '20', 'help' => 'Blocks password-spraying across many accounts from one IP. Counts failures only, so many staff signing in from one campus IP are never throttled.'],
                     'password_min_length' => ['type' => 'number', 'label' => 'Minimum password length', 'default' => '8'],
                     'password_require_mixed' => ['type' => 'bool', 'label' => 'Require upper, lower & number', 'default' => '1'],
                     'force_reset_new_accounts' => ['type' => 'bool', 'label' => 'Force password reset on first login', 'default' => '1'],
