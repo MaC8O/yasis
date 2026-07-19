@@ -8,6 +8,7 @@ use App\Services\AuditService;
 use App\Support\SecurityPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -30,6 +31,10 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
+        // Per-IP defence-in-depth against password-spraying: reject before touching the
+        // database once this network has produced too many failures in the window.
+        $this->ensureIpNotThrottled($request);
+
         $user = User::where('email', $credentials['email'])->first();
 
         if ($user && $user->isLocked()) {
@@ -40,6 +45,9 @@ class AuthController extends Controller
         }
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            // Count the failure against this IP (60s window). Only failures are counted,
+            // so legitimate sign-ins from a shared campus IP are never throttled.
+            RateLimiter::hit($this->ipThrottleKey($request), 60);
             $this->registerFailedAttempt($user, $audit);
 
             throw ValidationException::withMessages(['email' => self::GENERIC_ERROR]);
@@ -72,6 +80,29 @@ class AuthController extends Controller
         }
 
         return redirect()->intended($this->dashboardPathFor($user));
+    }
+
+    /** Rate-limiter bucket keyed to the caller's IP (independent of which account is targeted). */
+    protected function ipThrottleKey(Request $request): string
+    {
+        return 'login-ip:'.$request->ip();
+    }
+
+    /** Block the request when this IP has exceeded the per-minute failed-login budget. */
+    protected function ensureIpNotThrottled(Request $request): void
+    {
+        $key = $this->ipThrottleKey($request);
+
+        if (! RateLimiter::tooManyAttempts($key, SecurityPolicy::loginThrottlePerIp())) {
+            return;
+        }
+
+        $seconds = RateLimiter::availableIn($key);
+        $wait = $seconds >= 60 ? ceil($seconds / 60).' minute(s)' : $seconds.' second(s)';
+
+        throw ValidationException::withMessages([
+            'email' => "Too many failed sign-in attempts from this network. Try again in {$wait}.",
+        ]);
     }
 
     protected function registerFailedAttempt(?User $user, AuditService $audit): void

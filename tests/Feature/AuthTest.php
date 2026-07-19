@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -93,6 +94,35 @@ class AuthTest extends TestCase
 
         $response->assertSessionHasErrors('email');
         $this->assertGuest();
+    }
+
+    public function test_login_is_ip_throttled_against_password_spraying(): void
+    {
+        $this->seedRoles();
+        $this->makeStaff('teacher', 'Teacher', 'teacher@test.local');
+        SystemSetting::set('login_throttle_ip_per_min', '3');
+
+        // Spray: one failed attempt each across several different accounts — no single
+        // account reaches its own lockout threshold, but the IP accumulates failures.
+        for ($i = 0; $i < 3; $i++) {
+            $this->from('/login')->post('/login', [
+                'email' => "victim{$i}@test.local",
+                'password' => 'wrong-password',
+            ]);
+        }
+
+        // Even a correct credential from this IP is now refused by the per-IP gate.
+        $response = $this->from('/login')->post('/login', [
+            'email' => 'teacher@test.local',
+            'password' => 'password',
+        ]);
+
+        $response->assertSessionHasErrors('email');
+        $this->assertGuest();
+        $this->assertStringContainsString(
+            'Too many failed sign-in attempts from this network',
+            session('errors')->first('email')
+        );
     }
 
     public function test_successful_login_resets_the_failed_attempt_counter_and_records_last_login(): void
