@@ -11,8 +11,10 @@ use Tests\TestCase;
 
 /**
  * §6.3 Admin Teacher Class Assignment: technical setup/override of homeroom +
- * subject-teacher assignments. UQ(section, subject) — a duplicate assignment
- * is refused, never silently overwritten (and never a raw 500).
+ * subject-teacher assignments. The admin editor is a section-focused upsert via
+ * teacher-assignments/set — one action assigns, reassigns, or clears the teacher
+ * for a section+subject. (The registrar and VP paths instead refuse a duplicate
+ * assignment; covered below.)
  */
 class AdminTeacherAssignmentTest extends TestCase
 {
@@ -36,7 +38,7 @@ class AdminTeacherAssignmentTest extends TestCase
     {
         [$admin, $teacherA, , $section, $subject] = $this->setUpStructure();
 
-        $this->actingAs($admin->user)->post('/admin/teacher-assignments', [
+        $this->actingAs($admin->user)->post('/admin/teacher-assignments/set', [
             'section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => $teacherA->id,
         ])->assertSessionHasNoErrors();
 
@@ -46,17 +48,20 @@ class AdminTeacherAssignmentTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'Assigned teacher to section/subject']);
     }
 
-    public function test_assigning_the_same_subject_twice_to_one_section_is_refused(): void
+    public function test_admin_setting_an_already_assigned_subject_reassigns_it(): void
     {
         [$admin, $teacherA, $teacherB, $section, $subject] = $this->setUpStructure();
         TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => $teacherA->id]);
 
-        $this->actingAs($admin->user)->post('/admin/teacher-assignments', [
+        // The admin editor upserts: re-setting the subject with a different teacher reassigns
+        // it in place (no duplicate, no error) — unlike the registrar/VP paths, which refuse.
+        $this->actingAs($admin->user)->post('/admin/teacher-assignments/set', [
             'section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => $teacherB->id,
-        ])->assertSessionHasErrors('subject_id');
+        ])->assertSessionHasNoErrors();
 
         $this->assertSame(1, TeachingAssignment::count());
-        $this->assertSame($teacherA->id, TeachingAssignment::first()->teacher_id);
+        $this->assertSame($teacherB->id, TeachingAssignment::first()->teacher_id);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'Reassigned teacher for section/subject']);
     }
 
     public function test_the_registrar_and_vp_assignment_paths_also_refuse_duplicates(): void
@@ -76,18 +81,18 @@ class AdminTeacherAssignmentTest extends TestCase
         $this->assertSame(1, TeachingAssignment::count());
     }
 
-    public function test_admin_can_reassign_a_teacher_on_an_existing_row(): void
+    public function test_admin_can_clear_a_subject_assignment(): void
     {
-        [$admin, $teacherA, $teacherB, $section, $subject] = $this->setUpStructure();
-        $assignment = TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => $teacherA->id]);
+        [$admin, $teacherA, , $section, $subject] = $this->setUpStructure();
+        TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => $teacherA->id]);
 
-        $this->actingAs($admin->user)->put("/admin/teacher-assignments/{$assignment->id}", [
-            'teacher_id' => $teacherB->id,
+        // Submitting the subject row with no teacher clears the assignment.
+        $this->actingAs($admin->user)->post('/admin/teacher-assignments/set', [
+            'section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => '',
         ])->assertSessionHasNoErrors();
 
-        $this->assertSame($teacherB->id, $assignment->fresh()->teacher_id);
-        $this->assertSame(1, TeachingAssignment::count());
-        $this->assertDatabaseHas('audit_logs', ['action' => 'Reassigned teacher for section/subject']);
+        $this->assertSame(0, TeachingAssignment::count());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'Removed teaching assignment']);
     }
 
     public function test_homeroom_override_requires_a_teacher(): void
@@ -122,7 +127,7 @@ class AdminTeacherAssignmentTest extends TestCase
     {
         [, $teacherA, , $section, $subject] = $this->setUpStructure();
 
-        $this->actingAs($teacherA->user)->post('/admin/teacher-assignments', [
+        $this->actingAs($teacherA->user)->post('/admin/teacher-assignments/set', [
             'section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => $teacherA->id,
         ])->assertForbidden();
     }
