@@ -141,6 +141,35 @@ class DatabaseSeeder extends Seeder
             );
         }
 
+        // Portal-login staff onboarded through the HR Office "Add Staff" flow (role restricted to
+        // hrAssignableRoles() — no Admin/Principal), so HR-created logins are testable end-to-end.
+        // The Active one is loginable with the demo password; the Pending one mirrors a freshly
+        // invited account that has not completed its setup link yet, for testing the invite/activation state.
+        $hrOnboardedStaff = [
+            ['role' => 'teacher', 'role_type' => 'Teacher', 'staff_id_number' => 'USR-0201', 'name' => 'Naw Eh Ler', 'email' => 'hr.teacher@yasis.edu', 'job_title' => 'Teacher', 'department' => 'High School', 'status' => 'Active'],
+            ['role' => 'treasurer', 'role_type' => 'Treasurer', 'staff_id_number' => 'USR-0202', 'name' => 'Ko Ko Naing', 'email' => 'hr.treasurer@yasis.edu', 'job_title' => 'Assistant Treasurer', 'department' => 'Finance', 'status' => 'Pending'],
+        ];
+        foreach ($hrOnboardedStaff as $demo) {
+            $user = User::firstOrCreate(
+                ['email' => $demo['email']],
+                ['name' => $demo['name'], 'password' => Hash::make('password'), 'status' => $demo['status']]
+            );
+            $user->syncRoles([$demo['role']]);
+
+            StaffProfile::firstOrCreate(
+                ['id' => $user->id],
+                [
+                    'staff_id_number' => $demo['staff_id_number'],
+                    'role_type' => $demo['role_type'],
+                    'job_title' => $demo['job_title'],
+                    'department_id' => Department::where('name', $demo['department'])->first()->id,
+                    'status' => 'Active',
+                    'joined_date' => '2026-06-01',
+                    'phone' => '+95 900-000-000',
+                ]
+            );
+        }
+
         // Non-portal auxiliary staff — not ISMS users, but tracked as personnel records by HR.
         $auxiliaryStaff = [
             ['name' => 'Kyaw Zin Oo', 'job_title' => 'Bus Driver', 'department' => 'Transportation', 'staff_id_number' => 'S008'],
@@ -267,11 +296,12 @@ class DatabaseSeeder extends Seeder
         }
         $math9 = Subject::where('code', 'MATH9')->first();
 
-        TeachingAssignment::firstOrCreate([
-            'section_id' => $grade9A->id,
-            'subject_id' => $math9->id,
-            'teacher_id' => $teacherProfile->id,
-        ]);
+        // Match on the (section_id, subject_id) unique key only; teacher_id is an attribute so
+        // a re-seed updates rather than double-inserts.
+        TeachingAssignment::firstOrCreate(
+            ['section_id' => $grade9A->id, 'subject_id' => $math9->id],
+            ['teacher_id' => $teacherProfile->id],
+        );
 
         // Leave balances, current calendar year — the demo Teacher plus a couple of auxiliary staff.
         $annual = LeaveType::where('name', 'Annual')->first();
@@ -367,7 +397,7 @@ class DatabaseSeeder extends Seeder
 
         // English teaching assignment + a full weighted gradebook (Math + English) for childA in Term 1.
         $english9 = Subject::where('code', 'ENG9')->first();
-        TeachingAssignment::firstOrCreate(['section_id' => $grade9A->id, 'subject_id' => $english9->id, 'teacher_id' => $teacherProfile->id]);
+        TeachingAssignment::firstOrCreate(['section_id' => $grade9A->id, 'subject_id' => $english9->id], ['teacher_id' => $teacherProfile->id]);
 
         foreach ([$math9->id => 'Mathematics', $english9->id => 'English'] as $subjectId => $label) {
             $quiz = AssessmentCategory::firstOrCreate(

@@ -8,21 +8,16 @@ use App\Models\Department;
 use App\Models\StaffProfile;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\UserProvisioningService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
 class UserImportController extends Controller
 {
-    protected array $staffRoles = ['admin', 'principal', 'vp_academic', 'registrar', 'teacher', 'treasurer', 'hr_office'];
-    protected array $roleTypeMap = [
-        'admin' => 'Admin', 'principal' => 'Principal', 'vp_academic' => 'VP_Academic',
-        'registrar' => 'Registrar', 'teacher' => 'Teacher', 'treasurer' => 'Treasurer', 'hr_office' => 'HR_Office',
-    ];
-    protected array $validRoles = ['admin', 'principal', 'vp_academic', 'registrar', 'teacher', 'treasurer', 'hr_office', 'guardian', 'student'];
+    public function __construct(private UserProvisioningService $provisioning) {}
 
     public function index()
     {
@@ -50,6 +45,9 @@ class UserImportController extends Controller
         Excel::import($import, $request->file('file'));
         $rows = $import->rows;
 
+        $staffRoles = $this->provisioning->staffRoles();
+        $validRoles = array_merge($staffRoles, ['guardian', 'student']);
+
         $created = [];
         $skipped = [];
         $errors = [];
@@ -73,7 +71,7 @@ class UserImportController extends Controller
                 continue;
             }
 
-            if (! in_array($role, $this->validRoles, true)) {
+            if (! in_array($role, $validRoles, true)) {
                 $errors[] = "Row {$rowNum}: role \"{$role}\" is not one of the 9 system roles.";
 
                 continue;
@@ -85,7 +83,7 @@ class UserImportController extends Controller
                 continue;
             }
 
-            $isStaff = in_array($role, $this->staffRoles, true);
+            $isStaff = in_array($role, $staffRoles, true);
             $staffIdNumber = trim((string) ($row['staff_id_number'] ?? ''));
 
             if ($isStaff && $staffIdNumber === '') {
@@ -110,28 +108,26 @@ class UserImportController extends Controller
                 continue;
             }
 
-            $user = User::create([
+            $attributes = [
                 'name' => $name,
                 'email' => $email,
-                'password' => Hash::make(Str::password(12)),
-                'status' => 'Pending',
                 'date_of_birth' => trim((string) ($row['date_of_birth'] ?? '')) ?: null,
                 'gender' => trim((string) ($row['gender'] ?? '')) ?: null,
                 'phone' => trim((string) ($row['phone'] ?? '')) ?: null,
                 'address' => trim((string) ($row['address'] ?? '')) ?: null,
-            ]);
-            $user->assignRole($role);
+            ];
 
+            // The invite e-mail is sent per-row below so a single send failure can be
+            // recorded without aborting the batch; the audit is a single line at the end.
             if ($isStaff) {
-                StaffProfile::create([
-                    'id' => $user->id,
+                $user = $this->provisioning->provisionStaff($attributes, $role, [
                     'staff_id_number' => $staffIdNumber,
-                    'role_type' => $this->roleTypeMap[$role],
                     'department_id' => $department?->id,
-                    'status' => 'Active',
                     'joined_date' => trim((string) ($row['joined_date'] ?? '')) ?: now()->toDateString(),
                     'phone' => trim((string) ($row['phone'] ?? '')) ?: null,
-                ]);
+                ], invite: false, auditAction: null);
+            } else {
+                $user = $this->provisioning->provisionAccount($attributes, $role, invite: false, auditAction: null);
             }
 
             // A failed login-setup email must not abort the rest of the import —
