@@ -36,8 +36,8 @@ class UserActivationAndPhotoTest extends TestCase
         $this->post('/reset-password', [
             'token' => $token,
             'email' => 'new.teacher@test.local',
-            'password' => 'chosen-password1',
-            'password_confirmation' => 'chosen-password1',
+            'password' => 'Chosen-password1',
+            'password_confirmation' => 'Chosen-password1',
         ])->assertRedirect('/login');
 
         $user->refresh();
@@ -45,7 +45,7 @@ class UserActivationAndPhotoTest extends TestCase
         $this->assertNotNull($user->email_verified_at);
 
         // And the confirmed account can actually sign in.
-        $this->post('/login', ['email' => 'new.teacher@test.local', 'password' => 'chosen-password1'])
+        $this->post('/login', ['email' => 'new.teacher@test.local', 'password' => 'Chosen-password1'])
             ->assertRedirect();
         $this->assertAuthenticated();
     }
@@ -58,14 +58,14 @@ class UserActivationAndPhotoTest extends TestCase
         $this->actingAs($admin->user)->post('/admin/users', [
             'name' => 'Front Desk', 'email' => 'frontdesk@test.local', 'role' => 'registrar',
             'staff_id_number' => 'USR-0900', 'joined_date' => now()->toDateString(),
-            'password' => 'welcome-2026!', 'password_confirmation' => 'welcome-2026!',
+            'password' => 'Welcome-2026!', 'password_confirmation' => 'Welcome-2026!',
         ])->assertSessionHasNoErrors();
 
         $created = User::where('email', 'frontdesk@test.local')->firstOrFail();
         $this->assertSame('Active', $created->status);
 
         $this->post('/logout');
-        $this->post('/login', ['email' => 'frontdesk@test.local', 'password' => 'welcome-2026!'])
+        $this->post('/login', ['email' => 'frontdesk@test.local', 'password' => 'Welcome-2026!'])
             ->assertRedirect();
         $this->assertAuthenticated();
     }
@@ -91,7 +91,7 @@ class UserActivationAndPhotoTest extends TestCase
         $this->actingAs($admin->user)->post('/admin/users', [
             'name' => 'Typo User', 'email' => 'typo@test.local', 'role' => 'teacher',
             'staff_id_number' => 'USR-0902', 'joined_date' => now()->toDateString(),
-            'password' => 'welcome-2026!', 'password_confirmation' => 'welcome-2027!',
+            'password' => 'Welcome-2026!', 'password_confirmation' => 'Welcome-2027!',
         ])->assertSessionHasErrors('password');
 
         $this->assertDatabaseMissing('users', ['email' => 'typo@test.local']);
