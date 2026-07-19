@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Config;
 
 class AuditLog extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['user_id', 'role', 'action', 'entity_type', 'entity_id', 'created_at'];
+    protected $fillable = ['user_id', 'role', 'action', 'entity_type', 'entity_id', 'created_at', 'prev_hash', 'hash'];
 
     protected function casts(): array
     {
@@ -18,6 +19,27 @@ class AuditLog extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The keyed (HMAC) fingerprint of this row's immutable content, chained to $prevHash.
+     * Keyed with the app secret so an insider with DB write access but not the key cannot
+     * recompute a forged chain. Covers who/what/when/entity — the non-repudiation core.
+     * (IP/user-agent/details, added by the enrichment migration, are a follow-up once merged.)
+     */
+    public function computeHash(?string $prevHash): string
+    {
+        $canonical = implode("\x1f", [
+            $this->user_id,
+            $this->role,
+            $this->action,
+            $this->entity_type,
+            $this->entity_id ?? '',
+            $this->created_at?->format('Y-m-d H:i:s') ?? '',
+            $prevHash ?? '',
+        ]);
+
+        return hash_hmac('sha256', $canonical, Config::get('app.key'));
     }
 
     /**

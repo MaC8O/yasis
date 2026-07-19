@@ -28,6 +28,8 @@
             <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Filter</button>
             <a href="{{ route('admin.audit-logs.export', request()->query()) }}"
                class="border border-[#1F573D] text-[#1F573D] font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-[#1F573D]/5">Export CSV</a>
+            <a href="{{ route('admin.audit-logs.verify') }}"
+               class="border border-[#1F573D] text-[#1F573D] font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-[#1F573D]/5">Verify integrity</a>
         </form>
 
         <div class="overflow-x-auto">

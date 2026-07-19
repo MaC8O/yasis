@@ -136,6 +136,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
     Route::get('/audit-logs/export', [AuditLogController::class, 'export'])->name('audit-logs.export');
+    Route::get('/audit-logs/verify', [AuditLogController::class, 'verify'])->name('audit-logs.verify');
 
     Route::get('/settings', [SystemSettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings', [SystemSettingsController::class, 'update'])->name('settings.update');
