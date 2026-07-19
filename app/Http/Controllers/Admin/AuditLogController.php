@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Services\AuditIntegrityService;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -17,6 +18,18 @@ class AuditLogController extends Controller
             'filters' => $request->only(['search', 'from', 'to', 'category']),
             'categories' => AuditLog::CATEGORIES,
         ]);
+    }
+
+    /** §3.8: recompute the tamper-evidence hash chain and report whether it is intact. */
+    public function verify(AuditIntegrityService $integrity)
+    {
+        $result = $integrity->verify();
+
+        if ($result['ok']) {
+            return back()->with('status', "Audit trail integrity verified — {$result['checked']} hash-protected record(s), chain intact.");
+        }
+
+        return back()->withErrors(['audit' => "Audit trail integrity check FAILED — {$result['reason']}"]);
     }
 
     /** §6.6: export the filtered trail as CSV — read-only, same filters as the table. */
