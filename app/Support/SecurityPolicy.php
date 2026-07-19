@@ -25,6 +25,19 @@ class SecurityPolicy
         return max(1, (int) SystemSetting::get('lockout_minutes', '15'));
     }
 
+    /**
+     * Failed sign-in attempts allowed per minute from a single IP address before that
+     * IP is throttled. Account lockout ({@see lockoutThreshold()}) stops brute-forcing a
+     * single account; this stops password-spraying — one failure each across many
+     * accounts from one IP, which never trips any single account's lockout. Only failed
+     * attempts are counted, so successful logins (e.g. many staff behind one school NAT
+     * IP) are never throttled.
+     */
+    public static function loginThrottlePerIp(): int
+    {
+        return max(1, (int) SystemSetting::get('login_throttle_ip_per_min', '20'));
+    }
+
     /** Idle time before a signed-in user is automatically logged out (minutes). */
     public static function sessionTimeoutMinutes(): int
     {

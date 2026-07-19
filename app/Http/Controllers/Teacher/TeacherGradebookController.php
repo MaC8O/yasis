@@ -264,6 +264,7 @@ class TeacherGradebookController extends Controller
         $updated = [];
         $skipped = [];
         $errors = [];
+        $changes = [];
 
         foreach ($import->rows as $i => $row) {
             $rowNum = $i + 2;
@@ -303,6 +304,16 @@ class TeacherGradebookController extends Controller
                 continue;
             }
 
+            $existing = Grade::where('assessment_id', $assessment->id)->where('student_id', $student->id)->first();
+            if ($existing === null || (float) $existing->score !== $score) {
+                $changes[] = [
+                    'assessment_id' => $assessment->id,
+                    'student_id' => $student->id,
+                    'from' => $existing?->score,
+                    'to' => $score,
+                ];
+            }
+
             Grade::updateOrCreate(
                 ['assessment_id' => $assessment->id, 'student_id' => $student->id],
                 ['score' => $score, 'entered_by' => $teacher->id]
@@ -311,7 +322,7 @@ class TeacherGradebookController extends Controller
             $updated[] = "Row {$rowNum}: {$idNumber} — {$score}";
         }
 
-        $audit->log($request->user(), "Bulk-imported scores for assessment \"{$assessment->name}\" (".count($updated).' saved)', 'Assessment', $assessment->id);
+        $audit->log($request->user(), "Bulk-imported scores for assessment \"{$assessment->name}\" (".count($updated).' saved)', 'Assessment', $assessment->id, $changes ? ['changes' => $changes] : null);
 
         return back()
             ->with('status', count($updated).' score(s) imported, '.count($skipped).' skipped, '.count($errors).' error(s).')
@@ -332,11 +343,26 @@ class TeacherGradebookController extends Controller
 
         $teacher = $request->user()->staffProfile;
 
+        $changes = [];
         foreach ($data['scores'] ?? [] as $assessmentId => $studentScores) {
             foreach ($studentScores as $studentId => $score) {
                 if ($score === null || $score === '') {
                     continue;
                 }
+
+                $existing = Grade::where('assessment_id', $assessmentId)->where('student_id', $studentId)->first();
+
+                // Record only genuine value changes (a new grade, or a different score) so the
+                // audit detail reconstructs exactly what a teacher altered.
+                if ($existing === null || (float) $existing->score !== (float) $score) {
+                    $changes[] = [
+                        'assessment_id' => (int) $assessmentId,
+                        'student_id' => (int) $studentId,
+                        'from' => $existing?->score,
+                        'to' => (float) $score,
+                    ];
+                }
+
                 Grade::updateOrCreate(
                     ['assessment_id' => $assessmentId, 'student_id' => $studentId],
                     ['score' => $score, 'entered_by' => $teacher->id]
@@ -344,7 +370,7 @@ class TeacherGradebookController extends Controller
             }
         }
 
-        $audit->log($request->user(), 'Entered grades', 'Section', $data['section_id']);
+        $audit->log($request->user(), 'Entered grades', 'Section', $data['section_id'], $changes ? ['changes' => $changes] : null);
 
         return back()->with('status', 'Gradebook saved.');
     }

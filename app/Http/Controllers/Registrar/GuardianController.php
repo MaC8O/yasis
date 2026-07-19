@@ -5,17 +5,17 @@ namespace App\Http\Controllers\Registrar;
 use App\Http\Controllers\Controller;
 use App\Models\Guardian;
 use App\Models\Student;
-use App\Models\User;
 use App\Services\AuditService;
+use App\Services\UserProvisioningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class GuardianController extends Controller
 {
+    public function __construct(private UserProvisioningService $provisioning) {}
+
     public function index(Request $request)
     {
         $query = Guardian::query()->with(['user', 'students']);
@@ -46,13 +46,12 @@ class GuardianController extends Controller
             'student_id_number' => ['nullable', 'exists:students,student_id_number'],
         ]);
 
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make(Str::password(12)),
-            'status' => 'Pending',
-        ]);
-        $user->assignRole('guardian');
+        // The portal invite is sent by the service; audit is logged against the Guardian below.
+        $user = $this->provisioning->provisionAccount(
+            ['name' => $data['name'], 'email' => $data['email']],
+            'guardian',
+            auditAction: null,
+        );
 
         $guardian = Guardian::create([
             'user_id' => $user->id,
@@ -68,13 +67,15 @@ class GuardianController extends Controller
         }
 
         $audit->log($request->user(), 'Added guardian', 'Guardian', $guardian->id);
-        Password::sendResetLink(['email' => $user->email]);
 
         return redirect()->route('registrar.guardians.index')->with('status', 'Guardian added and portal invite sent.');
     }
 
-    public function show(Guardian $guardian)
+    public function show(Request $request, Guardian $guardian, AuditService $audit)
     {
+        // §3.8 access logging: record who opened an individual guardian's contact record (PII).
+        $audit->log($request->user(), 'Viewed guardian record', 'Guardian', $guardian->id);
+
         return view('registrar.guardians.show', [
             'guardian' => $guardian->load(['user', 'students']),
         ]);

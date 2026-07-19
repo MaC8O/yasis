@@ -5,20 +5,15 @@ namespace App\Http\Controllers\Hr;
 use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\StaffProfile;
-use App\Models\User;
 use App\Services\AuditService;
+use App\Services\UserProvisioningService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class StaffRecordController extends Controller
 {
-    protected array $portalRoleMap = [
-        'admin' => 'Admin', 'principal' => 'Principal', 'vp_academic' => 'VP_Academic',
-        'registrar' => 'Registrar', 'teacher' => 'Teacher', 'treasurer' => 'Treasurer', 'hr_office' => 'HR_Office',
-    ];
+    public function __construct(private UserProvisioningService $provisioning) {}
 
     public function index(Request $request)
     {
@@ -50,7 +45,8 @@ class StaffRecordController extends Controller
     {
         return view('hr.staff.create', [
             'departments' => Department::orderBy('name')->get(),
-            'portalRoles' => array_keys($this->portalRoleMap),
+            // HR may onboard any staff role except Admin — see UserProvisioningService::hrAssignableRoles().
+            'portalRoles' => $this->provisioning->hrAssignableRoles(),
         ]);
     }
 
@@ -61,7 +57,9 @@ class StaffRecordController extends Controller
             'staff_id_number' => ['required', 'string', 'max:30', 'unique:staff_profiles,staff_id_number'],
             'job_title' => ['required', 'string', 'max:60'],
             'portal_access' => ['nullable', 'boolean'],
-            'portal_role' => ['nullable', 'required_if:portal_access,1', Rule::in(array_keys($this->portalRoleMap))],
+            // Restricting to hrAssignableRoles() is the server-side escalation guard: HR
+            // cannot mint an Admin even by tampering with the form.
+            'portal_role' => ['nullable', 'required_if:portal_access,1', Rule::in($this->provisioning->hrAssignableRoles())],
             'email' => ['nullable', 'required_if:portal_access,1', 'email', 'unique:users,email'],
             'department_id' => ['nullable', 'exists:departments,id'],
             'joined_date' => ['required', 'date'],
@@ -70,34 +68,28 @@ class StaffRecordController extends Controller
 
         $isPortal = $request->boolean('portal_access');
 
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $isPortal ? $data['email'] : Str::slug($data['name']).'.'.Str::lower($data['staff_id_number']).'@internal.yasis.edu',
-            'password' => Hash::make(Str::password(16)),
-            'status' => $isPortal ? 'Pending' : 'Inactive',
-        ]);
+        $user = $this->provisioning->provisionStaff(
+            [
+                'name' => $data['name'],
+                // Non-portal staff still need a unique users row (StaffProfile shares its id),
+                // so synthesize an internal, non-routable address they can never sign in with.
+                'email' => $isPortal ? $data['email'] : Str::slug($data['name']).'.'.Str::lower($data['staff_id_number']).'@internal.yasis.edu',
+            ],
+            $isPortal ? $data['portal_role'] : null,
+            [
+                'staff_id_number' => $data['staff_id_number'],
+                'job_title' => $data['job_title'],
+                'department_id' => $data['department_id'] ?? null,
+                'joined_date' => $data['joined_date'],
+                'phone' => $data['phone'] ?? null,
+            ],
+            invite: $isPortal,
+            pendingStatus: $isPortal ? 'Pending' : 'Inactive',
+            // HR logs against its own StaffProfile entity below, so skip the service's User audit line.
+            auditAction: null,
+        );
 
-        $roleType = $isPortal ? $this->portalRoleMap[$data['portal_role']] : 'Staff';
-        if ($isPortal) {
-            $user->assignRole($data['portal_role']);
-        }
-
-        $staff = StaffProfile::create([
-            'id' => $user->id,
-            'staff_id_number' => $data['staff_id_number'],
-            'role_type' => $roleType,
-            'job_title' => $data['job_title'],
-            'department_id' => $data['department_id'] ?? null,
-            'status' => 'Active',
-            'joined_date' => $data['joined_date'],
-            'phone' => $data['phone'] ?? null,
-        ]);
-
-        $audit->log($request->user(), 'Added staff record', 'StaffProfile', $staff->id);
-
-        if ($isPortal) {
-            Password::sendResetLink(['email' => $user->email]);
-        }
+        $audit->log($request->user(), 'Added staff record', 'StaffProfile', $user->id);
 
         return redirect()->route('hr_office.staff.index')->with('status', "{$data['name']} added to staff records.");
     }

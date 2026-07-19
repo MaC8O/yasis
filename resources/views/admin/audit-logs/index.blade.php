@@ -40,6 +40,7 @@
                         <th class="py-2 font-semibold">Category</th>
                         <th class="py-2 font-semibold">User</th>
                         <th class="py-2 font-semibold">Role</th>
+                        <th class="py-2 font-semibold">IP</th>
                         <th class="py-2 font-semibold">Action</th>
                         <th class="py-2 font-semibold">Entity</th>
                     </tr>
@@ -64,11 +65,27 @@
                             </td>
                             <td class="py-2.5">{{ $log->user?->name ?? '—' }}</td>
                             <td class="py-2.5 text-neutral-500">{{ ucwords(str_replace('_', ' ', $log->role)) }}</td>
-                            <td class="py-2.5">{{ $log->action }}</td>
+                            <td class="py-2.5 text-neutral-500 whitespace-nowrap font-mono text-xs">{{ $log->ip_address ?? '—' }}</td>
+                            <td class="py-2.5">
+                                {{ $log->action }}
+                                @if (! empty($log->details['changes']))
+                                    <details class="mt-1">
+                                        <summary class="text-xs text-[#1F573D] cursor-pointer select-none">{{ count($log->details['changes']) }} value change(s)</summary>
+                                        <ul class="mt-1 space-y-0.5 text-xs text-neutral-500">
+                                            @foreach ($log->details['changes'] as $change)
+                                                <li>
+                                                    Assessment #{{ $change['assessment_id'] ?? '?' }}, student #{{ $change['student_id'] ?? '?' }}:
+                                                    <span class="font-mono">{{ $change['from'] ?? '—' }} → {{ $change['to'] ?? '—' }}</span>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </details>
+                                @endif
+                            </td>
                             <td class="py-2.5 text-neutral-500">{{ $log->entity_type }}{{ $log->entity_id ? " #{$log->entity_id}" : '' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="py-4 text-neutral-400">No activity recorded yet.</td></tr>
+                        <tr><td colspan="7" class="py-4 text-neutral-400">No activity recorded yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

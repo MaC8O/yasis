@@ -52,6 +52,24 @@ class AuditTamperEvidenceTest extends TestCase
         $this->assertSame($rows[1]->hash, $rows[2]->prev_hash);
     }
 
+    public function test_rows_with_details_verify_cleanly(): void
+    {
+        // Guards against a false "tampered" alarm: the details JSON (with floats) must hash
+        // identically at write time and at verify time after a DB round-trip.
+        $this->seedRoles();
+        $admin = $this->makeStaff('admin', 'Admin');
+        $audit = app(AuditService::class);
+
+        $audit->log($admin->user, 'Entered grades', 'Section', 1, [
+            'changes' => [['assessment_id' => 1, 'student_id' => 2, 'from' => 78.5, 'to' => 95.0]],
+        ]);
+        $audit->log($admin->user, 'Entered grades', 'Section', 1, [
+            'changes' => [['assessment_id' => 1, 'student_id' => 3, 'from' => null, 'to' => 60.0]],
+        ]);
+
+        $this->assertTrue(app(AuditIntegrityService::class)->verify()['ok']);
+    }
+
     public function test_modifying_a_row_is_detected(): void
     {
         [, $ids] = $this->seedChain();

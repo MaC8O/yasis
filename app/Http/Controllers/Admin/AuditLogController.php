@@ -39,7 +39,7 @@ class AuditLogController extends Controller
 
         return response()->streamDownload(function () use ($request) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['When', 'Category', 'User', 'Role', 'Action', 'Entity', 'Entity ID']);
+            fputcsv($out, ['When', 'Category', 'User', 'Role', 'IP', 'Action', 'Entity', 'Entity ID', 'Details']);
 
             $this->filteredQuery($request)->with('user')->chunk(500, function ($logs) use ($out) {
                 foreach ($logs as $log) {
@@ -48,9 +48,11 @@ class AuditLogController extends Controller
                         $log->category,
                         $log->user?->name ?? '',
                         $log->role,
+                        $log->ip_address ?? '',
                         $log->action,
                         $log->entity_type,
                         $log->entity_id,
+                        $log->details ? json_encode($log->details, JSON_UNESCAPED_SLASHES) : '',
                     ]);
                 }
             });
@@ -67,7 +69,8 @@ class AuditLogController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->whereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%"))
                     ->orWhere('action', 'like', "%{$search}%")
-                    ->orWhere('entity_type', 'like', "%{$search}%");
+                    ->orWhere('entity_type', 'like', "%{$search}%")
+                    ->orWhere('ip_address', 'like', "%{$search}%");
             });
         }
 

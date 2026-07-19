@@ -9,11 +9,11 @@ class AuditLog extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['user_id', 'role', 'action', 'entity_type', 'entity_id', 'created_at', 'prev_hash', 'hash'];
+    protected $fillable = ['user_id', 'role', 'ip_address', 'user_agent', 'action', 'entity_type', 'entity_id', 'details', 'created_at', 'prev_hash', 'hash'];
 
     protected function casts(): array
     {
-        return ['created_at' => 'datetime'];
+        return ['created_at' => 'datetime', 'details' => 'array'];
     }
 
     public function user()
@@ -22,19 +22,23 @@ class AuditLog extends Model
     }
 
     /**
-     * The keyed (HMAC) fingerprint of this row's immutable content, chained to $prevHash.
+     * The keyed (HMAC) fingerprint of this row's full content, chained to $prevHash.
      * Keyed with the app secret so an insider with DB write access but not the key cannot
-     * recompute a forged chain. Covers who/what/when/entity — the non-repudiation core.
-     * (IP/user-agent/details, added by the enrichment migration, are a follow-up once merged.)
+     * recompute a forged chain. Covers every non-derived column — who / what / when /
+     * entity plus the captured IP, user-agent, and before→after details — so any post-hoc
+     * edit to any of them breaks the chain.
      */
     public function computeHash(?string $prevHash): string
     {
         $canonical = implode("\x1f", [
             $this->user_id,
             $this->role,
+            $this->ip_address ?? '',
+            $this->user_agent ?? '',
             $this->action,
             $this->entity_type,
             $this->entity_id ?? '',
+            $this->details !== null ? json_encode($this->details) : '',
             $this->created_at?->format('Y-m-d H:i:s') ?? '',
             $prevHash ?? '',
         ]);
