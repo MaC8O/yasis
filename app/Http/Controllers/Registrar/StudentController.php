@@ -129,8 +129,11 @@ class StudentController extends Controller
         return redirect()->route('registrar.students.index')->with('status', "{$student->name} registered.");
     }
 
-    public function show(Student $student)
+    public function show(Request $request, Student $student, AuditService $audit)
     {
+        // §3.8 access logging: record who opened an individual student's record (PII).
+        $audit->log($request->user(), 'Viewed student record', 'Student', $student->id);
+
         return view('registrar.students.show', [
             'student' => $student->load(['department', 'guardians.user', 'enrollments.section', 'documentRequests']),
         ]);
