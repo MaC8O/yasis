@@ -22,9 +22,11 @@ class AuditLogExportTest extends TestCase
         AuditLog::create([
             'user_id' => $admin->user->id,
             'role' => 'admin',
-            'action' => 'Created section',
+            'ip_address' => '203.0.113.9',
+            'action' => 'Entered grades',
             'entity_type' => 'Section',
             'entity_id' => 7,
+            'details' => ['changes' => [['assessment_id' => 1, 'student_id' => 2, 'from' => 78, 'to' => 95]]],
             'created_at' => now(),
         ]);
 
@@ -35,9 +37,16 @@ class AuditLogExportTest extends TestCase
         $this->assertStringContainsString('audit-logs-', $response->headers->get('content-disposition'));
 
         $csv = $response->streamedContent();
-        $this->assertStringContainsString('When,User,Role,Action,Entity,"Entity ID"', $csv);
-        $this->assertStringContainsString('Created section', $csv);
+        // Header carries the enriched columns (IP + Details).
+        $this->assertStringContainsString('When,Category,User,Role,IP,Action,Entity,', $csv);
+        $this->assertStringContainsString('Details', $csv);
+        $this->assertStringContainsString('Entered grades', $csv);
         $this->assertStringContainsString('Section,7', $csv);
+        $this->assertStringContainsString('203.0.113.9', $csv);
+        // The before→after payload is serialized (as JSON) into the Details column. CSV doubles
+        // the embedded quotes, so assert on escaping-independent tokens.
+        $this->assertStringContainsString('changes', $csv);
+        $this->assertStringContainsString('assessment_id', $csv);
     }
 
     public function test_export_respects_the_active_filters(): void
