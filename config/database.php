@@ -56,6 +56,9 @@ return [
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
             'prefix' => '',
             'prefix_indexes' => true,
+            // Match the app timezone so CURRENT_TIMESTAMP defaults agree with Laravel-written
+            // timestamps. A fixed offset (Myanmar has no DST) needs no MySQL tz tables.
+            'timezone' => env('DB_TIMEZONE', '+06:30'),
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
@@ -76,6 +79,9 @@ return [
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
             'prefix' => '',
             'prefix_indexes' => true,
+            // Match the app timezone so CURRENT_TIMESTAMP defaults agree with Laravel-written
+            // timestamps. A fixed offset (Myanmar has no DST) needs no MySQL tz tables.
+            'timezone' => env('DB_TIMEZONE', '+06:30'),
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
