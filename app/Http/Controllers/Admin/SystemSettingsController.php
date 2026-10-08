@@ -41,7 +41,9 @@ class SystemSettingsController extends Controller
                 'icon' => 'globe',
                 'blurb' => 'Timezone and formats used across the system.',
                 'fields' => [
-                    'timezone' => ['type' => 'select', 'label' => 'Timezone', 'default' => 'Asia/Yangon', 'options' => ['Asia/Yangon' => 'Yangon (MMT +6:30)', 'Asia/Bangkok' => 'Bangkok (+7)', 'Asia/Singapore' => 'Singapore (+8)', 'UTC' => 'UTC']],
+                    // Read-only: timestamps are stored in the app timezone, so changing it at runtime
+                    // would silently reinterpret every stored date. It is fixed in config/app.php.
+                    'timezone' => ['type' => 'readonly', 'label' => 'Timezone', 'value' => $this->timezoneLabel(), 'help' => 'Set by the server configuration (APP_TIMEZONE). Changing it would shift every stored date and time, so it cannot be edited here.'],
                     'date_format' => ['type' => 'select', 'label' => 'Date format', 'default' => 'M j, Y', 'options' => ['M j, Y' => 'Jul 12, 2026', 'd/m/Y' => '12/07/2026', 'Y-m-d' => '2026-07-12', 'd M Y' => '12 Jul 2026']],
                     'week_start' => ['type' => 'select', 'label' => 'Week starts on', 'default' => 'Sunday', 'options' => ['Sunday' => 'Sunday', 'Monday' => 'Monday']],
                     'academic_language' => ['type' => 'select', 'label' => 'Primary language', 'default' => 'English', 'options' => ['English' => 'English', 'Myanmar' => 'Myanmar (မြန်မာ)']],
@@ -91,7 +93,9 @@ class SystemSettingsController extends Controller
     {
         $settings = [];
         foreach ($this->allFields() as $key => $field) {
-            $settings[$key] = SystemSetting::get($key, $field['default'] ?? '');
+            $settings[$key] = $field['type'] === 'readonly'
+                ? $field['value']
+                : SystemSetting::get($key, $field['default'] ?? '');
         }
 
         $logoPath = SystemSetting::get('institution_logo_path');
@@ -114,6 +118,9 @@ class SystemSettingsController extends Controller
         ]);
 
         foreach ($fields as $key => $field) {
+            if ($field['type'] === 'readonly') {
+                continue;
+            }
             if ($field['type'] === 'bool') {
                 SystemSetting::set($key, $request->boolean($key) ? '1' : '0');
             } else {
@@ -169,6 +176,14 @@ class SystemSettingsController extends Controller
         return back()->withErrors(['smtp' => "Could not reach {$host}:{$port} — {$errstr} (error {$errno})."]);
     }
 
+    /** e.g. "Asia/Yangon (UTC+06:30)" for the configured app timezone. */
+    protected function timezoneLabel(): string
+    {
+        $tz = config('app.timezone');
+
+        return $tz.' (UTC'.now($tz)->format('P').')';
+    }
+
     protected function allFields(): array
     {
         $fields = [];
@@ -185,6 +200,9 @@ class SystemSettingsController extends Controller
     {
         $rules = [];
         foreach ($fields as $key => $field) {
+            if ($field['type'] === 'readonly') {
+                continue;
+            }
             $rules[$key] = match ($field['type']) {
                 'email' => ['nullable', 'email', 'max:255'],
                 'url' => ['nullable', 'url', 'max:255'],
