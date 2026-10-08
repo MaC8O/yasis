@@ -27,16 +27,16 @@
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-2.5 text-sm">Search</button>
-                <a href="{{ route('registrar.students.index') }}" class="border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-4 py-2.5 text-sm">Clear</a>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-2.5 text-sm hover:bg-brand-dark transition-colors">Search</button>
+                <a href="{{ route('registrar.students.index') }}" class="border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-neutral-50 transition-colors">Clear</a>
                 <div class="flex-1"></div>
-                <a href="{{ route('registrar.students.create') }}" class="text-center bg-neutral-900 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">New Student</a>
-                <a href="{{ route('registrar.students.import') }}" class="text-center border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-5 py-2.5 text-sm">Bulk Import</a>
+                <a href="{{ route('registrar.students.create') }}" class="text-center bg-neutral-900 text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-neutral-700 transition-colors">New Student</a>
+                <a href="{{ route('registrar.students.import') }}" class="text-center border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-neutral-50 transition-colors">Bulk Import</a>
             </div>
         </form>
     </x-card>
 
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <x-stat-tile label="Active" color="blue">{{ number_format($stats['active']) }}</x-stat-tile>
         <x-stat-tile label="New this year" color="blue">{{ number_format($stats['newThisYear']) }}</x-stat-tile>
         <x-stat-tile label="Missing guardian" color="yellow">{{ number_format($stats['missingGuardian']) }}</x-stat-tile>
@@ -65,7 +65,7 @@
                                     @if ($student->photo_path)
                                         <img src="{{ Storage::url($student->photo_path) }}" alt="" class="w-8 h-8 rounded-full object-cover border border-neutral-200 shrink-0">
                                     @else
-                                        <span class="w-8 h-8 rounded-full bg-[#1F573D] text-white font-semibold text-[10px] flex items-center justify-center shrink-0">
+                                        <span class="w-8 h-8 rounded-full bg-brand text-white font-semibold text-[10px] flex items-center justify-center shrink-0">
                                             {{ collect(explode(' ', $student->name))->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('') }}
                                         </span>
                                     @endif
@@ -80,7 +80,7 @@
                                 </x-badge>
                             </td>
                             <td class="py-2.5 text-right">
-                                <a href="{{ route('registrar.students.show', $student) }}" class="text-xs font-semibold text-[#1F573D] hover:underline">View</a>
+                                <a href="{{ route('registrar.students.show', $student) }}" class="text-xs font-semibold text-brand hover:underline">View</a>
                             </td>
                         </tr>
                     @empty

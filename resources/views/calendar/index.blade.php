@@ -39,7 +39,7 @@
                         <p class="text-xs text-neutral-400">{{ $monthEvents->count() }} {{ Str::plural('event', $monthEvents->count()) }} this month</p>
                     </div>
                     @unless ($cursor->isSameMonth(now()))
-                        <a href="{{ route('calendar.index') }}" class="ml-2 text-sm font-semibold text-[#1F573D] border border-[#1F573D]/30 rounded-lg px-3 py-1.5 hover:bg-[#1F573D]/5">Today</a>
+                        <a href="{{ route('calendar.index') }}" class="ml-2 text-sm font-semibold text-brand border border-brand/30 rounded-lg px-3 py-1.5 hover:bg-brand/5">Today</a>
                     @endunless
                 </div>
             </div>
@@ -75,8 +75,8 @@
                                 $isWeekend = in_array($dow, [0, 6]);
                                 $isToday = $cursor->copy()->day($day)->isToday();
                             @endphp
-                            <div class="min-h-28 border-b border-r border-neutral-100 last:border-r-0 p-1.5 flex flex-col gap-1 {{ $isToday ? 'bg-[#1F573D]/[0.04]' : ($isWeekend ? 'bg-neutral-50/60' : 'bg-white') }}">
-                                <span class="text-xs font-semibold px-0.5 {{ $isToday ? 'bg-[#1F573D] text-white rounded-full w-6 h-6 flex items-center justify-center' : ($isWeekend ? 'text-neutral-400' : 'text-neutral-500') }}">{{ $day }}</span>
+                            <div class="min-h-28 border-b border-r border-neutral-100 last:border-r-0 p-1.5 flex flex-col gap-1 {{ $isToday ? 'bg-brand/[0.04]' : ($isWeekend ? 'bg-neutral-50/60' : 'bg-white') }}">
+                                <span class="text-xs font-semibold px-0.5 {{ $isToday ? 'bg-brand text-white rounded-full w-6 h-6 flex items-center justify-center' : ($isWeekend ? 'text-neutral-400' : 'text-neutral-500') }}">{{ $day }}</span>
                                 <div class="flex flex-col gap-1">
                                     @foreach (($eventsByDay[$day] ?? []) as $event)
                                         @php $c = $typeColors[$event->event_type] ?? '#6b7280'; @endphp

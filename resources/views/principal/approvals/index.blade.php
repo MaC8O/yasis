@@ -19,11 +19,11 @@
                     <div class="flex gap-3">
                         <form method="POST" action="{{ route('principal.approvals.promotions.approve', $batch) }}">
                             @csrf
-                            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2 text-sm">Co-approve</button>
+                            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors">Co-approve</button>
                         </form>
                         <form method="POST" action="{{ route('principal.approvals.promotions.reject', $batch) }}">
                             @csrf
-                            <button type="submit" class="border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-4 py-2 text-sm">Return</button>
+                            <button type="submit" class="border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-4 py-2 text-sm hover:bg-neutral-50 transition-colors">Return</button>
                         </form>
                     </div>
                 </div>
@@ -46,11 +46,11 @@
                     <div class="flex gap-3">
                         <form method="POST" action="{{ route('principal.approvals.transcripts.approve', $doc) }}">
                             @csrf
-                            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2 text-sm">Co-approve</button>
+                            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors">Co-approve</button>
                         </form>
                         <form method="POST" action="{{ route('principal.approvals.transcripts.reject', $doc) }}">
                             @csrf
-                            <button type="submit" class="border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-4 py-2 text-sm">Return</button>
+                            <button type="submit" class="border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-4 py-2 text-sm hover:bg-neutral-50 transition-colors">Return</button>
                         </form>
                     </div>
                 </div>
@@ -69,7 +69,7 @@
                             {{ $req->student->name }} ·
                             {{ $req->assessment->category->subject->name ?? '' }} — {{ $req->assessment->name }}
                             ({{ $req->term->name }}):
-                            {{ $req->old_score !== null ? $req->old_score + 0 : 'no score' }} → <span class="text-[#1F573D]">{{ $req->new_score + 0 }}</span>
+                            {{ $req->old_score !== null ? $req->old_score + 0 : 'no score' }} → <span class="text-brand">{{ $req->new_score + 0 }}</span>
                         </p>
                         <p class="text-xs text-neutral-500">
                             {{ $req->assessment->category->section->name ?? '' }} ·
@@ -80,11 +80,11 @@
                     <div class="flex gap-3">
                         <form method="POST" action="{{ route('principal.approvals.grade-changes.approve', $req) }}">
                             @csrf
-                            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2 text-sm">Co-approve &amp; apply</button>
+                            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors">Co-approve &amp; apply</button>
                         </form>
                         <form method="POST" action="{{ route('principal.approvals.grade-changes.reject', $req) }}">
                             @csrf
-                            <button type="submit" class="border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-4 py-2 text-sm">Reject</button>
+                            <button type="submit" class="border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-4 py-2 text-sm hover:bg-neutral-50 transition-colors">Reject</button>
                         </form>
                     </div>
                 </div>

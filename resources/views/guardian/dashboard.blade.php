@@ -1,17 +1,27 @@
 <x-app-layout title="Guardian Dashboard" subtitle="View linked child attendance, grades, imported fee status, and school notices." badge="Guardian · Read-only access" role="guardian">
     <x-child-switcher :children="$children" :child="$child" route="guardian.dashboard" />
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <x-stat-tile label="Attendance rate" color="blue">{{ $attendanceRate !== null ? $attendanceRate.'%' : '—' }}</x-stat-tile>
-        <x-stat-tile label="Latest GPA" color="green">{{ $latestGpa ?? '—' }}</x-stat-tile>
-        <x-stat-tile label="Fee status" color="yellow">{{ $feeStatus }}</x-stat-tile>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <x-stat-tile label="Attendance rate" :href="route('guardian.attendance.index', ['child' => $child->id])" color="blue">{{ $attendanceRate !== null ? $attendanceRate.'%' : '—' }}</x-stat-tile>
+        <x-stat-tile label="Latest GPA" :href="route('guardian.grades.index', ['child' => $child->id])" color="green">{{ $latestGpa ?? '—' }}</x-stat-tile>
+        <x-stat-tile label="Fee status" :href="route('guardian.fees.index', ['child' => $child->id])" color="yellow">{{ $feeStatus }}</x-stat-tile>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <a href="{{ route('guardian.attendance.index', ['child' => $child->id]) }}" class="bg-white border border-neutral-200 rounded-2xl px-5 py-4 font-semibold text-sm hover:border-[#1F573D]">Attendance</a>
-        <a href="{{ route('guardian.grades.index', ['child' => $child->id]) }}" class="bg-white border border-neutral-200 rounded-2xl px-5 py-4 font-semibold text-sm hover:border-[#1F573D]">Grades & Reports</a>
-        <a href="{{ route('guardian.fees.index', ['child' => $child->id]) }}" class="bg-white border border-neutral-200 rounded-2xl px-5 py-4 font-semibold text-sm hover:border-[#1F573D]">Fees</a>
-        <a href="{{ route('guardian.notices.index') }}" class="bg-white border border-neutral-200 rounded-2xl px-5 py-4 font-semibold text-sm hover:border-[#1F573D]">Notices</a>
+        @foreach ([
+            [route('guardian.attendance.index', ['child' => $child->id]), 'Attendance', 'clipboard'],
+            [route('guardian.grades.index', ['child' => $child->id]), 'Grades & Reports', 'book'],
+            [route('guardian.fees.index', ['child' => $child->id]), 'Fees', 'money'],
+            [route('guardian.notices.index'), 'Notices', 'bell'],
+        ] as [$href, $label, $icon])
+            <a href="{{ $href }}" class="group flex items-center gap-3 bg-white border border-neutral-200 rounded-2xl px-5 py-4 font-semibold text-sm hover:border-brand hover:bg-brand-soft transition-colors">
+                <span class="w-8 h-8 rounded-lg bg-brand-soft text-brand flex items-center justify-center group-hover:bg-white">
+                    <x-icon :name="$icon" class="w-4 h-4" />
+                </span>
+                <span class="flex-1">{{ $label }}</span>
+                <x-icon name="chevron-right" class="w-4 h-4 text-neutral-300 group-hover:text-brand" />
+            </a>
+        @endforeach
     </div>
 
     <x-card title="Grade snapshot" subtitle="Current term weighted scores by subject.">
@@ -35,7 +45,7 @@
                 @endforelse
             </tbody>
         </table>
-        <a href="{{ route('guardian.grades.index', ['child' => $child->id]) }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Open grades &amp; reports</a>
+        <a href="{{ route('guardian.grades.index', ['child' => $child->id]) }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Open grades &amp; reports</a>
     </x-card>
 
     <x-card :title="$child->name.'’s attendance this year'" subtitle="Every recorded school day, by status.">
@@ -43,6 +53,6 @@
     </x-card>
 
     <x-card title="Notify School of Absence" subtitle="Let the school know in advance when your child will be away.">
-        <a href="{{ route('guardian.absence-notices.index', ['child' => $child->id]) }}" class="inline-block bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Notify Absence</a>
+        <a href="{{ route('guardian.absence-notices.index', ['child' => $child->id]) }}" class="inline-block bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Notify Absence</a>
     </x-card>
 </x-app-layout>

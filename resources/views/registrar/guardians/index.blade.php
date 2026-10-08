@@ -24,7 +24,7 @@
                 <label class="block text-sm font-semibold mb-1">Link student ID (optional)</label>
                 <input type="text" name="student_id_number" value="{{ $linkStudent?->student_id_number }}" placeholder="YAS-2026-0001" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Add Guardian</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Add Guardian</button>
         </form>
     </x-card>
 
@@ -35,7 +35,7 @@
                 <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Name or email"
                     class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Filter</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Filter</button>
         </form>
 
         <table class="w-full text-sm">
@@ -58,7 +58,7 @@
                             <x-badge :color="$guardian->user?->status === 'Active' ? 'green' : 'yellow'">{{ $guardian->user?->status }}</x-badge>
                         </td>
                         <td class="py-2.5 text-right">
-                            <a href="{{ route('registrar.guardians.show', $guardian) }}" class="text-xs font-semibold text-[#1F573D] hover:underline">Manage</a>
+                            <a href="{{ route('registrar.guardians.show', $guardian) }}" class="text-xs font-semibold text-brand hover:underline">Manage</a>
                         </td>
                     </tr>
                 @empty

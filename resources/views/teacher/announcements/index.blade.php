@@ -35,7 +35,7 @@
                 <label class="block text-sm font-semibold mb-1">Message</label>
                 <textarea name="body" rows="4" required class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm"></textarea>
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-3 text-sm">Publish</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Publish</button>
         </form>
     </x-card>
 

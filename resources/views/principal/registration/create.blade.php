@@ -27,7 +27,7 @@
                 placement, and document collection.
             </p>
             <div class="sm:col-span-2 flex gap-3">
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-3 text-sm">Register student</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Register student</button>
                 <a href="{{ route('principal.dashboard') }}" class="text-sm font-semibold text-neutral-500 self-center">Cancel</a>
             </div>
         </form>

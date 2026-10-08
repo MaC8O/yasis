@@ -15,8 +15,8 @@
                 </select>
             </div>
             <div class="flex gap-2">
-                <button type="submit" class="flex-1 bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Filter</button>
-                <a href="{{ route('hr_office.staff.create') }}" class="flex-1 text-center bg-neutral-900 text-white font-semibold rounded-lg px-4 py-2.5 text-sm">+ Add staff</a>
+                <button type="submit" class="flex-1 bg-brand text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-brand-dark transition-colors">Filter</button>
+                <a href="{{ route('hr_office.staff.create') }}" class="flex-1 text-center bg-neutral-900 text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-neutral-700 transition-colors">+ Add staff</a>
             </div>
         </form>
     </x-card>
@@ -48,7 +48,7 @@
                                 {{ $member->status }}
                             </x-badge>
                         </td>
-                        <td class="py-2.5 text-right"><a href="{{ route('hr_office.staff.show', $member) }}" class="text-xs font-semibold text-[#1F573D] hover:underline">View</a></td>
+                        <td class="py-2.5 text-right"><a href="{{ route('hr_office.staff.show', $member) }}" class="text-xs font-semibold text-brand hover:underline">View</a></td>
                     </tr>
                 @empty
                     <tr><td colspan="6" class="py-4 text-neutral-400">No staff records yet.</td></tr>

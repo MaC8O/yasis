@@ -11,7 +11,7 @@
                     </select>
                 </div>
                 <a id="prepare-link" href="{{ $sections->first() ? route('registrar.promotions.create', $sections->first()) : '#' }}"
-                    class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Prepare batch</a>
+                    class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Prepare batch</a>
             </form>
             <script>
                 document.getElementById('section-select')?.addEventListener('change', function () {
@@ -20,7 +20,7 @@
             </script>
         </x-card>
     @else
-        <div class="bg-amber-50 border border-amber-200 text-amber-900 text-sm rounded-xl px-5 py-3">
+        <div class="bg-warning-soft border border-warning-line text-warning text-sm rounded-xl px-5 py-3">
             <span class="font-semibold">The promotion window is closed.</span>
             New promotion batches cannot be prepared until the Principal opens the window (Setup &amp; Controls on the Principal portal).
         </div>

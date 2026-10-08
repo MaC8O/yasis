@@ -26,7 +26,7 @@
                 <label class="block text-xs font-semibold text-neutral-500 mb-1">TO</label>
                 <input type="date" name="to_date" required class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Submit</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Submit</button>
             <div class="sm:col-span-5">
                 <input type="text" name="reason" placeholder="Reason (e.g. family event, entered by HR on behalf)" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
@@ -38,7 +38,7 @@
             <div class="flex gap-3">
                 @foreach (['Pending', 'Approved', 'Rejected'] as $t)
                     <a href="{{ route('hr_office.leave.index', ['tab' => $t]) }}"
-                        class="px-4 py-2 rounded-lg text-sm font-semibold {{ $tab === $t ? 'bg-[#1F573D] text-white' : 'bg-white border border-neutral-200 text-neutral-600' }}">
+                        class="px-4 py-2 rounded-lg text-sm font-semibold {{ $tab === $t ? 'bg-brand text-white' : 'bg-white border border-neutral-200 text-neutral-600' }}">
                         {{ $t }} ({{ $counts[$t] }})
                     </a>
                 @endforeach
@@ -65,11 +65,11 @@
                                 <div class="flex gap-3 mt-3">
                                     <form method="POST" action="{{ route('hr_office.leave.approve', $req) }}">
                                         @csrf
-                                        <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2 text-sm">Approve</button>
+                                        <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors">Approve</button>
                                     </form>
                                     <form method="POST" action="{{ route('hr_office.leave.reject', $req) }}">
                                         @csrf
-                                        <button type="submit" class="border border-red-300 text-red-700 font-semibold rounded-lg px-4 py-2 text-sm">Reject</button>
+                                        <button type="submit" class="border border-danger-line text-danger font-semibold rounded-lg px-4 py-2 text-sm hover:bg-danger-soft transition-colors">Reject</button>
                                     </form>
                                 </div>
                             @endif

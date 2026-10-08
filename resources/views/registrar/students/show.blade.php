@@ -6,7 +6,7 @@
                     <img src="{{ Storage::url($student->photo_path) }}" alt="{{ $student->name }}"
                          class="w-20 h-20 rounded-xl object-cover border border-neutral-200 shrink-0">
                 @else
-                    <span class="w-20 h-20 rounded-xl bg-[#1F573D] text-white font-bold text-xl flex items-center justify-center shrink-0">
+                    <span class="w-20 h-20 rounded-xl bg-brand text-white font-bold text-xl flex items-center justify-center shrink-0">
                         {{ collect(explode(' ', $student->name))->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('') }}
                     </span>
                 @endif
@@ -22,7 +22,7 @@
                 <div class="flex justify-between"><dt class="text-neutral-500">Admission date</dt><dd>{{ $student->admission_date->format('M j, Y') }}</dd></div>
                 <div class="flex justify-between"><dt class="text-neutral-500">Status</dt><dd><x-badge :color="$student->enrollment_status === 'Enrolled' ? 'green' : 'pink'">{{ $student->enrollment_status }}</x-badge></dd></div>
             </dl>
-            <a href="{{ route('registrar.students.edit', $student) }}" class="inline-block mt-4 text-sm font-semibold text-[#1F573D] hover:underline">Edit profile</a>
+            <a href="{{ route('registrar.students.edit', $student) }}" class="inline-block mt-4 text-sm font-semibold text-brand hover:underline">Edit profile</a>
         </x-card>
 
         <x-card title="Guardians">
@@ -39,7 +39,7 @@
             @empty
                 <p class="text-sm text-neutral-400">No guardian linked yet.</p>
             @endforelse
-            <a href="{{ route('registrar.guardians.index', ['student' => $student->id]) }}" class="inline-block mt-4 text-sm font-semibold text-[#1F573D] hover:underline">Manage guardian links</a>
+            <a href="{{ route('registrar.guardians.index', ['student' => $student->id]) }}" class="inline-block mt-4 text-sm font-semibold text-brand hover:underline">Manage guardian links</a>
         </x-card>
 
         <x-card title="Enrollment">
@@ -58,11 +58,11 @@
                 <div class="flex gap-3">
                     <form method="POST" action="{{ route('registrar.students.transfer', $student) }}" onsubmit="return confirm('Mark this student as Transferred and create a Transfer/Leaving Certificate draft?');">
                         @csrf
-                        <button type="submit" class="bg-neutral-900 text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Transfer / Drop</button>
+                        <button type="submit" class="bg-neutral-900 text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-neutral-700 transition-colors">Transfer / Drop</button>
                     </form>
                     <form method="POST" action="{{ route('registrar.students.graduate', $student) }}" onsubmit="return confirm('Mark this student as Graduated and create Completion Certificate + final transcript drafts?');">
                         @csrf
-                        <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Mark Graduated</button>
+                        <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-brand-dark transition-colors">Mark Graduated</button>
                     </form>
                 </div>
             @else
@@ -87,7 +87,7 @@
                         <td class="py-2.5">{{ $doc->type }}</td>
                         <td class="py-2.5"><x-badge color="yellow">{{ $doc->status }}</x-badge></td>
                         <td class="py-2.5 text-neutral-500">{{ $doc->created_at->format('M j, Y') }}</td>
-                        <td class="py-2.5 text-right"><a href="{{ route('registrar.documents.index') }}" class="text-xs font-semibold text-[#1F573D] hover:underline">Manage</a></td>
+                        <td class="py-2.5 text-right"><a href="{{ route('registrar.documents.index') }}" class="text-xs font-semibold text-brand hover:underline">Manage</a></td>
                     </tr>
                 @empty
                     <tr><td colspan="4" class="py-4 text-neutral-400">No documents requested yet.</td></tr>

@@ -1,9 +1,9 @@
 <x-app-layout title="Registrar Dashboard" subtitle="Manage student records, enrollment, guardians, sections & homeroom, transcripts & certificates, and student exits." badge="Registrar" role="registrar">
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <x-stat-tile label="Active students" color="blue">{{ number_format($activeStudents) }}</x-stat-tile>
-        <x-stat-tile label="Guardian link rate" color="yellow">{{ $guardianLinkRate }}%</x-stat-tile>
-        <x-stat-tile label="Total guardians" color="green">{{ number_format($totalGuardians) }}</x-stat-tile>
-        <x-stat-tile label="Documents queue" color="pink">{{ number_format($documentsQueue) }}</x-stat-tile>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <x-stat-tile label="Active students" :href="route('registrar.students.index')" color="blue">{{ number_format($activeStudents) }}</x-stat-tile>
+        <x-stat-tile label="Guardian link rate" :href="route('registrar.guardians.index')" color="yellow">{{ $guardianLinkRate }}%</x-stat-tile>
+        <x-stat-tile label="Total guardians" :href="route('registrar.guardians.index')" color="green">{{ number_format($totalGuardians) }}</x-stat-tile>
+        <x-stat-tile label="Documents queue" :href="route('registrar.documents.index')" color="pink">{{ number_format($documentsQueue) }}</x-stat-tile>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -20,22 +20,22 @@
                     <tr class="border-b border-neutral-100">
                         <td class="py-2.5">Students missing guardian</td>
                         <td class="py-2.5">{{ $missingGuardian }}</td>
-                        <td class="py-2.5"><a href="{{ route('registrar.students.index') }}" class="text-xs font-semibold text-[#1F573D] hover:underline">Review</a></td>
+                        <td class="py-2.5"><a href="{{ route('registrar.students.index') }}" class="text-xs font-semibold text-brand hover:underline">Review</a></td>
                     </tr>
                     <tr class="border-b border-neutral-100">
                         <td class="py-2.5">Document requests queued</td>
                         <td class="py-2.5">{{ $documentsQueue }}</td>
-                        <td class="py-2.5"><a href="{{ route('registrar.documents.index') }}" class="text-xs font-semibold text-[#1F573D] hover:underline">Prepare</a></td>
+                        <td class="py-2.5"><a href="{{ route('registrar.documents.index') }}" class="text-xs font-semibold text-brand hover:underline">Prepare</a></td>
                     </tr>
                     <tr class="border-b border-neutral-100">
                         <td class="py-2.5">Promotion batches pending co-approval</td>
                         <td class="py-2.5">{{ $pendingPromotions }}</td>
-                        <td class="py-2.5"><a href="{{ route('registrar.promotions.index') }}" class="text-xs font-semibold text-[#1F573D] hover:underline">View</a></td>
+                        <td class="py-2.5"><a href="{{ route('registrar.promotions.index') }}" class="text-xs font-semibold text-brand hover:underline">View</a></td>
                     </tr>
                     <tr>
                         <td class="py-2.5">Absence classifications needing correction</td>
                         <td class="py-2.5">{{ $needsCorrection }}</td>
-                        <td class="py-2.5"><a href="{{ route('registrar.attendance-corrections.index') }}" class="text-xs font-semibold text-[#1F573D] hover:underline">Correct</a></td>
+                        <td class="py-2.5"><a href="{{ route('registrar.attendance-corrections.index') }}" class="text-xs font-semibold text-brand hover:underline">Correct</a></td>
                     </tr>
                 </tbody>
             </table>
@@ -48,7 +48,7 @@
                 <a href="{{ route('registrar.sections.index') }}" class="hover:underline">Sections</a>
                 <a href="{{ route('registrar.documents.index') }}" class="hover:underline">Transcripts</a>
             </div>
-            <a href="{{ route('registrar.students.create') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Register Student</a>
+            <a href="{{ route('registrar.students.create') }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Register Student</a>
         </x-card>
     </div>
 

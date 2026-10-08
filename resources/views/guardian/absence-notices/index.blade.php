@@ -2,7 +2,7 @@
     <x-child-switcher :children="$children" :child="$child" route="guardian.absence-notices.index" />
 
     <x-card>
-        <p class="text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
+        <p class="text-sm text-warning bg-warning-soft border border-warning-line rounded-lg px-4 py-3">
             Not a request — this notifies your homeroom teacher and flags the date(s); Excused applies at attendance time.
         </p>
     </x-card>
@@ -26,7 +26,7 @@
                     <label class="block text-xs font-semibold text-neutral-500 mb-1">REASON</label>
                     <textarea name="reason" rows="3" placeholder="e.g. Family travel, medical appointment..." class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm"></textarea>
                 </div>
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-3 text-sm">Submit notice</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Submit notice</button>
                 <span class="text-xs text-neutral-400 ml-2">Your teacher will be notified right away.</span>
             </form>
         </x-card>
@@ -44,17 +44,17 @@
                         </div>
                         @if (in_array($notice->status, ['Submitted', 'Acknowledged']) && $notice->from_date->isFuture())
                             <div class="flex gap-3 mt-2">
-                                <button type="button" @click="editing = !editing" class="text-xs font-semibold text-neutral-700 border border-neutral-300 rounded-lg px-3 py-1.5">Edit</button>
+                                <button type="button" @click="editing = !editing" class="text-xs font-semibold text-neutral-700 border border-neutral-300 rounded-lg px-3 py-1.5 hover:bg-neutral-50 transition-colors">Edit</button>
                                 <form method="POST" action="{{ route('guardian.absence-notices.cancel', $notice) }}" onsubmit="return confirm('Cancel this absence notice?');">
                                     @csrf
-                                    <button type="submit" class="text-xs font-semibold text-red-700 border border-red-300 rounded-lg px-3 py-1.5">Cancel</button>
+                                    <button type="submit" class="text-xs font-semibold text-danger border border-danger-line rounded-lg px-3 py-1.5 hover:bg-danger-soft transition-colors">Cancel</button>
                                 </form>
                             </div>
                             <form x-show="editing" method="POST" action="{{ route('guardian.absence-notices.update', $notice) }}" class="grid grid-cols-3 gap-2 mt-3">
                                 @csrf @method('PUT')
                                 <input type="date" name="from_date" value="{{ $notice->from_date->toDateString() }}" class="rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-xs">
                                 <input type="date" name="to_date" value="{{ $notice->to_date->toDateString() }}" class="rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-xs">
-                                <button type="submit" class="text-xs font-semibold bg-[#1F573D] text-white rounded-lg px-3 py-1.5">Save</button>
+                                <button type="submit" class="text-xs font-semibold bg-brand text-white rounded-lg px-3 py-1.5 hover:bg-brand-dark transition-colors">Save</button>
                             </form>
                         @else
                             <p class="text-xs text-neutral-400 mt-1">

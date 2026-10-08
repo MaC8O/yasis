@@ -1,5 +1,5 @@
 <x-app-layout title="Data &amp; Backup" subtitle="Backup status, on-demand data snapshots, and data-retention actions." badge="Admin" role="admin">
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <x-stat-tile label="Backup status" color="green">{{ $backupStatus }}</x-stat-tile>
         <x-stat-tile label="Last automated backup" color="blue">{{ $lastBackupAt ? \Carbon\Carbon::parse($lastBackupAt)->diffForHumans() : 'Infrastructure-managed' }}</x-stat-tile>
         <x-stat-tile label="Last data snapshot" color="pink">{{ $lastExportAt ? $lastExportAt->diffForHumans() : 'Never' }}</x-stat-tile>
@@ -16,7 +16,7 @@
                 @endforeach
             </div>
             <a href="{{ route('admin.export-snapshot') }}"
-               class="inline-block bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Generate &amp; download snapshot (ZIP)</a>
+               class="inline-block bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Generate &amp; download snapshot (ZIP)</a>
             <p class="text-xs text-neutral-400 mt-3">Includes {{ count($snapshotTables) }} tables. Last generated: {{ $lastExportAt ? $lastExportAt->format('M j, Y H:i') : 'never' }}.</p>
         </x-card>
 
@@ -50,7 +50,7 @@
                        class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
             <button type="submit" onsubmit="return confirm('Erase and anonymize this record? This cannot be undone.');"
-                    class="bg-red-700 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Action erasure</button>
+                    class="bg-danger text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-danger-dark transition-colors">Action erasure</button>
         </form>
     </x-card>
 

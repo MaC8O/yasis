@@ -44,7 +44,7 @@
                     <input type="checkbox" name="principal_may_assist_registration" value="1" @checked($settings['principal_may_assist_registration'] === '1') class="w-5 h-5">
                 </label>
 
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-3 text-sm">Save controls</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Save controls</button>
             </form>
         </x-card>
 

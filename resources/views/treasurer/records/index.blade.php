@@ -1,5 +1,5 @@
 <x-app-layout title="Imported Fee Records" subtitle="Transaction lines and student summaries generated from published import batches." badge="Sun account, not Sun Plus" role="treasurer">
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <x-stat-tile label="Student summaries" color="blue">{{ $stats['studentSummaries'] }}</x-stat-tile>
         <x-stat-tile label="Transaction lines">{{ $stats['transactionLines'] }}</x-stat-tile>
         <x-stat-tile label="Partial / outstanding" color="yellow">{{ $stats['partialOutstanding'] }}</x-stat-tile>
@@ -21,7 +21,7 @@
                     @endforeach
                 </select>
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Filter</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Filter</button>
         </form>
     </x-card>
 
@@ -47,7 +47,7 @@
                         <td class="py-2.5">{{ number_format($summary->balance) }}</td>
                         <td class="py-2.5"><x-badge :color="$summary->status === 'Paid' ? 'green' : ($summary->status === 'Partial' ? 'yellow' : 'pink')">{{ $summary->status }}</x-badge></td>
                         <td class="py-2.5 text-neutral-500">{{ $summary->is_restricted ? 'Yes: SDA hidden' : 'No' }}</td>
-                        <td class="py-2.5 text-right"><a href="{{ route('treasurer.records.show', $summary->student) }}" class="text-xs font-semibold text-[#1F573D] hover:underline">Detail</a></td>
+                        <td class="py-2.5 text-right"><a href="{{ route('treasurer.records.show', $summary->student) }}" class="text-xs font-semibold text-brand hover:underline">Detail</a></td>
                     </tr>
                 @empty
                     <tr><td colspan="7" class="py-4 text-neutral-400">No matched fee records yet.</td></tr>

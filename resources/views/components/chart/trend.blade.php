@@ -39,8 +39,8 @@
     {{-- recessive hairline gridlines: 0 / mid / top --}}
     @foreach ([0, 0.5, 1] as $g)
         @php $gy = $padT + $plotH - $g * $plotH; @endphp
-        <line x1="{{ $padL }}" y1="{{ $gy }}" x2="{{ $w - $padR }}" y2="{{ $gy }}" stroke="#E1E6E1" stroke-width="1" />
-        <text x="{{ $padL - 8 }}" y="{{ $gy + 3.5 }}" text-anchor="end" font-size="10" fill="#576661">{{ number_format($top * $g) }}{{ $suffix }}</text>
+        <line x1="{{ $padL }}" y1="{{ $gy }}" x2="{{ $w - $padR }}" y2="{{ $gy }}" stroke="#e7e5e4" stroke-width="1" />
+        <text x="{{ $padL - 8 }}" y="{{ $gy + 3.5 }}" text-anchor="end" font-size="10" fill="#6b7280">{{ number_format($top * $g) }}{{ $suffix }}</text>
     @endforeach
 
     {{-- area wash --}}
@@ -60,14 +60,14 @@
                     class="opacity-0 group-hover:opacity-100 pointer-events-none" />
         </g>
         @if ($i % $every === 0 || $i === $n - 1)
-            <text x="{{ $cx }}" y="{{ $h - 8 }}" text-anchor="middle" font-size="10" fill="#576661">{{ $p['label'] }}</text>
+            <text x="{{ $cx }}" y="{{ $h - 8 }}" text-anchor="middle" font-size="10" fill="#6b7280">{{ $p['label'] }}</text>
         @endif
     @endforeach
 
     {{-- end marker + direct label on the latest value --}}
     @php $ex = round($x($n - 1), 1); $ey = round($y($last['value']), 1); @endphp
     <circle cx="{{ $ex }}" cy="{{ $ey }}" r="4.5" fill="{{ $color }}" stroke="#fff" stroke-width="2" />
-    <text x="{{ min($ex, $w - $padR - 2) }}" y="{{ max($ey - 10, 12) }}" text-anchor="end" font-size="12" font-weight="600" fill="#131B1B">
+    <text x="{{ min($ex, $w - $padR - 2) }}" y="{{ max($ey - 10, 12) }}" text-anchor="end" font-size="12" font-weight="600" fill="#141a17">
         {{ number_format($last['value'], is_float($last['value']) && fmod($last['value'], 1) !== 0.0 ? 1 : 0) }}{{ $suffix }}
     </text>
 </svg>

@@ -19,8 +19,8 @@
         'can_delete' => $canDelete($event),
     ]);
     $statusPill = fn ($status) => $status === 'Published'
-        ? 'bg-[#D7ECD9] text-[#1f4d2c]'
-        : 'bg-[#F5E4A8] text-[#5c4a0a]';
+        ? 'bg-tint-green text-tint-green-ink'
+        : 'bg-tint-yellow text-tint-yellow-ink';
 @endphp
 
 <x-app-layout title="Academic Calendar"
@@ -59,11 +59,11 @@
                         <p class="text-xs text-neutral-400">{{ $monthEvents->count() }} {{ Str::plural('event', $monthEvents->count()) }} this month</p>
                     </div>
                     @unless ($cursor->isSameMonth(now()))
-                        <a href="{{ route($ctx['role'].'.calendar.index') }}" class="ml-2 text-sm font-semibold text-[#1F573D] border border-[#1F573D]/30 rounded-lg px-3 py-1.5 hover:bg-[#1F573D]/5">Today</a>
+                        <a href="{{ route($ctx['role'].'.calendar.index') }}" class="ml-2 text-sm font-semibold text-brand border border-brand/30 rounded-lg px-3 py-1.5 hover:bg-brand/5">Today</a>
                     @endunless
                 </div>
                 <button type="button" @click="openCreate()"
-                        class="inline-flex items-center gap-1.5 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-[#184630]">
+                        class="inline-flex items-center gap-1.5 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark">
                     <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
                     Add event
                 </button>
@@ -84,16 +84,16 @@
 
         {{-- Pending approval queue --}}
         @if ($pending->isNotEmpty())
-            <x-card class="!border-[#E7C948] !bg-[#FCF7E6]">
+            <x-card class="!border-warning-line !bg-warning-soft">
                 <div class="flex items-center gap-2 mb-3">
-                    <span class="w-2 h-2 rounded-full bg-[#C9A227]"></span>
+                    <span class="w-2 h-2 rounded-full bg-gold"></span>
                     <h2 class="text-base font-bold">{{ $ctx['canPublish'] ? 'Awaiting your approval' : 'Awaiting Admin approval' }}</h2>
-                    <span class="text-xs font-semibold bg-[#F5E4A8] text-[#5c4a0a] rounded-full px-2 py-0.5">{{ $pending->count() }}</span>
+                    <span class="text-xs font-semibold bg-tint-yellow text-tint-yellow-ink rounded-full px-2 py-0.5">{{ $pending->count() }}</span>
                 </div>
                 <div class="space-y-1.5">
                     @foreach ($pending as $event)
                         @php $c = $typeColors[$event->event_type] ?? '#6b7280'; @endphp
-                        <div class="flex items-center gap-3 py-2 border-b border-[#EADFB8] last:border-0">
+                        <div class="flex items-center gap-3 py-2 border-b border-warning-line last:border-0">
                             <span class="w-1 h-8 rounded-full shrink-0" style="background: {{ $c }}"></span>
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-semibold truncate">{{ $event->title }}</p>
@@ -105,15 +105,15 @@
                             @if ($ctx['canPublish'])
                                 <form method="POST" action="{{ $ctx['base'] }}/{{ $event->id }}/publish">
                                     @csrf
-                                    <button type="submit" class="text-xs font-semibold text-white bg-[#1F573D] rounded-lg px-3 py-1.5 hover:bg-[#184630]">Approve &amp; publish</button>
+                                    <button type="submit" class="text-xs font-semibold text-white bg-brand rounded-lg px-3 py-1.5 hover:bg-brand-dark">Approve &amp; publish</button>
                                 </form>
                             @endif
-                            <button type="button" @click="openEdit({{ $payload($event) }})" class="text-xs font-semibold text-blue-700 hover:underline">Edit</button>
+                            <button type="button" @click="openEdit({{ $payload($event) }})" class="text-xs font-semibold text-info hover:underline">Edit</button>
                             @if ($canDelete($event))
                                 <form method="POST" action="{{ $ctx['base'] }}/{{ $event->id }}"
                                       onsubmit="return confirm('{{ $ctx['canPublish'] ? 'Reject and delete' : 'Withdraw' }} &quot;{{ $event->title }}&quot;?');">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="text-xs font-semibold text-red-700 hover:underline">{{ $ctx['canPublish'] ? 'Reject' : 'Withdraw' }}</button>
+                                    <button type="submit" class="text-xs font-semibold text-danger hover:underline">{{ $ctx['canPublish'] ? 'Reject' : 'Withdraw' }}</button>
                                 </form>
                             @endif
                         </div>
@@ -141,11 +141,11 @@
                                 $isWeekend = in_array($dow, [0, 6]);
                                 $isToday = $cursor->copy()->day($day)->isToday();
                             @endphp
-                            <div class="min-h-28 border-b border-r border-neutral-100 last:border-r-0 p-1.5 flex flex-col gap-1 group relative {{ $isToday ? 'bg-[#1F573D]/[0.04]' : ($isWeekend ? 'bg-neutral-50/60' : 'bg-white') }}">
+                            <div class="min-h-28 border-b border-r border-neutral-100 last:border-r-0 p-1.5 flex flex-col gap-1 group relative {{ $isToday ? 'bg-brand/[0.04]' : ($isWeekend ? 'bg-neutral-50/60' : 'bg-white') }}">
                                 <div class="flex items-center justify-between px-0.5">
-                                    <span class="text-xs font-semibold {{ $isToday ? 'bg-[#1F573D] text-white rounded-full w-6 h-6 flex items-center justify-center' : ($isWeekend ? 'text-neutral-400' : 'text-neutral-500') }}">{{ $day }}</span>
+                                    <span class="text-xs font-semibold {{ $isToday ? 'bg-brand text-white rounded-full w-6 h-6 flex items-center justify-center' : ($isWeekend ? 'text-neutral-400' : 'text-neutral-500') }}">{{ $day }}</span>
                                     <button type="button" @click="openCreate('{{ $cursor->copy()->day($day)->toDateString() }}')"
-                                            class="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-neutral-300 hover:text-[#1F573D] hover:bg-[#1F573D]/10" aria-label="Add event on this day">
+                                            class="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-neutral-300 hover:text-brand hover:bg-brand/10" aria-label="Add event on this day">
                                         <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
                                     </button>
                                 </div>
@@ -223,12 +223,12 @@
                                             <button type="submit" class="text-xs font-semibold text-neutral-500 hover:underline">Unpublish</button>
                                         </form>
                                     @endif
-                                    <button type="button" @click="openEdit({{ $payload($event) }})" class="text-xs font-semibold text-blue-700 hover:underline">Edit</button>
+                                    <button type="button" @click="openEdit({{ $payload($event) }})" class="text-xs font-semibold text-info hover:underline">Edit</button>
                                     @if ($canDelete($event))
                                         <form method="POST" action="{{ $ctx['base'] }}/{{ $event->id }}"
                                               onsubmit="return confirm('Delete &quot;{{ $event->title }}&quot;?');">
                                             @csrf @method('DELETE')
-                                            <button type="submit" class="text-xs font-semibold text-red-700 hover:underline">Delete</button>
+                                            <button type="submit" class="text-xs font-semibold text-danger hover:underline">Delete</button>
                                         </form>
                                     @endif
                                 </div>
@@ -259,18 +259,18 @@
                     <div>
                         <label class="block text-sm font-semibold mb-1">Title</label>
                         <input type="text" name="title" x-model="form.title" required maxlength="120" placeholder="e.g. Enrollment opens"
-                               class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-[#1F573D] focus:ring-1 focus:ring-[#1F573D] outline-none">
+                               class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-semibold mb-1">Type</label>
-                            <select name="event_type" x-model="form.event_type" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-[#1F573D] focus:ring-1 focus:ring-[#1F573D] outline-none">
+                            <select name="event_type" x-model="form.event_type" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none">
                                 @foreach ($types as $type)<option value="{{ $type }}">{{ $type }}</option>@endforeach
                             </select>
                         </div>
                         <div>
                             <label class="block text-sm font-semibold mb-1">Academic year</label>
-                            <select name="academic_year_id" x-model="form.academic_year_id" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-[#1F573D] focus:ring-1 focus:ring-[#1F573D] outline-none">
+                            <select name="academic_year_id" x-model="form.academic_year_id" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none">
                                 <option value="">— None —</option>
                                 @foreach ($academicYears as $ay)<option value="{{ $ay->id }}">{{ $ay->year_label }}</option>@endforeach
                             </select>
@@ -280,27 +280,27 @@
                         <div>
                             <label class="block text-sm font-semibold mb-1">Start date</label>
                             <input type="date" name="start_date" x-model="form.start_date" required
-                                   class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-[#1F573D] focus:ring-1 focus:ring-[#1F573D] outline-none">
+                                   class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none">
                         </div>
                         <div>
                             <label class="block text-sm font-semibold mb-1">End date <span class="text-neutral-400 font-normal">(optional)</span></label>
                             <input type="date" name="end_date" x-model="form.end_date" :min="form.start_date"
-                                   class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-[#1F573D] focus:ring-1 focus:ring-[#1F573D] outline-none">
+                                   class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none">
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-semibold mb-1">Description <span class="text-neutral-400 font-normal">(optional)</span></label>
                         <textarea name="description" x-model="form.description" rows="2" maxlength="500"
-                                  class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-[#1F573D] focus:ring-1 focus:ring-[#1F573D] outline-none"></textarea>
+                                  class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none"></textarea>
                     </div>
                     <div class="flex items-center justify-between gap-3 pt-2">
                         <template x-if="mode === 'edit' && form.can_delete">
                             <button type="button" @click="$refs.deleteForm.action = `${base}/${form.id}`; $refs.deleteForm.requestSubmit()"
-                                    class="text-sm font-semibold text-red-700 hover:underline">Delete</button>
+                                    class="text-sm font-semibold text-danger hover:underline">Delete</button>
                         </template>
                         <div class="flex items-center gap-3 ml-auto">
                             <button type="button" @click="open = false" class="text-sm font-semibold text-neutral-500 px-4 py-2">Cancel</button>
-                            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-[#184630]"
+                            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark"
                                     x-text="mode === 'create' ? 'Add event' : 'Save changes'"></button>
                         </div>
                     </div>

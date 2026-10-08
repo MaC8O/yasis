@@ -25,11 +25,11 @@
                 <input type="date" name="to" value="{{ $filters['to'] ?? '' }}"
                     class="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Filter</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Filter</button>
             <a href="{{ route('admin.audit-logs.export', request()->query()) }}"
-               class="border border-[#1F573D] text-[#1F573D] font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-[#1F573D]/5">Export CSV</a>
+               class="border border-brand text-brand font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand/5">Export CSV</a>
             <a href="{{ route('admin.audit-logs.verify') }}"
-               class="border border-[#1F573D] text-[#1F573D] font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-[#1F573D]/5">Verify integrity</a>
+               class="border border-brand text-brand font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand/5">Verify integrity</a>
         </form>
 
         <div class="overflow-x-auto">
@@ -48,12 +48,12 @@
                 <tbody>
                     @php
                         $categoryColors = [
-                            'Authentication' => 'bg-[#DCE7F9] text-[#1e3a6e]',
-                            'User Management' => 'bg-[#F5E4A8] text-[#5c4a0a]',
-                            'Academic Records' => 'bg-[#D7ECD9] text-[#1f4d2c]',
-                            'Grades & Assessment' => 'bg-[#E4DAF3] text-[#4a2d6e]',
-                            'Attendance & Leave' => 'bg-[#F6D9D9] text-[#7a2020]',
-                            'Finance' => 'bg-[#D9EEF0] text-[#155e63]',
+                            'Authentication' => 'bg-tint-blue text-tint-blue-ink',
+                            'User Management' => 'bg-tint-yellow text-tint-yellow-ink',
+                            'Academic Records' => 'bg-tint-green text-tint-green-ink',
+                            'Grades & Assessment' => 'bg-tint-purple text-tint-purple-ink',
+                            'Attendance & Leave' => 'bg-tint-pink text-tint-pink-ink',
+                            'Finance' => 'bg-tint-teal text-tint-teal-ink',
                             'System' => 'bg-neutral-200 text-neutral-700',
                         ];
                     @endphp
@@ -70,7 +70,7 @@
                                 {{ $log->action }}
                                 @if (! empty($log->details['changes']))
                                     <details class="mt-1">
-                                        <summary class="text-xs text-[#1F573D] cursor-pointer select-none">{{ count($log->details['changes']) }} value change(s)</summary>
+                                        <summary class="text-xs text-brand cursor-pointer select-none">{{ count($log->details['changes']) }} value change(s)</summary>
                                         <ul class="mt-1 space-y-0.5 text-xs text-neutral-500">
                                             @foreach ($log->details['changes'] as $change)
                                                 <li>

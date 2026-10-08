@@ -15,7 +15,7 @@
                         @endforeach
                     </select>
                 </div>
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Filter</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-brand-dark transition-colors">Filter</button>
             </form>
         </div>
     </x-card>
@@ -48,16 +48,16 @@
                 <label class="block text-sm font-semibold mb-1">Capacity</label>
                 <input type="number" name="capacity" value="35" required class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Add Section</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Add Section</button>
         </form>
     </x-card>
 
     <x-card title="Place students" subtitle="Active students not yet placed in a section for this academic year.">
         @error('student_ids')
-            <div class="mb-4 rounded-lg border border-[#F2D9D4] bg-[#F2D9D4]/50 px-4 py-3 text-sm text-[#B0392B]">{{ $message }}</div>
+            <div class="mb-4 rounded-lg border border-danger-line bg-danger-line/50 px-4 py-3 text-sm text-danger">{{ $message }}</div>
         @enderror
         @error('student_ids.*')
-            <div class="mb-4 rounded-lg border border-[#F2D9D4] bg-[#F2D9D4]/50 px-4 py-3 text-sm text-[#B0392B]">{{ $message }}</div>
+            <div class="mb-4 rounded-lg border border-danger-line bg-danger-line/50 px-4 py-3 text-sm text-danger">{{ $message }}</div>
         @enderror
 
         @if ($unplacedStudents->isEmpty())
@@ -82,18 +82,18 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto border border-neutral-100 rounded-lg p-3">
                     @foreach ($unplacedStudents as $student)
                         <label class="flex items-center gap-2 text-sm py-1.5 px-2 rounded hover:bg-neutral-50 cursor-pointer">
-                            <input type="checkbox" name="student_ids[]" value="{{ $student->id }}" class="rounded border-neutral-300 text-[#1F573D]">
+                            <input type="checkbox" name="student_ids[]" value="{{ $student->id }}" class="rounded border-neutral-300 text-brand">
                             <span class="font-semibold">{{ $student->name }}</span>
                             <span class="text-neutral-400 text-xs">{{ $student->student_id_number }} · {{ $student->department?->name }}</span>
                         </label>
                     @endforeach
                 </div>
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Place selected students</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Place selected students</button>
             </form>
         @endif
     </x-card>
 
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <x-stat-tile label="Sections" color="blue">{{ $stats['sections'] }}</x-stat-tile>
         <x-stat-tile label="Assigned teachers" color="blue">{{ $stats['assignedTeachers'] }}</x-stat-tile>
         <x-stat-tile label="Students placed" color="green">{{ $stats['studentsPlaced'] }}</x-stat-tile>
@@ -128,7 +128,7 @@
                                     @endforeach
                                 </select>
                                 <input type="number" name="capacity" value="{{ $section->capacity }}" class="w-16 rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-xs">
-                                <button type="submit" class="text-xs font-semibold text-[#1F573D] hover:underline">Save</button>
+                                <button type="submit" class="text-xs font-semibold text-brand hover:underline">Save</button>
                             </form>
                         </td>
                     </tr>
@@ -144,6 +144,6 @@
             The Registrar creates sections and assigns the homeroom teacher; the VP Academic owns subject-teaching assignments.
             Year-end promotion is prepared by the Registrar and applied only after VP + Principal co-approval.
         </p>
-        <a href="{{ route('registrar.teaching-assignments.index') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Teacher Assignment</a>
+        <a href="{{ route('registrar.teaching-assignments.index') }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Teacher Assignment</a>
     </x-card>
 </x-app-layout>

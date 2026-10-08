@@ -1,9 +1,9 @@
 <x-app-layout title="Student Dashboard" subtitle="Quick overview of your academic progress, schedule, attendance, and notices." :badge="$student->name" role="student">
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <x-stat-tile label="Term GPA" color="blue">{{ $termGpa ?? '—' }}</x-stat-tile>
-        <x-stat-tile label="Attendance rate" color="green">{{ $attendanceRate !== null ? $attendanceRate.'%' : '—' }}</x-stat-tile>
-        <x-stat-tile label="My classes" color="blue">{{ $classesCount }}</x-stat-tile>
-        <x-stat-tile label="New notices">{{ $notices->count() }}</x-stat-tile>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <x-stat-tile label="Term GPA" :href="route('student.grades.index')" color="blue">{{ $termGpa ?? '—' }}</x-stat-tile>
+        <x-stat-tile label="Attendance rate" :href="route('student.attendance.index')" color="green">{{ $attendanceRate !== null ? $attendanceRate.'%' : '—' }}</x-stat-tile>
+        <x-stat-tile label="My classes" :href="route('student.schedule.index')" color="blue">{{ $classesCount }}</x-stat-tile>
+        <x-stat-tile label="New notices" :href="route('student.notices.index')">{{ $notices->count() }}</x-stat-tile>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -28,7 +28,7 @@
                     @endforelse
                 </tbody>
             </table>
-            <a href="{{ route('student.grades.index') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Open grades</a>
+            <a href="{{ route('student.grades.index') }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Open grades</a>
         </x-card>
 
         <x-card title="Notice board" subtitle="School notices visible to students.">
@@ -41,7 +41,7 @@
                     <p class="text-sm text-neutral-400">No notices yet.</p>
                 @endforelse
             </div>
-            <a href="{{ route('student.notices.index') }}" class="inline-block mt-4 text-sm font-semibold text-[#1F573D] hover:underline">Read notices</a>
+            <a href="{{ route('student.notices.index') }}" class="inline-block mt-4 text-sm font-semibold text-brand hover:underline">Read notices</a>
         </x-card>
     </div>
 
@@ -65,6 +65,6 @@
                 <p class="text-sm text-neutral-400">No attendance recorded yet.</p>
             @endforelse
         </div>
-        <a href="{{ route('student.attendance.index') }}" class="inline-block mt-4 text-sm font-semibold text-[#1F573D] hover:underline">View attendance</a>
+        <a href="{{ route('student.attendance.index') }}" class="inline-block mt-4 text-sm font-semibold text-brand hover:underline">View attendance</a>
     </x-card>
 </x-app-layout>

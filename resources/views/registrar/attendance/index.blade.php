@@ -23,7 +23,7 @@
                                     <form method="POST" action="{{ route('registrar.attendance-corrections.update', $record) }}" class="inline">
                                         @csrf @method('PUT')
                                         <input type="hidden" name="status" value="Excused">
-                                        <button type="submit" class="text-xs font-semibold text-[#1F573D] hover:underline">Mark Excused</button>
+                                        <button type="submit" class="text-xs font-semibold text-brand hover:underline">Mark Excused</button>
                                     </form>
                                 </td>
                             </tr>
@@ -62,7 +62,7 @@
                     @endforeach
                 </select>
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Filter</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-brand-dark transition-colors">Filter</button>
         </form>
     </x-card>
 
@@ -101,7 +101,7 @@
                                             <option value="{{ $status }}" @selected($record->status === $status)>{{ $status }}</option>
                                         @endforeach
                                     </select>
-                                    <button type="submit" class="text-xs font-semibold text-[#1F573D] hover:underline">Save</button>
+                                    <button type="submit" class="text-xs font-semibold text-brand hover:underline">Save</button>
                                 </form>
                             </td>
                         </tr>

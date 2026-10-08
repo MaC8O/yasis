@@ -59,7 +59,7 @@
             </p>
 
             <div class="flex gap-3">
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-3 text-sm">Add staff</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Add staff</button>
                 <a href="{{ route('hr_office.staff.index') }}" class="text-sm font-semibold text-neutral-500 self-center">Cancel</a>
             </div>
         </form>

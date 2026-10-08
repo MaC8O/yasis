@@ -2,7 +2,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <x-card title="Guardian profile">
             <div class="flex items-center gap-3 mb-4">
-                <span class="w-12 h-12 rounded-full bg-[#C9A227] text-neutral-900 font-bold flex items-center justify-center">
+                <span class="w-12 h-12 rounded-full bg-gold text-neutral-900 font-bold flex items-center justify-center">
                     {{ strtoupper(substr($guardian->user->name, 0, 1)) }}
                 </span>
                 <div>
@@ -15,7 +15,7 @@
             @if ($guardian->user->status !== 'Active')
                 <form method="POST" action="{{ route('registrar.guardians.resend-invite', $guardian) }}" class="inline-block ml-2">
                     @csrf
-                    <button type="submit" class="text-xs font-semibold text-blue-700 hover:underline">Re-send invite</button>
+                    <button type="submit" class="text-xs font-semibold text-info hover:underline">Re-send invite</button>
                 </form>
             @endif
 
@@ -38,7 +38,7 @@
                     <input type="text" name="relationship" value="{{ old('relationship', $guardian->relationship) }}" placeholder="Mother / Father / …" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm">
                 </div>
                 <div class="sm:col-span-2">
-                    <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2 text-sm">Save contact</button>
+                    <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors">Save contact</button>
                 </div>
             </form>
         </x-card>
@@ -54,7 +54,7 @@
                 <label class="flex items-center gap-1.5 text-sm font-semibold mb-2.5">
                     <input type="checkbox" name="is_primary" value="1"> Primary
                 </label>
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Link</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-brand-dark transition-colors">Link</button>
             </form>
         </x-card>
     </div>
@@ -85,15 +85,15 @@
                             @unless ($student->pivot->is_primary)
                                 <form method="POST" action="{{ route('registrar.guardians.set-primary', [$guardian, $student]) }}" class="inline">
                                     @csrf
-                                    <button type="submit" class="text-xs font-semibold text-[#8A6D10] hover:underline">Make primary</button>
+                                    <button type="submit" class="text-xs font-semibold text-warning hover:underline">Make primary</button>
                                 </form>
                             @endunless
                             <form method="POST" action="{{ route('registrar.guardians.unlink', [$guardian, $student]) }}" class="inline"
                                   onsubmit="return confirm('Unlink {{ $student->name }} from this guardian?');">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="text-xs font-semibold text-[#B0392B] hover:underline">Unlink</button>
+                                <button type="submit" class="text-xs font-semibold text-danger hover:underline">Unlink</button>
                             </form>
-                            <a href="{{ route('registrar.students.show', $student) }}" class="text-xs font-semibold text-[#1F573D] hover:underline">View</a>
+                            <a href="{{ route('registrar.students.show', $student) }}" class="text-xs font-semibold text-brand hover:underline">View</a>
                         </td>
                     </tr>
                 @empty

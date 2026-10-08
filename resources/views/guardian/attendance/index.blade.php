@@ -1,7 +1,7 @@
 <x-app-layout title="Attendance" subtitle="Read-only daily attendance history for linked child." badge="Guardian · Read-only access" role="guardian">
     <x-child-switcher :children="$children" :child="$child" route="guardian.attendance.index" />
 
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <x-stat-tile label="Present" color="green">{{ $counts['Present'] }}</x-stat-tile>
         <x-stat-tile label="Absent" color="pink">{{ $counts['Absent'] }}</x-stat-tile>
         <x-stat-tile label="Tardy" color="yellow">{{ $counts['Tardy'] }}</x-stat-tile>

@@ -14,12 +14,12 @@
                     @endforeach
                 </select>
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Generate Draft</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Generate Draft</button>
         </form>
         <p class="text-xs text-neutral-400 mt-3">Types: Transcript · Report Card · Transfer/Leaving · Completion · Enrollment (bonafide)</p>
     </x-card>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <x-stat-tile label="Queued (draft)" color="yellow">{{ $stats['queued'] }}</x-stat-tile>
         <x-stat-tile label="Ready to print" color="green">{{ $stats['readyToPrint'] }}</x-stat-tile>
         <x-stat-tile label="Printed" color="blue">{{ $stats['printed'] }}</x-stat-tile>
@@ -47,12 +47,12 @@
                             @if ($doc->type === 'Transcript' && $doc->status === 'Draft')
                                 <form method="POST" action="{{ route('registrar.documents.submit-for-approval', $doc) }}" class="inline">
                                     @csrf
-                                    <button type="submit" class="text-xs font-semibold text-[#1F573D] hover:underline">Submit for approval</button>
+                                    <button type="submit" class="text-xs font-semibold text-brand hover:underline">Submit for approval</button>
                                 </form>
                             @elseif ($doc->type === 'Transcript' && ! in_array($doc->status, ['Ready', 'Printed']))
                                 <span class="text-xs text-neutral-400">Awaiting two-key approval</span>
                             @else
-                                <a href="{{ route('registrar.documents.download', $doc) }}" target="_blank" class="text-xs font-semibold text-[#1F573D] hover:underline">
+                                <a href="{{ route('registrar.documents.download', $doc) }}" target="_blank" class="text-xs font-semibold text-brand hover:underline">
                                     {{ $doc->status === 'Printed' ? 'Re-print PDF' : 'Generate PDF' }}
                                 </a>
                             @endif
