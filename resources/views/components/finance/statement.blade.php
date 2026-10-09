@@ -16,12 +16,12 @@
         <thead>
             <tr class="text-[11px] uppercase tracking-wider text-neutral-500 border-b-2 border-neutral-300 bg-neutral-50">
                 <th class="py-2 px-3 text-left font-semibold">Date</th>
-                <th class="py-2 px-3 text-left font-semibold">Ref</th>
+                <th class="py-2 px-3 text-left font-semibold">Period</th>
                 <th class="py-2 px-3 text-left font-semibold">Description</th>
                 <th class="py-2 px-3 text-right font-semibold">Charged</th>
                 <th class="py-2 px-3 text-right font-semibold">Paid</th>
-                <th class="py-2 px-3 text-right font-semibold">Open</th>
-                <th class="py-2 px-3 text-right font-semibold">Balance ({{ Money::CURRENCY }})</th>
+                <th class="py-2 px-3 text-right font-semibold">Still owed</th>
+                <th class="py-2 px-3 text-right font-semibold">Running total ({{ Money::CURRENCY }})</th>
             </tr>
         </thead>
         <tbody>
@@ -53,7 +53,7 @@
         </tbody>
         <tfoot>
             <tr class="border-t-2 border-neutral-300 bg-neutral-50 font-bold">
-                <td class="py-2.5 px-3" colspan="3">Closing balance</td>
+                <td class="py-2.5 px-3" colspan="3">Total</td>
                 <td class="{{ $num }}">{{ Money::format($charges) }}</td>
                 <td class="{{ $num }} text-success">{{ Money::format($payments) }}</td>
                 <td class="{{ $num }} {{ $open > 0 ? 'text-danger' : '' }}">{{ Money::format($open) }}</td>

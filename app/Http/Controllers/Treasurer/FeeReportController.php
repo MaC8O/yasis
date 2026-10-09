@@ -15,28 +15,43 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FeeReportController extends Controller
 {
+    /** §9.6 Fee Reports: school-wide answers, each with its own download. */
     public function index(FeeSummaryService $service)
     {
         $summaries = $service->studentSummaries();
-        $distribution = $service->statusDistribution();
-        $totalBilled = array_sum($distribution);
+        $owing = $summaries->where('balance', '>', 0);
+        $billed = $summaries->sum('total_billed');
+        $aging = $service->agingTotals($summaries);
 
         return view('treasurer.reports.index', [
-            'billedTotal' => $summaries->sum('total_billed'),
-            'outstandingTotal' => $summaries->sum('balance'),
+            'billedTotal' => $billed,
             'paidTotal' => $summaries->sum('paid'),
-            'studentsWithBalance' => $summaries->where('balance', '>', 0)->count(),
-            'aging' => $service->agingTotals($summaries),
-            'distribution' => $distribution,
-            'distributionPct' => $totalBilled > 0 ? [
-                'paid' => round($distribution['paid'] / $totalBilled * 100, 1),
-                'partial' => round($distribution['partial'] / $totalBilled * 100, 1),
-                'outstanding' => round($distribution['outstanding'] / $totalBilled * 100, 1),
-            ] : ['paid' => 0, 'partial' => 0, 'outstanding' => 0],
-            'byDepartment' => $service->outstandingByDepartment(summaries: $summaries),
+            'owedTotal' => $summaries->sum('balance'),
+            'collectionRate' => $billed > 0 ? round($summaries->sum('paid') / $billed * 100, 1) : null,
+            'owingCount' => $owing->count(),
+            'aging' => $aging,
+            'agingCounts' => collect(array_keys(FeeSummaryService::AGING_BUCKETS))
+                ->mapWithKeys(fn ($k) => [$k => $summaries->filter(fn ($s) => $s->aging[$k] > 0)->count()])->all(),
+            'topOwing' => $owing->sortByDesc('balance')->take(10)->values(),
             'byPeriod' => $service->collectionRateByPeriod(),
-            'topDebtors' => $summaries->where('balance', '>', 0)->sortByDesc('balance')->take(10)->values(),
+            'byDepartment' => $service->outstandingByDepartment(summaries: $summaries),
+            'statementStudents' => $summaries->map(fn ($s) => $s->student)->sortBy('name')->values(),
         ]);
+    }
+
+    /** "Print a student's statement" picker on Fee Reports → that student's statement page. */
+    public function findStatement(Request $request)
+    {
+        $input = trim((string) $request->input('student'));
+        $student = Student::where('student_id_number', $input)->first()
+            ?? Student::where('name', $input)->first();
+
+        if (! $student) {
+            return redirect()->to(route('treasurer.reports.index').'#statement')
+                ->with('warning', $input === '' ? 'Choose a student first.' : "No student found for “{$input}”.");
+        }
+
+        return redirect()->route('treasurer.records.show', $student);
     }
 
     /** Outstanding balance list — who owes what, with full names and contact for follow-up. */

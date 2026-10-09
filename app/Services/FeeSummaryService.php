@@ -11,7 +11,7 @@ class FeeSummaryService
 {
     /** Receivables aging buckets, by days since the unpaid charge's date. */
     public const AGING_BUCKETS = [
-        'current' => 'Current (0–30)',
+        'current' => 'Under 30 days',
         'days_31_60' => '31–60 days',
         'days_61_90' => '61–90 days',
         'over_90' => 'Over 90 days',
@@ -50,6 +50,7 @@ class FeeSummaryService
                     'lines' => $rows->count(),
                     'is_restricted' => $rows->contains('is_restricted', true),
                     'aging' => $this->aging($lines),
+                    'overdue_days' => $this->overdueDays($lines),
                 ];
             })
             ->values();
@@ -116,6 +117,24 @@ class FeeSummaryService
         return $buckets;
     }
 
+    /**
+     * Days the oldest unpaid charge has been owing beyond the 30-day payment window,
+     * or null when nothing is overdue (fully paid, or every unpaid charge is under 30 days old).
+     */
+    public function overdueDays(Collection $lines, ?Carbon $asOf = null): ?int
+    {
+        $asOf ??= today();
+        $oldest = $lines->filter(fn ($l) => $l->open > 0)->min(fn ($l) => $l->record->txn_date);
+
+        if (! $oldest) {
+            return null;
+        }
+
+        $days = (int) $oldest->diffInDays($asOf, false);
+
+        return $days > 30 ? $days : null;
+    }
+
     /** Totals per aging bucket across $summaries. */
     public function agingTotals(Collection $summaries): array
     {
@@ -158,7 +177,7 @@ class FeeSummaryService
                 $balance = (float) $rows->sum('balance');
                 $rate = $billed > 0 ? round((($billed - $balance) / $billed) * 100, 1) : 0;
 
-                return (object) ['period' => $period, 'rate' => $rate];
+                return (object) ['period' => $period, 'billed' => $billed, 'collected' => $billed - $balance, 'owed' => $balance, 'rate' => $rate];
             })
             ->values();
     }

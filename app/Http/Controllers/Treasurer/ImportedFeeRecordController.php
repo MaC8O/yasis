@@ -11,49 +11,55 @@ use Illuminate\Http\Request;
 
 class ImportedFeeRecordController extends Controller
 {
-    /** §9.5: the accounts-receivable ledger — one row per student, with aging. */
+    /** Tabs on Student Accounts: which accounts to list. */
+    public const VIEWS = [
+        'all' => 'All students',
+        'owing' => 'Still owe money',
+        'overdue' => 'Overdue (30+ days)',
+        'paid' => 'Fully paid',
+    ];
+
+    /** §9.5 Student Accounts: find a student and see what they owe. */
     public function index(Request $request, FeeSummaryService $service)
     {
         $all = $service->studentSummaries();
-        $summaries = $all;
+
+        $view = array_key_exists($request->string('view')->value(), self::VIEWS) ? $request->string('view')->value() : 'all';
+        $filters = [
+            'all' => fn ($s) => true,
+            'owing' => fn ($s) => $s->balance > 0,
+            'overdue' => fn ($s) => $s->overdue_days !== null,
+            'paid' => fn ($s) => $s->balance <= 0,
+        ];
+        $counts = collect($filters)->map(fn ($f) => $all->filter($f)->count());
+
+        $summaries = $all->filter($filters[$view]);
 
         if ($search = $request->string('search')->trim()->lower()->value()) {
             $summaries = $summaries->filter(fn ($s) => str_contains(mb_strtolower($s->student->name), $search)
-                || str_contains(mb_strtolower($s->student->student_id_number), $search));
-        }
-
-        if ($status = $request->string('status')->value()) {
-            $summaries = $status === 'Outstanding'
-                ? $summaries->whereIn('status', ['Owed', 'Outstanding'])
-                : $summaries->where('status', $status);
-        }
-
-        if ($request->string('aging')->value() === 'overdue') {
-            $summaries = $summaries->filter(fn ($s) => $s->aging['days_31_60'] + $s->aging['days_61_90'] + $s->aging['over_90'] > 0);
+                || str_contains(mb_strtolower($s->student->student_id_number), $search)
+                || str_contains(mb_strtolower((string) $s->section?->name), $search));
         }
 
         $sort = $request->string('sort', 'name')->value();
         $summaries = match ($sort) {
-            'balance' => $summaries->sortByDesc('balance'),
-            'overdue' => $summaries->sortByDesc(fn ($s) => $s->aging['over_90'] * 1e6 + $s->aging['days_61_90'] * 1e3 + $s->aging['days_31_60']),
+            'owed' => $summaries->sortByDesc('balance'),
+            'overdue' => $summaries->sortByDesc(fn ($s) => $s->overdue_days ?? -1),
             default => $summaries->sortBy(fn ($s) => $s->student->name),
         };
 
         return view('treasurer.records.index', [
             'summaries' => $summaries->values(),
-            'filters' => $request->only(['search', 'status', 'aging', 'sort']),
+            'view' => $view,
+            'views' => self::VIEWS,
+            'counts' => $counts,
+            'filters' => ['search' => $request->string('search')->value(), 'sort' => $sort],
             'totals' => [
-                'billed' => $summaries->sum('total_billed'),
+                'charged' => $summaries->sum('total_billed'),
                 'paid' => $summaries->sum('paid'),
-                'balance' => $summaries->sum('balance'),
-                'aging' => $service->agingTotals($summaries),
+                'owed' => $summaries->sum('balance'),
             ],
-            'stats' => [
-                'receivables' => $all->sum('balance'),
-                'accounts' => $all->where('balance', '>', 0)->count(),
-                'overdue' => $all->sum(fn ($s) => $s->aging['days_31_60'] + $s->aging['days_61_90'] + $s->aging['over_90']),
-                'restrictedRows' => ImportedFeeRecord::where('is_restricted', true)->count(),
-            ],
+            'owedTotal' => $all->sum('balance'),
         ]);
     }
 

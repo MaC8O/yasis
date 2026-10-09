@@ -271,6 +271,7 @@ Route::middleware(['auth', 'role:treasurer'])->prefix('treasurer')->name('treasu
     Route::get('/reports', [FeeReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/outstanding', [FeeReportController::class, 'downloadOutstanding'])->name('reports.outstanding');
     Route::get('/reports/aging', [FeeReportController::class, 'downloadAging'])->name('reports.aging');
+    Route::get('/reports/find-statement', [FeeReportController::class, 'findStatement'])->name('reports.find-statement');
     Route::get('/reports/statement/{student}', [FeeReportController::class, 'downloadStatement'])->name('reports.statement');
 });
 
