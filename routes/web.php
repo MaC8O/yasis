@@ -255,6 +255,7 @@ Route::middleware(['auth', 'role:treasurer'])->prefix('treasurer')->name('treasu
 
     Route::get('/validate', [ValidateMatchController::class, 'index'])->name('validate.index');
     Route::post('/validate/{importedFeeRecord}/resolve', [ValidateMatchController::class, 'resolve'])->name('validate.resolve');
+    Route::post('/validate/{importedFeeRecord}/unmatch', [ValidateMatchController::class, 'unmatch'])->name('validate.unmatch');
     Route::post('/validate/{importedFeeRecord}/toggle-restrict', [ValidateMatchController::class, 'toggleRestrict'])->name('validate.toggle-restrict');
     Route::post('/validate/{importedFeeRecord}/toggle-hold', [ValidateMatchController::class, 'toggleHold'])->name('validate.toggle-hold');
     Route::post('/validate/batches/{importBatch}/publish', [ValidateMatchController::class, 'publish'])->name('validate.publish');
