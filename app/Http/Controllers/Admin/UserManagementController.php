@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Department;
 use App\Models\User;
 use App\Services\AuditService;
@@ -38,11 +39,48 @@ class UserManagementController extends Controller
             $query->where('status', $status);
         }
 
+        $users = $query->orderBy('name')->paginate(\App\Support\PerPage::resolve($request))->withQueryString();
+
+        // Master-detail: the panel shows ?selected=<id> (kept in the URL so actions that
+        // redirect back() land on the same user), falling back to the first row listed.
+        $selected = $request->integer('selected') ? User::find($request->integer('selected')) : null;
+        $selected ??= $users->first();
+
         return view('admin.users.index', [
-            'users' => $query->orderBy('name')->paginate(\App\Support\PerPage::resolve($request))->withQueryString(),
+            'users' => $users,
             'roles' => Role::pluck('name'),
             'filters' => $request->only(['search', 'role', 'status']),
+            'panel' => $selected ? $this->panelData($selected) : null,
         ]);
+    }
+
+    /** The profile detail panel alone — fetched by the index page when a row is selected. */
+    public function panel(User $user)
+    {
+        return view('admin.users.panel', $this->panelData($user));
+    }
+
+    private function panelData(User $user): array
+    {
+        $user->load([
+            'roles',
+            'staffProfile.department',
+            'staffProfile.homeroomSections',
+            'guardian.students',
+            'student.department',
+        ]);
+        $user->staffProfile?->loadCount('teachingAssignments');
+
+        return [
+            'profileUser' => $user,
+            'actionsBy' => AuditLog::where('user_id', $user->id)->latest('id')->limit(6)->get(),
+            'actionsByCount' => AuditLog::where('user_id', $user->id)->count(),
+            'accountHistory' => AuditLog::with('user')
+                ->where('entity_type', 'User')->where('entity_id', $user->id)
+                ->where('user_id', '!=', $user->id)
+                ->latest('id')->limit(6)->get(),
+            'lockoutThreshold' => SecurityPolicy::lockoutThreshold(),
+        ];
     }
 
     public function create()
@@ -138,7 +176,7 @@ class UserManagementController extends Controller
 
         $audit->log($request->user(), 'Edited user', 'User', $user->id);
 
-        return redirect()->route('admin.users.index')->with('status', 'User updated.');
+        return redirect()->route('admin.users.index', ['selected' => $user->id])->with('status', 'User updated.');
     }
 
     public function deactivate(Request $request, User $user, AuditService $audit)

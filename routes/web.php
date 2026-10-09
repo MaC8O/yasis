@@ -101,6 +101,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/users/import', [UserImportController::class, 'index'])->name('users.import');
     Route::post('/users/import', [UserImportController::class, 'store'])->name('users.import.store');
     Route::get('/users/import/template', [UserImportController::class, 'template'])->name('users.import.template');
+    Route::get('/users/{user}/panel', [UserManagementController::class, 'panel'])->name('users.panel');
     Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
     Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
     Route::post('/users/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('users.deactivate');
@@ -158,6 +159,7 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
     Route::get('/students/import', [StudentImportController::class, 'index'])->name('students.import');
     Route::post('/students/import', [StudentImportController::class, 'store'])->name('students.import.store');
     Route::get('/students/import/template', [StudentImportController::class, 'template'])->name('students.import.template');
+    Route::get('/students/{student}/panel', [StudentController::class, 'panel'])->name('students.panel');
     Route::get('/students/{student}', [StudentController::class, 'show'])->name('students.show');
     Route::get('/students/{student}/edit', [StudentController::class, 'edit'])->name('students.edit');
     Route::put('/students/{student}', [StudentController::class, 'update'])->name('students.update');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Registrar;
 
 use App\Http\Controllers\Controller;
+use App\Models\AttendanceRecord;
 use App\Models\Department;
 use App\Models\DocumentRequest;
 use App\Models\Enrollment;
@@ -17,7 +18,7 @@ class StudentController extends Controller
 {
     public function __construct(private UserProvisioningService $provisioning) {}
 
-    public function index(Request $request)
+    public function index(Request $request, AuditService $audit)
     {
         $activeYear = \App\Models\AcademicYear::where('is_active', true)->first();
 
@@ -39,7 +40,16 @@ class StudentController extends Controller
             $query->whereHas('enrollments', fn ($q) => $q->where('section_id', $sectionId)->where('status', 'Active'));
         }
 
+        // Master-detail: the panel opens only for an explicitly chosen ?selected=<id> — unlike
+        // User Management it does not auto-select the first row, because every panel view is
+        // logged as access to that student's record (§3.8) and must reflect a deliberate choice.
+        $selected = $request->integer('selected') ? Student::find($request->integer('selected')) : null;
+        if ($selected) {
+            $audit->log($request->user(), 'Viewed student summary', 'Student', $selected->id);
+        }
+
         return view('registrar.students.index', [
+            'panel' => $selected ? $this->panelData($selected) : null,
             'students' => $query->orderBy('name')->paginate(\App\Support\PerPage::resolve($request))->withQueryString(),
             'departments' => Department::academic()->orderBy('name')->get(),
             'sections' => Section::whereHas('academicYear', fn ($q) => $q->where('is_active', true))->orderByRaw('LENGTH(name), name')->get(),
@@ -51,6 +61,37 @@ class StudentController extends Controller
                 'transferred' => Student::where('enrollment_status', 'Transferred')->count(),
             ],
         ]);
+    }
+
+    /** The student detail panel alone — fetched by the index page when a row is selected. */
+    public function panel(Request $request, Student $student, AuditService $audit)
+    {
+        $audit->log($request->user(), 'Viewed student summary', 'Student', $student->id);
+
+        return view('registrar.students.panel', $this->panelData($student));
+    }
+
+    private function panelData(Student $student): array
+    {
+        $student->load([
+            'department',
+            'guardians.user',
+            'enrollments' => fn ($q) => $q->with('section.academicYear')->latest('id'),
+            'documentRequests' => fn ($q) => $q->latest('id'),
+        ]);
+
+        // Attendance for the active academic year, keyed by status (Present/Tardy/Excused/Absent).
+        $attendance = AttendanceRecord::where('student_id', $student->id)
+            ->whereHas('term.academicYear', fn ($q) => $q->where('is_active', true))
+            ->selectRaw('status, count(*) as total')->groupBy('status')
+            ->pluck('total', 'status');
+
+        return [
+            'student' => $student,
+            'currentEnrollment' => $student->enrollments->firstWhere('status', 'Active'),
+            'attendance' => $attendance,
+            'attendanceTotal' => $attendance->sum(),
+        ];
     }
 
     public function create()

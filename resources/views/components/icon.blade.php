@@ -35,6 +35,13 @@
         'menu' => '<path d="M4 6h16M4 12h16M4 18h16"/>',
         'logout' => '<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 16l-4-4 4-4M6 12h10"/>',
         'chevron-right' => '<path d="M9 6l6 6-6 6"/>',
+        'mail' => '<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/>',
+        'phone' => '<path d="M5 4h3.5l1.5 4.5-2 1.5a11 11 0 0 0 6 6l1.5-2 4.5 1.5V19a1.5 1.5 0 0 1-1.5 1.5A16.5 16.5 0 0 1 3.5 5.5 1.5 1.5 0 0 1 5 4z"/>',
+        'key' => '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l2.5 2.5M14.5 8.5 16.5 10.5"/>',
+        'lock-open' => '<rect x="4.5" y="11" width="15" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.7-1.5"/>',
+        'power' => '<path d="M12 3v8"/><path d="M6.5 6.5a8 8 0 1 0 11 0"/>',
+        'trash' => '<path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+        'camera' => '<path d="M4 8h3l2-2.5h6L17 8h3v11.5H4z"/><circle cx="12" cy="13.5" r="3.5"/>',
         'dot' => '<circle cx="12" cy="12" r="2.5"/>',
     ];
 @endphp
