@@ -44,7 +44,7 @@
     </div>
 
     <div x-data="masterDetail({{ $panel['student']->id ?? 'null' }})"
-         class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+         class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_408px] gap-6 items-start">
         {{-- Master list --}}
         <div class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
             <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-neutral-200 bg-neutral-50">
