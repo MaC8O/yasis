@@ -15,6 +15,42 @@ document.querySelectorAll('main table:not(.rt)').forEach((table) => {
     wrap.appendChild(table);
 });
 
+/*
+ * Master-detail list (User Management, Student Records): a single click on a row swaps the
+ * detail panel in place and records ?selected= in the URL, so a panel action that redirects
+ * back() returns to the same record; a double click opens the record's full profile.
+ *   <div x-data="masterDetail(5)"> … <tr @click="select(id, panelUrl)" @dblclick="open(fullUrl)"> … <div x-ref="panel">
+ */
+Alpine.data('masterDetail', (initial = null) => ({
+    selected: initial,
+    loading: false,
+    async select(id, url) {
+        if (id === this.selected || this.loading) return;
+        const pageUrl = new URL(window.location.href);
+        pageUrl.searchParams.set('selected', id);
+
+        this.selected = id;
+        this.loading = true;
+        try {
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            // Expired session or other failure: fall back to a full page load.
+            if (!res.ok || res.redirected) return window.location.assign(pageUrl);
+            this.$refs.panel.innerHTML = await res.text();
+            history.replaceState(null, '', pageUrl);
+            if (window.matchMedia('(max-width: 1279px)').matches) {
+                this.$refs.panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        } catch {
+            window.location.assign(pageUrl);
+        } finally {
+            this.loading = false;
+        }
+    },
+    open(url) {
+        window.location.assign(url);
+    },
+}));
+
 Alpine.start();
 
 /*

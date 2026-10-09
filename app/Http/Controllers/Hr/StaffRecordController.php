@@ -33,12 +33,50 @@ class StaffRecordController extends Controller
             $query->where('staff_profiles.status', $status);
         }
 
+        $staff = $query->join('users', 'users.id', '=', 'staff_profiles.id')->orderBy('users.name')
+            ->select('staff_profiles.*')->get();
+
+        // Master-detail: the panel shows ?selected=<id> (kept in the URL so actions that
+        // redirect back() land on the same person), falling back to the first row listed.
+        $selected = $request->integer('selected') ? StaffProfile::find($request->integer('selected')) : null;
+        $selected ??= $staff->first();
+
         return view('hr.staff.index', [
-            'staff' => $query->join('users', 'users.id', '=', 'staff_profiles.id')->orderBy('users.name')
-                ->select('staff_profiles.*')->get(),
+            'panel' => $selected ? $this->panelData($selected) : null,
+            'staff' => $staff,
             'departments' => Department::orderBy('name')->get(),
             'filters' => $request->only(['search', 'department', 'status']),
         ]);
+    }
+
+    /** The staff detail panel alone — fetched by the index page when a row is selected. */
+    public function panel(StaffProfile $staffProfile)
+    {
+        return view('hr.staff.panel', $this->panelData($staffProfile));
+    }
+
+    private function panelData(StaffProfile $staffProfile): array
+    {
+        $staffProfile->load([
+            'user',
+            'department',
+            'homeroomSections' => fn ($q) => $q->whereHas('academicYear', fn ($y) => $y->where('is_active', true)),
+            'teachingAssignments' => fn ($q) => $q->whereHas('section.academicYear', fn ($y) => $y->where('is_active', true))
+                ->with(['section', 'subject']),
+            'leaveBalances' => fn ($q) => $q->where('year', now()->year)->with('leaveType'),
+            'leaveRequests' => fn ($q) => $q->with('leaveType')->latest('from_date')->limit(5),
+        ]);
+
+        return [
+            'staffMember' => $staffProfile,
+            'onLeave' => $staffProfile->leaveRequests()->where('status', 'Approved')
+                ->whereDate('from_date', '<=', today())->whereDate('to_date', '>=', today())->first(),
+            'pendingLeave' => $staffProfile->leaveRequests()->where('status', 'Pending')->count(),
+            // This month's attendance, keyed by status (Present/Tardy/Absent/On-Leave).
+            'attendance' => $staffProfile->staffAttendances()
+                ->whereBetween('attendance_date', [now()->startOfMonth(), now()->endOfMonth()])
+                ->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
+        ];
     }
 
     public function create()

@@ -32,90 +32,80 @@
         </form>
     </x-card>
 
-    <x-card>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-neutral-500 border-b border-neutral-200">
-                        <th class="py-2 font-semibold">Name</th>
-                        <th class="py-2 font-semibold">ID / Email</th>
-                        <th class="py-2 font-semibold">Role</th>
-                        <th class="py-2 font-semibold">Status</th>
-                        <th class="py-2 font-semibold">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($users as $user)
-                        <tr class="border-b border-neutral-100 last:border-0">
-                            <td class="py-2.5">
-                                <div class="flex items-center gap-2.5">
-                                    @if ($user->photo_path)
-                                        <img src="{{ Storage::url($user->photo_path) }}" alt=""
-                                            class="w-8 h-8 rounded-full object-cover border border-neutral-200 shrink-0">
-                                    @else
-                                        <span class="w-8 h-8 rounded-full bg-gold text-neutral-900 font-bold text-[10px] flex items-center justify-center shrink-0">
-                                            {{ collect(explode(' ', $user->name))->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('') }}
-                                        </span>
-                                    @endif
-                                    {{ $user->name }}
-                                </div>
-                            </td>
-                            <td class="py-2.5 text-neutral-500">{{ $user->staffProfile?->staff_id_number ?? $user->email }}</td>
-                            <td class="py-2.5">{{ ucwords(str_replace('_', ' ', $user->roles->first()?->name ?? '—')) }}</td>
-                            <td class="py-2.5">
-                                <x-badge :color="$user->status === 'Active' ? 'green' : ($user->status === 'Pending' ? 'yellow' : 'pink')">
-                                    {{ $user->status }}
-                                </x-badge>
-                                @if ($user->isLocked())
-                                    <x-badge color="pink">Locked</x-badge>
-                                @endif
-                            </td>
-                            <td class="py-2.5">
-                                <div class="flex flex-wrap gap-3 text-xs font-semibold">
-                                    <a href="{{ route('admin.users.edit', $user) }}" class="text-brand hover:underline">Edit</a>
-                                    <form method="POST" action="{{ route('admin.users.reset-password', $user) }}">
-                                        @csrf
-                                        <button type="submit" class="text-info hover:underline">Reset / Re-send</button>
-                                    </form>
-                                    @if ($user->isLocked())
-                                        <form method="POST" action="{{ route('admin.users.unlock', $user) }}">
-                                            @csrf
-                                            <button type="submit" class="text-warning hover:underline">Unlock</button>
-                                        </form>
-                                    @endif
-                                    @if ($user->status === 'Active')
-                                        <form method="POST" action="{{ route('admin.users.deactivate', $user) }}">
-                                            @csrf
-                                            <button type="submit" class="text-danger hover:underline">Deactivate</button>
-                                        </form>
-                                    @else
-                                        <form method="POST" action="{{ route('admin.users.reactivate', $user) }}">
-                                            @csrf
-                                            <button type="submit" class="text-success hover:underline">Reactivate</button>
-                                        </form>
-                                    @endif
-                                    @if ($user->id !== auth()->id())
-                                        <form method="POST" action="{{ route('admin.users.destroy', $user) }}"
-                                            onsubmit="return confirm('Delete {{ $user->name }}? If this account has linked records (grades, attendance, audit history, etc.) it will be anonymized and deactivated instead of removed, to preserve the audit trail.');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-danger hover:underline">Delete</button>
-                                        </form>
-                                    @endif
-                                </div>
-                            </td>
+    <div x-data="masterDetail({{ $panel['profileUser']->id ?? 'null' }})"
+         class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+        {{-- Master list --}}
+        <div class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+            <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-neutral-200 bg-neutral-50">
+                <p class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-500">
+                    <x-icon name="users" class="w-4 h-4" /> Users
+                    <span class="rounded-full bg-neutral-200 text-neutral-700 px-2 py-0.5 text-[11px] tabular-nums">{{ $users->total() }}</span>
+                </p>
+                <p class="text-[11px] text-neutral-400 hidden sm:block">Click to view · double-click to open full profile</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] uppercase tracking-wider text-neutral-500 border-b border-neutral-200">
+                            <th class="py-2 pl-4 pr-2 font-semibold">Name</th>
+                            <th class="py-2 px-2 font-semibold">ID / Email</th>
+                            <th class="py-2 px-2 font-semibold">Role</th>
+                            <th class="py-2 pl-2 pr-4 font-semibold">Status</th>
                         </tr>
-                    @empty
-                        <tr><td colspan="5" class="py-4 text-neutral-400">No users found.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @forelse ($users as $user)
+                            <tr @click="select({{ $user->id }}, '{{ route('admin.users.panel', $user) }}')"
+                                @dblclick="open('{{ route('admin.users.edit', $user) }}')"
+                                :class="selected === {{ $user->id }} ? 'bg-brand-soft shadow-[inset_3px_0_0_var(--color-brand)]' : 'hover:bg-neutral-50'"
+                                class="border-b border-neutral-100 last:border-0 cursor-pointer select-none transition-colors">
+                                <td class="py-2 pl-4 pr-2">
+                                    <div class="flex items-center gap-2.5">
+                                        @if ($user->photo_path)
+                                            <img src="{{ Storage::url($user->photo_path) }}" alt=""
+                                                class="w-8 h-8 rounded-full object-cover border border-neutral-200 shrink-0">
+                                        @else
+                                            <span class="w-8 h-8 rounded-full bg-gold text-neutral-900 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                                {{ collect(explode(' ', $user->name))->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('') }}
+                                            </span>
+                                        @endif
+                                        <button type="button" class="text-left font-medium text-ink hover:underline"
+                                                :aria-pressed="selected === {{ $user->id }}">{{ $user->name }}</button>
+                                    </div>
+                                </td>
+                                <td class="py-2 px-2 text-neutral-500">{{ $user->staffProfile?->staff_id_number ?? $user->email }}</td>
+                                <td class="py-2 px-2">{{ ucwords(str_replace('_', ' ', $user->roles->first()?->name ?? '—')) }}</td>
+                                <td class="py-2 pl-2 pr-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center gap-1.5 text-xs font-medium {{ $user->status === 'Active' ? 'text-success' : ($user->status === 'Pending' ? 'text-warning' : 'text-danger') }}">
+                                        <span class="w-2 h-2 rounded-full bg-current" aria-hidden="true"></span>{{ $user->status }}
+                                    </span>
+                                    @if ($user->isLocked())
+                                        <span class="ml-1 text-xs font-semibold text-danger">· Locked</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="py-6 px-4 text-neutral-400">No users found.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="px-4 py-3 border-t border-neutral-200 bg-neutral-50 text-xs">{{ $users->links() }}</div>
         </div>
 
-        <div class="mt-4">{{ $users->links() }}</div>
+        {{-- Detail panel --}}
+        <div x-ref="panel" class="xl:sticky xl:top-6 scroll-mt-6 transition-opacity" :class="loading && 'opacity-50 pointer-events-none'" aria-live="polite">
+            @if ($panel)
+                @include('admin.users.panel', $panel)
+            @else
+                <div class="bg-white rounded-2xl border border-dashed border-neutral-300 px-6 py-12 text-center text-sm text-neutral-400">
+                    No user selected.
+                </div>
+            @endif
+        </div>
+    </div>
 
-        <p class="text-xs text-neutral-400 mt-4">Per-user actions: Edit · Reset password / Re-send login · Deactivate / Reactivate.</p>
-    </x-card>
 
     <x-card title="Data Retention" subtitle="Action an erasure/retention request against a named student or guardian. PII is scrubbed and portal access revoked — history is retained anonymized, never hard-deleted. Every action is audited.">
         <form method="POST" action="{{ route('admin.retention-actions.store') }}" x-data="{ type: '{{ old('subject_type', 'student') }}' }"
