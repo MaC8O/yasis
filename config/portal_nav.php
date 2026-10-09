@@ -76,7 +76,7 @@ return [
             ['label' => 'Source Prep', 'route' => 'treasurer.info.source-prep', 'icon' => 'info'],
             ['label' => 'Import Records', 'route' => 'treasurer.import.index', 'icon' => 'upload'],
             ['label' => 'Validate & Match', 'route' => 'treasurer.validate.index', 'icon' => 'check-square'],
-            ['label' => 'Imported Records', 'route' => 'treasurer.records.index', 'icon' => 'document'],
+            ['label' => 'Student Accounts', 'route' => 'treasurer.records.index', 'icon' => 'users'],
             ['label' => 'Fee Reports', 'route' => 'treasurer.reports.index', 'icon' => 'chart'],
             ['label' => 'History', 'route' => 'treasurer.history.index', 'icon' => 'clock'],
             ['label' => 'Academic Calendar', 'route' => 'calendar.index', 'icon' => 'calendar'],

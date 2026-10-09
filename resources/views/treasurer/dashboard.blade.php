@@ -5,9 +5,9 @@
     </div>
 
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <x-stat-tile label="Receivables ({{ Money::CURRENCY }})" color="yellow" :href="route('treasurer.records.index', ['sort' => 'balance'])" :hint="$accountsWithBalance.' '.Str::plural('account', $accountsWithBalance).' owing'">{{ Money::format($receivables) }}</x-stat-tile>
+        <x-stat-tile label="Receivables ({{ Money::CURRENCY }})" color="yellow" :href="route('treasurer.records.index', ['view' => 'owing', 'sort' => 'owed'])" :hint="$accountsWithBalance.' '.Str::plural('account', $accountsWithBalance).' owing'">{{ Money::format($receivables) }}</x-stat-tile>
         <x-stat-tile label="Collected ({{ Money::CURRENCY }})" color="green" :hint="$collectionRate !== null ? $collectionRate.'% of billed' : null">{{ Money::format($collected) }}</x-stat-tile>
-        <x-stat-tile label="Over 90 days ({{ Money::CURRENCY }})" color="pink" :href="route('treasurer.records.index', ['aging' => 'overdue', 'sort' => 'overdue'])">{{ Money::format($aging['over_90']) }}</x-stat-tile>
+        <x-stat-tile label="Over 90 days ({{ Money::CURRENCY }})" color="pink" :href="route('treasurer.records.index', ['view' => 'overdue', 'sort' => 'overdue'])">{{ Money::format($aging['over_90']) }}</x-stat-tile>
         <x-stat-tile label="Matched records" color="blue" :href="route('treasurer.validate.index')" :hint="$needsReview ? $needsReview.' need review' : 'All matched'">{{ $matchedRows }} / {{ $totalRows }}</x-stat-tile>
     </div>
 

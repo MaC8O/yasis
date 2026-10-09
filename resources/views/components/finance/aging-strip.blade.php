@@ -1,4 +1,4 @@
-@props(['aging', 'compact' => false])
+@props(['aging', 'compact' => false, 'counts' => null])
 @use('App\Support\Money')
 @use('App\Services\FeeSummaryService')
 @php
@@ -28,6 +28,9 @@
                     <span class="w-2 h-2 rounded-sm {{ $tones[$key]['bar'] }}" aria-hidden="true"></span>{{ $label }}
                 </dt>
                 <dd class="mt-0.5 text-sm font-bold tabular-nums {{ $aging[$key] > 0 && $key !== 'current' ? $tones[$key]['text'] : 'text-ink' }}">{{ Money::format($aging[$key], true) }}</dd>
+                @if ($counts !== null)
+                    <dd class="text-[11px] text-neutral-500">{{ $counts[$key] }} {{ Str::plural('student', $counts[$key]) }}</dd>
+                @endif
             </div>
         @endforeach
     </dl>
