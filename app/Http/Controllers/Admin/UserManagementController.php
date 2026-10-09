@@ -189,6 +189,12 @@ class UserManagementController extends Controller
 
     public function reactivate(Request $request, User $user, AuditService $audit)
     {
+        // A Pending account has never set a password: making it Active would not let anyone in,
+        // it would only hide that the invite was never completed. Re-send the invite instead.
+        if ($user->status === 'Pending') {
+            return back()->with('warning', "{$user->name} hasn't finished setting up their account yet, so there is nothing to reactivate. Use “Resend invite” to e-mail the setup link again.");
+        }
+
         $user->update(['status' => 'Active']);
         $audit->log($request->user(), 'Reactivated user', 'User', $user->id);
 
@@ -204,7 +210,9 @@ class UserManagementController extends Controller
         Password::sendResetLink(['email' => $user->email]);
         $audit->log($request->user(), 'Reset password / re-sent login', 'User', $user->id);
 
-        return back()->with('status', "Password reset link re-sent to {$user->email}.");
+        return back()->with('status', $user->status === 'Pending'
+            ? "Account-setup link re-sent to {$user->email}."
+            : "Password reset link re-sent to {$user->email}.");
     }
 
     public function unlock(Request $request, User $user, AuditService $audit)
