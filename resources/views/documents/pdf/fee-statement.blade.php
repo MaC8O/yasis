@@ -77,7 +77,7 @@
             </td>
             <td style="vertical-align:top">
                 <div class="due">
-                    <div class="muted">Balance due ({{ Money::CURRENCY }})</div>
+                    <div class="muted">Still owed ({{ Money::CURRENCY }})</div>
                     <div class="amt">{{ Money::format($closing) }}</div>
                 </div>
             </td>
@@ -87,8 +87,8 @@
     <table class="lines">
         <thead>
             <tr>
-                <th>Date</th><th>Ref</th><th>Description</th>
-                <th class="num">Charged</th><th class="num">Paid</th><th class="num">Open</th><th class="num">Balance</th>
+                <th>Date</th><th>Period</th><th>Description</th>
+                <th class="num">Charged</th><th class="num">Paid</th><th class="num">Still owed</th><th class="num">Running total</th>
             </tr>
         </thead>
         <tbody>
@@ -110,7 +110,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="3">Totals / closing balance</td>
+                <td colspan="3">Total</td>
                 <td class="num">{{ Money::format($charges) }}</td>
                 <td class="num">{{ Money::format($payments) }}</td>
                 <td class="num">{{ Money::format($open) }}</td>
@@ -123,7 +123,7 @@
         <thead>
             <tr>
                 @foreach (FeeSummaryService::AGING_BUCKETS as $label)<th>{{ $label }}</th>@endforeach
-                <th>Total due</th>
+                <th>Still owed</th>
             </tr>
         </thead>
         <tbody>
