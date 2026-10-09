@@ -8,6 +8,7 @@ use App\Models\ImportedFeeRecord;
 use App\Models\Student;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class ValidateMatchController extends Controller
 {
@@ -16,7 +17,11 @@ class ValidateMatchController extends Controller
         $batches = ImportBatch::orderByDesc('uploaded_at')->get();
         $batch = $batches->firstWhere('id', $request->integer('batch')) ?? $batches->first();
 
-        $records = $batch ? ImportedFeeRecord::where('import_batch_id', $batch->id)->with('student')->get() : collect();
+        $records = $batch
+            ? ImportedFeeRecord::where('import_batch_id', $batch->id)->with('student')->orderBy('txn_date')->orderBy('id')->get()
+            : collect();
+
+        $unmatched = $records->whereNull('student_id')->where('is_held', false);
 
         return view('treasurer.validate.index', [
             'batches' => $batches,
@@ -24,17 +29,59 @@ class ValidateMatchController extends Controller
             'records' => $records,
             'uploaded' => $records->count(),
             'matched' => $records->whereNotNull('student_id')->count(),
-            'unmatchedRecords' => $records->whereNull('student_id')->where('is_held', false),
+            'unmatchedRecords' => $unmatched,
+            'suggestions' => $this->suggestions($unmatched),
+            'nameConflicts' => $records->filter->has_name_conflict->count(),
             'restrictedCount' => $records->where('is_restricted', true)->count(),
             'heldCount' => $records->where('is_held', true)->count(),
-            'blockingCount' => $records->whereNull('student_id')->where('is_held', false)->count(),
+            'blockingCount' => $unmatched->count(),
         ]);
+    }
+
+    /**
+     * §9.4 manual-resolution drawer: up to three likely ISMS students per unmatched row,
+     * ranked by how close the source name and ID are to each candidate.
+     *
+     * @return array<int, Collection<int, Student>> keyed by imported row id
+     */
+    private function suggestions(Collection $unmatched): array
+    {
+        if ($unmatched->isEmpty()) {
+            return [];
+        }
+
+        $students = Student::where('enrollment_status', 'Enrolled')->get(['id', 'name', 'student_id_number']);
+        $normalize = fn (?string $v) => preg_replace('/[^a-z0-9]/', '', mb_strtolower((string) $v));
+
+        return $unmatched->mapWithKeys(function ($row) use ($students, $normalize) {
+            $name = $normalize($row->raw_student_name);
+            $key = $normalize($row->raw_student_key);
+
+            $ranked = $students->map(function ($student) use ($name, $key, $normalize) {
+                $score = 0;
+                if ($name !== '') {
+                    similar_text($name, $normalize($student->name), $pct);
+                    $score = max($score, $pct);
+                }
+                if ($key !== '') {
+                    similar_text($key, $normalize($student->student_id_number), $pct);
+                    $score = max($score, $pct);
+                }
+
+                return ['student' => $student, 'score' => $score];
+            })->filter(fn ($c) => $c['score'] >= 60)->sortByDesc('score')->take(3)->pluck('student')->values();
+
+            return [$row->id => $ranked];
+        })->all();
     }
 
     /** §9.4: restrict marks a row SDA-sensitive — hidden from guardians/students everywhere. */
     public function toggleRestrict(Request $request, ImportedFeeRecord $importedFeeRecord, AuditService $audit)
     {
         $importedFeeRecord->update(['is_restricted' => ! $importedFeeRecord->is_restricted]);
+
+        // §9.8: the batch's restricted classification changed, so it needs re-confirming.
+        $importedFeeRecord->importBatch()->update(['restricted_confirmed_at' => null, 'restricted_confirmed_by' => null]);
 
         $audit->log(
             $request->user(),
@@ -91,9 +138,19 @@ class ValidateMatchController extends Controller
             ]);
         }
 
+        // §9.8: families must never see an SDA line by mistake, so the Treasurer signs off
+        // the batch's restricted classification as part of publishing.
+        $request->validate(['confirm_restricted' => ['accepted']], [
+            'confirm_restricted.accepted' => 'Confirm the restricted (SDA) rows are correctly marked before publishing.',
+        ]);
+
         $held = $importBatch->importedFeeRecords()->where('is_held', true)->count();
 
-        $importBatch->update(['published_at' => now()]);
+        $importBatch->update([
+            'published_at' => now(),
+            'restricted_confirmed_at' => now(),
+            'restricted_confirmed_by' => $request->user()->id,
+        ]);
         $audit->log($request->user(), 'Published fee import batch', 'ImportBatch', $importBatch->id);
 
         $note = $held > 0 ? " Published with {$held} held row(s) excluded." : '';

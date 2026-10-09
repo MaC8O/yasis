@@ -26,8 +26,10 @@
 
     <x-card title="Before you upload — checklist">
         <ul class="space-y-2 text-sm text-neutral-600 list-disc list-inside">
-            <li>Confirm the file has columns: student_id, date, amount, balance (status and restricted are optional).</li>
+            <li>Confirm the file has columns: student_id, student_name, date, amount, balance (description, status and restricted are optional).</li>
             <li>The student_id column should use the ISMS student ID format (e.g. YAS-2026-0001) — the agreed matching key.</li>
+            <li>Keep each student's full name in student_name — it is checked against ISMS, so a mistyped ID shows up as a name conflict instead of posting to the wrong account.</li>
+            <li>Use description for the ledger narrative (e.g. "Term 1 tuition", "Bus fee") — it appears on statements.</li>
             <li>Mark SDA discount/allowance rows with <code>restricted = yes</code> so they stay hidden from guardians/students.</li>
             <li>Double-check the period label (e.g. "Q2 2026") before uploading — it's how reports group collection rate.</li>
         </ul>

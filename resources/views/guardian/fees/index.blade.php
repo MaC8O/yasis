@@ -1,47 +1,45 @@
-<x-app-layout title="Fee Status" subtitle="View imported fee records from the school finance process." badge="Sun account, not Sun Plus" role="guardian">
+@use('App\Support\Money')
+<x-app-layout title="Fee Status" subtitle="Your child's fee account, from the school finance office." badge="Sun account, not Sun Plus" role="guardian">
     <x-child-switcher :children="$children" :child="$child" route="guardian.fees.index" />
 
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <x-stat-tile label="Total billed" color="blue">{{ number_format($totalBilled) }}</x-stat-tile>
-        <x-stat-tile label="Paid" color="green">{{ number_format($paid) }}</x-stat-tile>
-        <x-stat-tile label="Outstanding" color="yellow">{{ number_format($balance) }}</x-stat-tile>
-        <x-stat-tile label="Status" color="blue">{{ $status }}</x-stat-tile>
+    <div class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+        <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 px-5 py-5">
+            <div>
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Balance due</p>
+                <p class="text-3xl font-bold tabular-nums {{ $balance > 0 ? 'text-danger' : 'text-success' }}">{{ Money::format($balance) }} <span class="text-sm font-semibold text-neutral-500">{{ Money::CURRENCY }}</span></p>
+                @if ($lines->isNotEmpty())<x-finance.status-pill :status="$status" class="mt-1" />@endif
+            </div>
+            <dl class="grid grid-cols-2 gap-x-8 gap-y-1 text-sm sm:text-right self-center">
+                <dt class="text-neutral-500">Total billed</dt><dd class="font-semibold tabular-nums">{{ Money::format($totalBilled) }}</dd>
+                <dt class="text-neutral-500">Paid</dt><dd class="font-semibold tabular-nums text-success">{{ Money::format($paid) }}</dd>
+            </dl>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 px-5 py-3 border-t border-neutral-200 bg-neutral-50">
+            <a href="{{ route('guardian.fees.statement', ['child' => $child->id]) }}" target="_blank" class="inline-flex items-center gap-2 bg-brand text-white font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors">
+                <x-icon name="document" class="w-4 h-4" /> Download / print statement
+            </a>
+            <p class="text-xs text-neutral-500">Please quote account <strong class="tabular-nums">{{ $child->student_id_number }}</strong> when paying at the Finance Office.</p>
+        </div>
     </div>
 
-    <x-card title="Guardian statement" subtitle="Imported transaction lines, with restricted items hidden.">
-        <table class="rt w-full text-sm">
-            <thead>
-                <tr class="text-left text-neutral-500 border-b border-neutral-200">
-                    <th class="py-2 font-semibold">Date</th>
-                    <th class="py-2 font-semibold">Amount</th>
-                    <th class="py-2 font-semibold">Balance</th>
-                    <th class="py-2 font-semibold">Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($records as $record)
-                    <tr class="border-b border-neutral-100 last:border-0">
-                        <td data-label="Date" class="py-2.5">{{ $record->txn_date->format('Y-m-d') }}</td>
-                        <td data-label="Amount" class="py-2.5">{{ number_format($record->amount) }}</td>
-                        <td data-label="Balance" class="py-2.5">{{ number_format($record->balance) }}</td>
-                        <td data-label="Status" class="py-2.5"><x-badge :color="$record->status === 'Paid' ? 'green' : ($record->status === 'Partial' ? 'yellow' : 'pink')">{{ $record->status }}</x-badge></td>
-                    </tr>
-                @empty
-                    <tr><td colspan="4" class="py-4 text-neutral-400">No fee records available yet.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
+    @if ($balance > 0)
+        <x-card title="How long the balance has been due">
+            <x-finance.aging-strip :aging="$aging" />
+        </x-card>
+    @endif
 
-        <div class="flex items-center gap-3 mt-4">
-            <x-badge color="blue">SDA discount / allowance hidden</x-badge>
-            <a href="{{ route('guardian.fees.statement', ['child' => $child->id]) }}" target="_blank" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Download / Print Statement</a>
+    <div class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+        <div class="px-5 py-3 border-b border-neutral-200">
+            <h2 class="text-lg font-bold text-ink">Statement</h2>
+            <p class="text-sm text-neutral-500">Charges and payments as recorded by the finance office.</p>
         </div>
-    </x-card>
+        <x-finance.statement :lines="$lines" />
+    </div>
 
     <x-card title="Finance note">
         <p class="text-sm text-neutral-500">
-            The portal displays imported records only. Corrections are handled by the finance office's source
-            process and appear after the next upload.
+            The portal displays records from the school's finance office. Payments are recorded there and appear here
+            after the next update. If something looks wrong, please contact the Finance Office.
         </p>
     </x-card>
 </x-app-layout>

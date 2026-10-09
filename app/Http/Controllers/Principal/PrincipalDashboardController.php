@@ -15,6 +15,7 @@ use App\Models\StaffAttendance;
 use App\Models\StaffProfile;
 use App\Models\Student;
 use App\Services\FeeSummaryService;
+use App\Support\FeeVisibility;
 
 class PrincipalDashboardController extends Controller
 {
@@ -37,7 +38,8 @@ class PrincipalDashboardController extends Controller
             ? round($grades->avg(fn ($g) => $g->assessment->max_score > 0 ? $g->score / $g->assessment->max_score * 100 : 0), 1)
             : null;
 
-        $summaries = $feeService->studentSummaries();
+        // §2.2: the Principal reads fees as leadership — published, matched, non-held rows only.
+        $summaries = $feeService->studentSummaries(FeeVisibility::LEADERSHIP);
         $totalBilled = $summaries->sum('total_billed');
         $feeCollectionRate = $totalBilled > 0 ? round($summaries->sum('paid') / $totalBilled * 100) : null;
 
@@ -60,7 +62,7 @@ class PrincipalDashboardController extends Controller
             ->values()
             ->all();
 
-        $feeDistribution = $feeService->statusDistribution();
+        $feeDistribution = $feeService->statusDistribution(FeeVisibility::LEADERSHIP);
 
         return view('principal.dashboard', [
             'attendanceTrend' => $attendanceTrend,

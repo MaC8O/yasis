@@ -105,10 +105,10 @@ class FeeRowRestrictHoldTest extends TestCase
 
         $this->assertNull($batch->fresh()->published_at);
 
-        // Holding the unmatched row parks it — publish now goes through.
+        // Holding the unmatched row parks it — publish now goes through (with the §9.8 SDA sign-off).
         $this->actingAs($treasurer->user)->post("/treasurer/validate/{$row->id}/toggle-hold");
         $this->actingAs($treasurer->user)
-            ->post("/treasurer/validate/batches/{$batch->id}/publish")
+            ->post("/treasurer/validate/batches/{$batch->id}/publish", ['confirm_restricted' => '1'])
             ->assertSessionHasNoErrors();
 
         $this->assertNotNull($batch->fresh()->published_at);

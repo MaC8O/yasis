@@ -27,7 +27,7 @@ class FeeImportTemplateTest extends TestCase
         $response->assertOk();
         $this->assertStringContainsString('text/csv', $response->headers->get('content-type'));
         $this->assertStringContainsString('fee_import_template.csv', $response->headers->get('content-disposition'));
-        $this->assertStringStartsWith('student_id,date,amount,balance,status,restricted', $response->getContent());
+        $this->assertStringStartsWith('student_id,student_name,date,description,amount,balance,status,restricted', $response->getContent());
         $this->assertStringContainsString('YAS-2026-', $response->getContent());
     }
 

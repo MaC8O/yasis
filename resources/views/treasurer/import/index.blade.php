@@ -22,8 +22,9 @@
                 </div>
             </div>
             <p class="text-xs text-neutral-500">
-                Expected columns: <code>student_id</code>, <code>date</code>, <code>amount</code>, <code>balance</code>,
-                optionally <code>status</code> (Owed/Paid/Partial/Outstanding) and <code>restricted</code> (yes/no — SDA discount/allowance rows).
+                Expected columns: <code>student_id</code>, <code>student_name</code>, <code>date</code>, <code>amount</code>, <code>balance</code>,
+                optionally <code>description</code>, <code>status</code> (Owed/Paid/Partial/Outstanding) and <code>restricted</code> (yes/no — SDA discount/allowance rows).
+                The full name is checked against ISMS so mistyped IDs show up as name conflicts.
             </p>
             <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Upload &amp; Validate</button>
         </form>

@@ -1,4 +1,4 @@
-<x-app-layout title="Data &amp; Backup" subtitle="Backup status, on-demand data snapshots, and data-retention actions." badge="Admin" role="admin">
+<x-app-layout title="Data & Backup" subtitle="Backup status, on-demand data snapshots, and data-retention actions." badge="Admin" role="admin">
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <x-stat-tile label="Backup status" color="green">{{ $backupStatus }}</x-stat-tile>
         <x-stat-tile label="Last automated backup" color="blue">{{ $lastBackupAt ? \Carbon\Carbon::parse($lastBackupAt)->diffForHumans() : 'Infrastructure-managed' }}</x-stat-tile>
