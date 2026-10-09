@@ -1,4 +1,4 @@
-<x-app-layout title="Import History" subtitle="Audit trail of imports and published batches — with one-click revert of a bad batch." badge="Sun account, not Sun Plus" role="treasurer">
+<x-app-layout title="Import History" subtitle="Audit trail of imports and published batches — with one-click revert of a bad batch." badge="Treasurer" role="treasurer">
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <x-stat-tile label="Batches" color="blue">{{ $stats['total'] }}</x-stat-tile>
         <x-stat-tile label="Published" color="green">{{ $stats['published'] }}</x-stat-tile>

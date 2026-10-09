@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class ImportBatch extends Model
 {
-    protected $fillable = ['uploaded_by', 'period', 'source_file', 'row_count', 'uploaded_at', 'published_at'];
+    protected $fillable = ['uploaded_by', 'period', 'source_file', 'row_count', 'uploaded_at', 'published_at', 'restricted_confirmed_at', 'restricted_confirmed_by'];
 
     protected function casts(): array
     {
-        return ['uploaded_at' => 'datetime', 'published_at' => 'datetime'];
+        return ['uploaded_at' => 'datetime', 'published_at' => 'datetime', 'restricted_confirmed_at' => 'datetime'];
     }
 
     public function uploadedBy()
@@ -23,8 +23,18 @@ class ImportBatch extends Model
         return $this->hasMany(ImportedFeeRecord::class);
     }
 
+    public function restrictedConfirmedBy()
+    {
+        return $this->belongsTo(User::class, 'restricted_confirmed_by');
+    }
+
     public function getIsPublishedAttribute(): bool
     {
         return $this->published_at !== null;
+    }
+
+    public function getIsRestrictedConfirmedAttribute(): bool
+    {
+        return $this->restricted_confirmed_at !== null;
     }
 }

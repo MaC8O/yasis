@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Guardian\Concerns\ResolvesChild;
 use App\Models\AcademicYear;
 use App\Services\FeeSummaryService;
+use App\Support\FeeVisibility;
 use App\Services\GradeService;
 use Illuminate\Http\Request;
 
@@ -33,7 +34,7 @@ class GuardianDashboardController extends Controller
         ]);
         $gpas = $snapshot->pluck('result.gpa')->filter();
 
-        $feeSummary = $feeService->studentSummaries(familyFacing: true)->firstWhere('student.id', $child->id);
+        $feeSummary = $feeService->studentSummaries(FeeVisibility::FAMILY)->firstWhere('student.id', $child->id);
 
         return view('guardian.dashboard', [
             'children' => $children,

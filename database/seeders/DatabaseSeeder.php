@@ -358,19 +358,20 @@ class DatabaseSeeder extends Seeder
         $treasurerProfile = StaffProfile::where('staff_id_number', 'USR-0006')->first();
         $feeBatch = ImportBatch::firstOrCreate(
             ['period' => 'Q1 2026', 'uploaded_by' => $treasurerProfile->id],
-            ['source_file' => 'sun_account_Q1_2026.xlsx', 'row_count' => 4, 'uploaded_at' => now()->subDays(10), 'published_at' => now()->subDays(9)]
+            ['source_file' => 'fee_export_Q1_2026.xlsx', 'row_count' => 4, 'uploaded_at' => now()->subDays(10), 'published_at' => now()->subDays(9),
+                'restricted_confirmed_at' => now()->subDays(9), 'restricted_confirmed_by' => $treasurerProfile->id]
         );
 
         $feeRows = [
-            ['student_id' => $childA->id, 'raw_student_key' => null, 'amount' => 1200000, 'balance' => 300000, 'status' => 'Partial', 'is_restricted' => false],
-            ['student_id' => $childA->id, 'raw_student_key' => null, 'amount' => 200000, 'balance' => 0, 'status' => 'Paid', 'is_restricted' => true],
-            ['student_id' => $childB->id, 'raw_student_key' => null, 'amount' => 1000000, 'balance' => 1000000, 'status' => 'Outstanding', 'is_restricted' => false],
-            ['student_id' => null, 'raw_student_key' => 'SUN-9911', 'amount' => 500000, 'balance' => 500000, 'status' => 'Owed', 'is_restricted' => false],
+            ['student_id' => $childA->id, 'raw_student_key' => null, 'raw_student_name' => $childA->name, 'description' => 'Q1 tuition', 'amount' => 1200000, 'balance' => 300000, 'status' => 'Partial', 'is_restricted' => false],
+            ['student_id' => $childA->id, 'raw_student_key' => null, 'raw_student_name' => $childA->name, 'description' => 'SDA employee allowance', 'amount' => 200000, 'balance' => 0, 'status' => 'Paid', 'is_restricted' => true],
+            ['student_id' => $childB->id, 'raw_student_key' => null, 'raw_student_name' => $childB->name, 'description' => 'Q1 tuition', 'amount' => 1000000, 'balance' => 1000000, 'status' => 'Outstanding', 'is_restricted' => false],
+            ['student_id' => null, 'raw_student_key' => 'ACC-9911', 'raw_student_name' => 'Maung Thura', 'description' => 'Q1 tuition', 'amount' => 500000, 'balance' => 500000, 'status' => 'Owed', 'is_restricted' => false],
         ];
         foreach ($feeRows as $i => $row) {
             ImportedFeeRecord::firstOrCreate(
                 ['import_batch_id' => $feeBatch->id, 'student_id' => $row['student_id'], 'raw_student_key' => $row['raw_student_key'], 'txn_date' => now()->subDays(10 - $i)->toDateString()],
-                ['amount' => $row['amount'], 'balance' => $row['balance'], 'status' => $row['status'], 'is_restricted' => $row['is_restricted']]
+                ['raw_student_name' => $row['raw_student_name'], 'description' => $row['description'], 'amount' => $row['amount'], 'balance' => $row['balance'], 'status' => $row['status'], 'is_restricted' => $row['is_restricted']]
             );
         }
 

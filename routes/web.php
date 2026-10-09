@@ -153,6 +153,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('registrar.')->group(function () {
     Route::get('/dashboard', [RegistrarDashboardController::class, 'index'])->name('dashboard');
 
+    // §2.2 fees.view_readonly: read-only fee visibility, same rules as the Principal/VP.
+    Route::get('/fees', [FeeVisibilityController::class, 'index'])->name('fees.index');
+    Route::get('/fees/{student}', [FeeVisibilityController::class, 'show'])->name('fees.show');
+
     Route::get('/students', [StudentController::class, 'index'])->name('students.index');
     Route::get('/students/create', [StudentController::class, 'create'])->name('students.create');
     Route::post('/students', [StudentController::class, 'store'])->name('students.store');
@@ -245,12 +249,15 @@ Route::middleware(['auth', 'role:treasurer'])->prefix('treasurer')->name('treasu
     Route::get('/info/source-prep', [FinanceInfoController::class, 'sourcePrep'])->name('info.source-prep');
     Route::get('/import-template', [FinanceInfoController::class, 'importTemplate'])->name('import-template');
     Route::get('/info/visibility-rules', [FinanceInfoController::class, 'visibilityRules'])->name('info.visibility-rules');
+    Route::put('/info/visibility-rules/policy', [FinanceInfoController::class, 'updatePolicy'])->name('info.visibility-policy');
+    Route::post('/info/visibility-rules/batches/{importBatch}/confirm', [FinanceInfoController::class, 'confirmRestricted'])->name('info.confirm-restricted');
 
     Route::get('/import', [FeeImportController::class, 'index'])->name('import.index');
     Route::post('/import', [FeeImportController::class, 'store'])->name('import.store');
 
     Route::get('/validate', [ValidateMatchController::class, 'index'])->name('validate.index');
     Route::post('/validate/{importedFeeRecord}/resolve', [ValidateMatchController::class, 'resolve'])->name('validate.resolve');
+    Route::post('/validate/{importedFeeRecord}/unmatch', [ValidateMatchController::class, 'unmatch'])->name('validate.unmatch');
     Route::post('/validate/{importedFeeRecord}/toggle-restrict', [ValidateMatchController::class, 'toggleRestrict'])->name('validate.toggle-restrict');
     Route::post('/validate/{importedFeeRecord}/toggle-hold', [ValidateMatchController::class, 'toggleHold'])->name('validate.toggle-hold');
     Route::post('/validate/batches/{importBatch}/publish', [ValidateMatchController::class, 'publish'])->name('validate.publish');
@@ -263,6 +270,7 @@ Route::middleware(['auth', 'role:treasurer'])->prefix('treasurer')->name('treasu
 
     Route::get('/reports', [FeeReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/outstanding', [FeeReportController::class, 'downloadOutstanding'])->name('reports.outstanding');
+    Route::get('/reports/aging', [FeeReportController::class, 'downloadAging'])->name('reports.aging');
     Route::get('/reports/statement/{student}', [FeeReportController::class, 'downloadStatement'])->name('reports.statement');
 });
 
@@ -312,6 +320,7 @@ Route::middleware(['auth', 'role:principal'])->prefix('principal')->name('princi
     Route::post('/registration', [PrincipalRegistrationController::class, 'store'])->name('registration.store');
 
     Route::get('/fees', [FeeVisibilityController::class, 'index'])->name('fees.index');
+    Route::get('/fees/{student}', [FeeVisibilityController::class, 'show'])->name('fees.show');
 });
 
 // --- VP ACADEMIC ---
@@ -333,6 +342,7 @@ Route::middleware(['auth', 'role:vp_academic'])->prefix('vp_academic')->name('vp
     Route::delete('/assignments/{teachingAssignment}', [SubjectCatalogController::class, 'destroyAssignment'])->name('assignments.destroy');
 
     Route::get('/fees', [FeeVisibilityController::class, 'index'])->name('fees.index');
+    Route::get('/fees/{student}', [FeeVisibilityController::class, 'show'])->name('fees.show');
 });
 
 // --- GUARDIAN ---

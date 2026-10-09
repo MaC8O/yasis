@@ -60,11 +60,16 @@ class FeeImportController extends Controller
             $restrictedRaw = strtolower(trim((string) ($row['restricted'] ?? '')));
             $isRestricted = in_array($restrictedRaw, ['1', 'true', 'yes', 'sda'], true);
 
+            $name = trim((string) ($row['student_name'] ?? $row['name'] ?? ''));
+            $description = trim((string) ($row['description'] ?? ''));
+
             ImportedFeeRecord::create([
                 'import_batch_id' => $batch->id,
                 'student_id' => $student?->id,
                 'raw_student_key' => $student ? null : $externalKey,
+                'raw_student_name' => $name !== '' ? mb_substr($name, 0, 150) : null,
                 'txn_date' => $row['date'] ?? now()->toDateString(),
+                'description' => $description !== '' ? mb_substr($description, 0, 150) : null,
                 'amount' => $amount,
                 'balance' => $balance,
                 'status' => $matchedStatus,
