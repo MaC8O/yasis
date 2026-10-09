@@ -11,7 +11,7 @@
             <div><dt class="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Department</dt><dd class="text-ink">{{ $student->department?->name ?? '—' }}</dd></div>
         </dl>
         <div class="md:text-right md:border-l md:border-neutral-200 md:pl-6">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Balance due</p>
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Still owed</p>
             <p class="text-2xl font-bold tabular-nums {{ $closing > 0 ? 'text-danger' : 'text-success' }}">{{ Money::format($closing) }} <span class="text-sm font-semibold text-neutral-500">{{ Money::CURRENCY }}</span></p>
         </div>
     </div>

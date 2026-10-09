@@ -6,7 +6,7 @@
 
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <x-stat-tile label="Receivables ({{ Money::CURRENCY }})" color="yellow" :href="route('treasurer.records.index', ['view' => 'owing', 'sort' => 'owed'])" :hint="$accountsWithBalance.' '.Str::plural('account', $accountsWithBalance).' owing'">{{ Money::format($receivables) }}</x-stat-tile>
-        <x-stat-tile label="Collected ({{ Money::CURRENCY }})" color="green" :hint="$collectionRate !== null ? $collectionRate.'% of billed' : null">{{ Money::format($collected) }}</x-stat-tile>
+        <x-stat-tile label="Collected ({{ Money::CURRENCY }})" color="green" :hint="$collectionRate !== null ? $collectionRate.'% of everything charged' : null">{{ Money::format($collected) }}</x-stat-tile>
         <x-stat-tile label="Over 90 days ({{ Money::CURRENCY }})" color="pink" :href="route('treasurer.records.index', ['view' => 'overdue', 'sort' => 'overdue'])">{{ Money::format($aging['over_90']) }}</x-stat-tile>
         <x-stat-tile label="Matched records" color="blue" :href="route('treasurer.validate.index')" :hint="$needsReview ? $needsReview.' need review' : 'All matched'">{{ $matchedRows }} / {{ $totalRows }}</x-stat-tile>
     </div>
@@ -88,7 +88,7 @@
         </table>
     </div>
 
-    <x-card title="Collection rate by period" subtitle="Collected share of billed amounts per import period.">
+    <x-card title="Collection rate by period" subtitle="Share of each period's charges that has been paid.">
         <x-chart.bar-list
             :items="collect($byPeriod)->map(fn ($row) => ['label' => $row->period, 'value' => $row->rate, 'display' => $row->rate.'%'])"
             :max="100" label-width="w-24" />

@@ -1,7 +1,7 @@
 @props(['lines', 'flagRestricted' => false])
 @use('App\Support\Money')
 {{--
-    Statement of account (open-item style): one row per imported charge — what was billed, what
+    Statement of account (open-item style): one row per imported charge — what was charged, what
     has been paid against it, what is still open, and the running balance of open items.
 --}}
 @php
