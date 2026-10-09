@@ -59,11 +59,18 @@
                 </span>
             @endif
 
+            {{-- A Pending account has never set a password, so the same action re-sends the setup e-mail. --}}
             <form method="POST" action="{{ route('admin.users.reset-password', $u) }}">
                 @csrf
-                <button type="submit" class="{{ $tile }}" title="Force a password reset and e-mail a fresh link">
-                    <span class="{{ $circle }}"><x-icon name="key" class="w-4 h-4" /></span> Reset
-                </button>
+                @if ($u->status === 'Pending')
+                    <button type="submit" class="{{ $tile }}" title="E-mail the account-setup link again">
+                        <span class="{{ $circle }}"><x-icon name="mail" class="w-4 h-4" /></span> Resend invite
+                    </button>
+                @else
+                    <button type="submit" class="{{ $tile }}" title="Force a password reset and e-mail a fresh link">
+                        <span class="{{ $circle }}"><x-icon name="key" class="w-4 h-4" /></span> Reset
+                    </button>
+                @endif
             </form>
 
             @if ($u->isLocked())
@@ -83,7 +90,7 @@
                         <span class="{{ $circle }}"><x-icon name="power" class="w-4 h-4" /></span> Deactivate
                     </button>
                 </form>
-            @else
+            @elseif ($u->status === 'Inactive')
                 <form method="POST" action="{{ route('admin.users.reactivate', $u) }}">
                     @csrf
                     <button type="submit" class="{{ $tile }}">
@@ -104,7 +111,9 @@
                 Never signed in
             @endif
         </span>
-        @if ($u->isLocked())
+        @if ($u->status === 'Pending')
+            <span class="font-semibold">Waiting for them to set a password</span>
+        @elseif ($u->isLocked())
             <span class="font-semibold text-danger">Locked</span>
         @elseif ($u->must_reset_password)
             <span class="font-semibold">Password reset pending</span>

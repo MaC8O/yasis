@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AuditLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\Feature\Concerns\SeedsCoreData;
 use Tests\TestCase;
 
@@ -78,5 +79,59 @@ class AdminUserProfilePanelTest extends TestCase
 
         $this->actingAs($teacher->user)->get(route('admin.users.panel', $teacher->user))
             ->assertForbidden();
+    }
+
+    public function test_pending_accounts_offer_resend_invite_instead_of_reactivate(): void
+    {
+        $this->seedRoles();
+        $admin = $this->makeStaff('admin', 'Admin', 'admin@test.local');
+        $pending = $this->makeStaff('teacher', 'Teacher', 'new@test.local');
+        $pending->user->update(['status' => 'Pending']);
+
+        $this->actingAs($admin->user)->get(route('admin.users.panel', $pending->user))
+            ->assertOk()
+            ->assertSee('Resend invite')
+            ->assertSee('Waiting for them to set a password')
+            ->assertDontSee('Reactivate')
+            ->assertDontSee(route('admin.users.reactivate', $pending->user), false);
+    }
+
+    public function test_inactive_accounts_still_offer_reactivate(): void
+    {
+        $this->seedRoles();
+        $admin = $this->makeStaff('admin', 'Admin', 'admin@test.local');
+        $inactive = $this->makeStaff('teacher', 'Teacher', 'old@test.local');
+        $inactive->user->update(['status' => 'Inactive']);
+
+        $this->actingAs($admin->user)->get(route('admin.users.panel', $inactive->user))
+            ->assertOk()
+            ->assertSee('Reactivate')
+            ->assertSee(route('admin.users.reactivate', $inactive->user), false);
+    }
+
+    public function test_a_pending_account_cannot_be_reactivated(): void
+    {
+        $this->seedRoles();
+        $admin = $this->makeStaff('admin', 'Admin', 'admin@test.local');
+        $pending = $this->makeStaff('teacher', 'Teacher', 'new@test.local');
+        $pending->user->update(['status' => 'Pending']);
+
+        $this->actingAs($admin->user)->post(route('admin.users.reactivate', $pending->user))
+            ->assertRedirect()
+            ->assertSessionHas('warning');
+
+        $this->assertSame('Pending', $pending->user->fresh()->status);
+    }
+
+    public function test_resending_the_invite_reports_a_setup_link(): void
+    {
+        Notification::fake();
+        $this->seedRoles();
+        $admin = $this->makeStaff('admin', 'Admin', 'admin@test.local');
+        $pending = $this->makeStaff('teacher', 'Teacher', 'new@test.local');
+        $pending->user->update(['status' => 'Pending']);
+
+        $this->actingAs($admin->user)->post(route('admin.users.reset-password', $pending->user))
+            ->assertSessionHas('status', 'Account-setup link re-sent to new@test.local.');
     }
 }
