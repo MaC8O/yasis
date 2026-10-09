@@ -3,7 +3,7 @@
     $section = $student->enrollments->firstWhere('status', 'Active')?->section;
     $closing = $lines->last()?->balance ?? 0;
 @endphp
-<x-app-layout :title="$student->name" subtitle="Statement of account · read-only" badge="Read-only" :role="$role">
+<x-app-layout :title="$student->name" subtitle="Fee statement — every charge, what was paid, and what is still owed. Read-only." badge="Read-only" :role="$role">
     <div class="bg-white rounded-2xl border border-neutral-200 px-5 py-4 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4">
         <dl class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
             <div><dt class="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Student ID</dt><dd class="font-bold text-ink tabular-nums">{{ $student->student_id_number }}</dd></div>
@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <x-card title="Aging of balance due">
+    <x-card title="How long the money has been owed" subtitle="Each unpaid charge, counted from the date it was charged.">
         <x-finance.aging-strip :aging="$aging" />
     </x-card>
 
