@@ -95,6 +95,21 @@ class FinanceVisibilityAndReportsTest extends TestCase
         }
     }
 
+    public function test_leadership_fee_list_uses_plain_words_and_links_each_row_to_the_statement(): void
+    {
+        $this->seedMixedRows();
+        $registrar = $this->makeStaff('registrar', 'Registrar');
+
+        $this->actingAs($registrar->user)->get(route('registrar.fees.index'))
+            ->assertOk()
+            ->assertSee('Still owed')->assertSee('Charged')->assertSee('Statement →', false)
+            ->assertSee("window.location='".route('registrar.fees.show', $this->student)."'", false)
+            ->assertDontSee('Receivables')->assertDontSee('Billed');
+
+        $this->actingAs($registrar->user)->get(route('registrar.fees.index', ['search' => 'nobody-matches']))
+            ->assertOk()->assertViewHas('summaries', fn ($s) => $s->isEmpty());
+    }
+
     public function test_principal_dashboard_fee_figures_use_leadership_rules(): void
     {
         $this->seedMixedRows();

@@ -25,7 +25,8 @@ class FeeVisibilityController extends Controller
 
         if ($search = $request->string('search')->trim()->lower()->value()) {
             $summaries = $summaries->filter(fn ($s) => str_contains(mb_strtolower($s->student->name), $search)
-                || str_contains(mb_strtolower($s->student->student_id_number), $search));
+                || str_contains(mb_strtolower($s->student->student_id_number), $search)
+                || str_contains(mb_strtolower((string) $s->section?->name), $search));
         }
 
         if ($status = $request->string('status')->value()) {
