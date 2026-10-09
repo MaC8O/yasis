@@ -24,7 +24,7 @@
                                         <form method="POST" action="{{ route('vp_academic.subjects.destroy', $subject) }}"
                                             onsubmit="return confirm('Remove {{ $subject->code }} from the catalogue?');">
                                             @csrf @method('DELETE')
-                                            <button type="submit" class="text-xs font-semibold text-red-700 hover:underline">Remove</button>
+                                            <button type="submit" class="text-xs font-semibold text-danger hover:underline">Remove</button>
                                         </form>
                                     @endif
                                 </td>
@@ -60,7 +60,7 @@
                             class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
                     </div>
                 </div>
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Add to catalogue</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Add to catalogue</button>
             </form>
         </x-card>
     </div>
@@ -92,7 +92,7 @@
                     @endforeach
                 </select>
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Assign</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-brand-dark transition-colors">Assign</button>
         </form>
 
         <div class="overflow-x-auto">
@@ -114,7 +114,7 @@
                             <td class="py-2.5 text-right">
                                 <form method="POST" action="{{ route('vp_academic.assignments.destroy', $assignment) }}">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="text-xs font-semibold text-red-700 hover:underline">Remove</button>
+                                    <button type="submit" class="text-xs font-semibold text-danger hover:underline">Remove</button>
                                 </form>
                             </td>
                         </tr>

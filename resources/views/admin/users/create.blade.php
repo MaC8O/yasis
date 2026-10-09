@@ -77,11 +77,11 @@
                 <div class="flex flex-wrap gap-2 mb-3">
                     <label class="cursor-pointer">
                         <input type="radio" value="invite" x-model="mode" class="peer sr-only">
-                        <span class="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-neutral-200 text-neutral-600 peer-checked:bg-[#1F573D] peer-checked:text-white peer-checked:border-[#1F573D]">Send setup email (pending until they choose a password)</span>
+                        <span class="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-neutral-200 text-neutral-600 peer-checked:bg-brand peer-checked:text-white peer-checked:border-brand">Send setup email (pending until they choose a password)</span>
                     </label>
                     <label class="cursor-pointer">
                         <input type="radio" value="password" x-model="mode" class="peer sr-only">
-                        <span class="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-neutral-200 text-neutral-600 peer-checked:bg-[#1F573D] peer-checked:text-white peer-checked:border-[#1F573D]">Set a password now (active immediately)</span>
+                        <span class="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-neutral-200 text-neutral-600 peer-checked:bg-brand peer-checked:text-white peer-checked:border-brand">Set a password now (active immediately)</span>
                     </label>
                 </div>
                 <div x-show="mode === 'password'" x-cloak class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
@@ -111,7 +111,7 @@
             </p>
 
             <div class="flex gap-3">
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Create user</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Create user</button>
                 <a href="{{ route('admin.users.index') }}" class="text-sm font-semibold text-neutral-500 self-center">Cancel</a>
             </div>
         </form>

@@ -1,5 +1,5 @@
 <x-app-layout title="My Classes" subtitle="View classes assigned by Admin or Registrar and access attendance/gradebook tools." badge="Teacher · Assigned classes only" role="teacher">
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <x-stat-tile label="Classes" color="blue">{{ $stats['classes'] }}</x-stat-tile>
         <x-stat-tile label="Students" color="blue">{{ $stats['students'] }}</x-stat-tile>
         <x-stat-tile label="Subjects" color="green">{{ $stats['subjects'] }}</x-stat-tile>
@@ -25,9 +25,9 @@
                         <td class="py-2.5">{{ $row['students'] }}</td>
                         <td class="py-2.5 text-neutral-500">{{ $row['section']->department->name }}</td>
                         <td class="py-2.5">
-                            <a href="{{ route('teacher.attendance.index', ['section' => $row['section']->id]) }}" class="text-xs font-semibold text-[#1F573D] hover:underline">Attendance</a>
+                            <a href="{{ route('teacher.attendance.index', ['section' => $row['section']->id]) }}" class="text-xs font-semibold text-brand hover:underline">Attendance</a>
                             @if ($row['gradebook'])
-                                / <a href="{{ route('teacher.gradebook.index', ['section' => $row['section']->id]) }}" class="text-xs font-semibold text-[#1F573D] hover:underline">Gradebook</a>
+                                / <a href="{{ route('teacher.gradebook.index', ['section' => $row['section']->id]) }}" class="text-xs font-semibold text-brand hover:underline">Gradebook</a>
                             @endif
                         </td>
                     </tr>

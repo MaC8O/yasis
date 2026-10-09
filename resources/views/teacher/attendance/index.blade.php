@@ -10,7 +10,7 @@
                         </div>
                         <form method="POST" action="{{ route('teacher.attendance.acknowledge', $notice) }}">
                             @csrf
-                            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2 text-sm">Acknowledge</button>
+                            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors">Acknowledge</button>
                         </form>
                     </div>
                 @endforeach
@@ -35,7 +35,7 @@
         </form>
     </x-card>
 
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <x-stat-tile label="Present" color="green">{{ $counts['Present'] }}</x-stat-tile>
         <x-stat-tile label="Absent" color="pink">{{ $counts['Absent'] }}</x-stat-tile>
         <x-stat-tile label="Tardy" color="yellow">{{ $counts['Tardy'] }}</x-stat-tile>
@@ -85,7 +85,7 @@
                 </tbody>
             </table>
 
-            <button type="submit" class="mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-3 text-sm">Save Attendance</button>
+            <button type="submit" class="mt-4 bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Save Attendance</button>
             <p class="text-xs text-neutral-400 mt-2">Every save is written to the audit log for non-repudiation.</p>
         </x-card>
     </form>

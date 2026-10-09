@@ -1,5 +1,5 @@
 <x-app-layout title="Import History" subtitle="Audit trail of imports and published batches — with one-click revert of a bad batch." badge="Sun account, not Sun Plus" role="treasurer">
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <x-stat-tile label="Batches" color="blue">{{ $stats['total'] }}</x-stat-tile>
         <x-stat-tile label="Published" color="green">{{ $stats['published'] }}</x-stat-tile>
         <x-stat-tile label="Needs review" color="yellow">{{ $stats['needsReview'] }}</x-stat-tile>
@@ -29,10 +29,10 @@
                         <td class="py-2.5"><x-badge :color="$batch->is_published ? 'green' : 'yellow'">{{ $batch->is_published ? 'Published' : 'Needs review' }}</x-badge></td>
                         <td class="py-2.5">
                             <div class="flex gap-3 text-xs font-semibold">
-                                <a href="{{ route('treasurer.validate.index', ['batch' => $batch->id]) }}" class="text-[#1F573D] hover:underline">View</a>
+                                <a href="{{ route('treasurer.validate.index', ['batch' => $batch->id]) }}" class="text-brand hover:underline">View</a>
                                 <form method="POST" action="{{ route('treasurer.history.revert', $batch) }}" onsubmit="return confirm('Revert this batch? This removes exactly this batch\'s {{ $batch->row_count }} records.');">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="text-red-700 hover:underline">Revert</button>
+                                    <button type="submit" class="text-danger hover:underline">Revert</button>
                                 </form>
                             </div>
                         </td>

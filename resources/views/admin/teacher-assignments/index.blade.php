@@ -22,7 +22,7 @@
                                     $total = $deptSubjects->count();
                                 @endphp
                                 <button type="button" @click="pick('{{ $section->id }}')"
-                                        :class="selected === '{{ $section->id }}' ? 'bg-[#1F573D] text-white' : 'hover:bg-neutral-100 text-neutral-700'"
+                                        :class="selected === '{{ $section->id }}' ? 'bg-brand text-white' : 'hover:bg-neutral-100 text-neutral-700'"
                                         class="w-full text-left rounded-lg px-3 py-2 text-sm font-medium flex items-center justify-between gap-2">
                                     <span class="truncate">{{ $section->name }}</span>
                                     <span :class="selected === '{{ $section->id }}' ? 'text-white/70' : 'text-neutral-400'" class="text-xs shrink-0">{{ $assignedCount }}/{{ $total }}</span>
@@ -52,7 +52,7 @@
                                 <p class="text-sm text-neutral-500">{{ $section->department->name }}</p>
                             </div>
                             <div class="text-right">
-                                <p class="text-2xl font-bold {{ $assignedCount === $total && $total > 0 ? 'text-[#1F573D]' : 'text-neutral-800' }}">{{ $assignedCount }}<span class="text-neutral-300">/{{ $total }}</span></p>
+                                <p class="text-2xl font-bold {{ $assignedCount === $total && $total > 0 ? 'text-brand' : 'text-neutral-800' }}">{{ $assignedCount }}<span class="text-neutral-300">/{{ $total }}</span></p>
                                 <p class="text-xs text-neutral-400">subjects assigned</p>
                             </div>
                         </div>
@@ -68,7 +68,7 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <button type="submit" class="text-sm font-semibold text-[#1F573D] border border-[#1F573D] rounded-lg px-4 py-2 hover:bg-[#1F573D]/5">Save homeroom</button>
+                            <button type="submit" class="text-sm font-semibold text-brand border border-brand rounded-lg px-4 py-2 hover:bg-brand/5">Save homeroom</button>
                         </form>
                     </x-card>
 
@@ -97,7 +97,7 @@
                                                 <option value="{{ $teacher->id }}" @selected($assignment && $assignment->teacher_id === $teacher->id)>{{ $teacher->user->name }}</option>
                                             @endforeach
                                         </select>
-                                        <button type="submit" class="text-sm font-semibold text-[#1F573D] hover:underline">Save</button>
+                                        <button type="submit" class="text-sm font-semibold text-brand hover:underline">Save</button>
                                     </form>
                                 @endforeach
                             </div>

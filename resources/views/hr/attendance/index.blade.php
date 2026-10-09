@@ -16,7 +16,7 @@
             <div class="flex justify-end gap-3 mb-4">
                 <button type="button" onclick="document.querySelectorAll('input[data-present]').forEach(r => r.checked = true)"
                     class="bg-neutral-100 text-neutral-800 font-semibold rounded-lg px-4 py-2 text-sm">Mark all present</button>
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2 text-sm">Submit attendance</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors">Submit attendance</button>
             </div>
 
             <table class="w-full text-sm">
@@ -47,7 +47,7 @@
                                         <label class="cursor-pointer">
                                             <input type="radio" name="statuses[{{ $loop->parent->index }}][status]" value="{{ $status }}"
                                                 class="peer sr-only" @checked($current === $status) @if($status === 'Present') data-present @endif>
-                                            <span class="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-neutral-200 text-neutral-600 peer-checked:bg-[#1F573D] peer-checked:text-white peer-checked:border-[#1F573D]">
+                                            <span class="inline-block px-3 py-1.5 rounded-lg text-xs font-semibold border border-neutral-200 text-neutral-600 peer-checked:bg-brand peer-checked:text-white peer-checked:border-brand">
                                                 {{ $status }}
                                             </span>
                                         </label>

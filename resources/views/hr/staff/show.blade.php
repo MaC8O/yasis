@@ -23,7 +23,7 @@
                         <option value="{{ $status }}" @selected($staffMember->status === $status)>{{ $status }}</option>
                     @endforeach
                 </select>
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Update</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-brand-dark transition-colors">Update</button>
             </form>
             <p class="text-xs text-neutral-400 mt-2">Offboarding sets status to Inactive — records are never deleted.</p>
         </x-card>

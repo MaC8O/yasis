@@ -1,11 +1,11 @@
 <x-app-layout title="Board Reports" subtitle="Student numbers and background summaries for the School Board." badge="Board-ready" role="principal">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <x-card title="Enrollment Summary" subtitle="Total and per-department student counts for the current year.">
-            <a href="{{ route('principal.board-reports.enrollment-pdf') }}" target="_blank" class="inline-block border border-[#1F573D] text-[#1F573D] font-semibold rounded-lg px-5 py-2.5 text-sm">Generate PDF</a>
+            <a href="{{ route('principal.board-reports.enrollment-pdf') }}" target="_blank" class="inline-block border border-brand text-brand font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand/5 transition-colors">Generate PDF</a>
         </x-card>
 
         <x-card title="Religious Background Summary" subtitle="Distribution of student religious background for the Board.">
-            <a href="{{ route('principal.board-reports.religious-pdf') }}" target="_blank" class="inline-block border border-[#1F573D] text-[#1F573D] font-semibold rounded-lg px-5 py-2.5 text-sm">Generate PDF</a>
+            <a href="{{ route('principal.board-reports.religious-pdf') }}" target="_blank" class="inline-block border border-brand text-brand font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand/5 transition-colors">Generate PDF</a>
         </x-card>
     </div>
 
@@ -24,7 +24,7 @@
                         <tr class="border-b border-neutral-100 last:border-0">
                             <td class="py-2.5">{{ $row->department }}</td>
                             <td class="py-2.5">{{ $row->total }}</td>
-                            <td class="py-2.5 text-green-700">+{{ $row->newThisYear }}</td>
+                            <td class="py-2.5 text-success">+{{ $row->newThisYear }}</td>
                         </tr>
                     @endforeach
                     <tr class="font-bold">

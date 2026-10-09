@@ -1,9 +1,9 @@
 <x-app-layout title="Finance Dashboard" subtitle="Overview of imported fee records, matching status, reporting, and visibility rules." badge="Sun account, not Sun Plus" role="treasurer">
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <x-stat-tile label="Upload cycle" color="blue">Quarterly / demand</x-stat-tile>
-        <x-stat-tile label="Matched records" color="green">{{ $matchedRows }} / {{ $totalRows }}</x-stat-tile>
-        <x-stat-tile label="Need review" color="yellow">{{ $needsReview }}</x-stat-tile>
-        <x-stat-tile label="Visible users">4 roles</x-stat-tile>
+        <x-stat-tile label="Matched records" :href="route('treasurer.validate.index')" color="green">{{ $matchedRows }} / {{ $totalRows }}</x-stat-tile>
+        <x-stat-tile label="Need review" :href="route('treasurer.validate.index')" color="yellow">{{ $needsReview }}</x-stat-tile>
+        <x-stat-tile label="Visible users" :href="route('treasurer.info.visibility-rules')">4 roles</x-stat-tile>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -13,15 +13,15 @@
                 <x-badge color="blue">Excel export, Word adjustment possible</x-badge>
                 <x-badge color="green">Installment payments: quarterly / on demand</x-badge>
             </div>
-            <a href="{{ route('treasurer.info.source-prep') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Prepare source file</a>
+            <a href="{{ route('treasurer.info.source-prep') }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Prepare source file</a>
         </x-card>
 
         <x-card title="Operational queue" subtitle="Tasks to work through.">
             <div class="space-y-2 text-sm">
                 <div class="flex justify-between"><span>Unmatched rows</span><span class="font-semibold">{{ $needsReview }}</span></div>
             </div>
-            <a href="{{ route('treasurer.validate.index') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Validate import</a>
-            <a href="{{ route('treasurer.reports.index') }}" class="inline-block mt-4 ml-2 text-sm font-semibold text-[#1F573D] hover:underline">Reports</a>
+            <a href="{{ route('treasurer.validate.index') }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Validate import</a>
+            <a href="{{ route('treasurer.reports.index') }}" class="inline-block mt-4 ml-2 text-sm font-semibold text-brand hover:underline">Reports</a>
         </x-card>
     </div>
 

@@ -21,7 +21,7 @@
                 <code>guardian_name</code>, <code>guardian_email</code>, <code>guardian_relationship</code>, <code>guardian_phone</code>.
             </p>
             <div class="flex gap-3">
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-3 text-sm">Upload &amp; Import</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Upload &amp; Import</button>
                 <a href="{{ route('registrar.students.import.template') }}" class="text-sm font-semibold text-neutral-600 self-center hover:underline">Download CSV template</a>
                 <a href="{{ route('registrar.students.index') }}" class="text-sm font-semibold text-neutral-500 self-center hover:underline">Back to student records</a>
             </div>
@@ -33,21 +33,21 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <x-card title="Created ({{ count($results['created']) }})">
                 @forelse ($results['created'] as $line)
-                    <p class="text-sm text-green-700 py-1 border-b border-neutral-100 last:border-0">{{ $line }}</p>
+                    <p class="text-sm text-success py-1 border-b border-neutral-100 last:border-0">{{ $line }}</p>
                 @empty
                     <p class="text-sm text-neutral-400">No rows created.</p>
                 @endforelse
             </x-card>
             <x-card title="Skipped — duplicates ({{ count($results['skipped']) }})">
                 @forelse ($results['skipped'] as $line)
-                    <p class="text-sm text-yellow-700 py-1 border-b border-neutral-100 last:border-0">{{ $line }}</p>
+                    <p class="text-sm text-warning py-1 border-b border-neutral-100 last:border-0">{{ $line }}</p>
                 @empty
                     <p class="text-sm text-neutral-400">No duplicates skipped.</p>
                 @endforelse
             </x-card>
             <x-card title="Errors ({{ count($results['errors']) }})">
                 @forelse ($results['errors'] as $line)
-                    <p class="text-sm text-red-700 py-1 border-b border-neutral-100 last:border-0">{{ $line }}</p>
+                    <p class="text-sm text-danger py-1 border-b border-neutral-100 last:border-0">{{ $line }}</p>
                 @empty
                     <p class="text-sm text-neutral-400">No errors.</p>
                 @endforelse

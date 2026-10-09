@@ -12,7 +12,7 @@
         </form>
     </x-card>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <x-stat-tile label="Term GPA" color="blue">{{ $termGpa ?? '—' }}</x-stat-tile>
         <x-stat-tile label="Overall score" color="green">{{ $overallScore !== null ? $overallScore.'%' : '—' }}</x-stat-tile>
         <x-stat-tile label="Subjects" color="yellow">{{ $subjects->count() }}</x-stat-tile>
@@ -51,7 +51,7 @@
         <div class="flex flex-wrap gap-3">
             @forelse ($releasedTerms as $released)
                 <a href="{{ route('student.grades.report-card', ['term' => $released->id]) }}" target="_blank"
-                    class="border border-[#1F573D] text-[#1F573D] font-semibold rounded-lg px-4 py-2 text-sm">
+                    class="border border-brand text-brand font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand/5 transition-colors">
                     {{ $released->name }} report card
                 </a>
             @empty

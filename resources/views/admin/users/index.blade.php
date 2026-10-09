@@ -25,9 +25,9 @@
                 </select>
             </div>
             <div class="sm:col-span-2 flex gap-2">
-                <button type="submit" class="flex-1 bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Filter</button>
-                <a href="{{ route('admin.users.create') }}" class="flex-1 text-center bg-neutral-900 text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Add User</a>
-                <a href="{{ route('admin.users.import') }}" class="flex-1 text-center border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-4 py-2.5 text-sm">Bulk Import</a>
+                <button type="submit" class="flex-1 bg-brand text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-brand-dark transition-colors">Filter</button>
+                <a href="{{ route('admin.users.create') }}" class="flex-1 text-center bg-neutral-900 text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-neutral-700 transition-colors">Add User</a>
+                <a href="{{ route('admin.users.import') }}" class="flex-1 text-center border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-neutral-50 transition-colors">Bulk Import</a>
             </div>
         </form>
     </x-card>
@@ -53,7 +53,7 @@
                                         <img src="{{ Storage::url($user->photo_path) }}" alt=""
                                             class="w-8 h-8 rounded-full object-cover border border-neutral-200 shrink-0">
                                     @else
-                                        <span class="w-8 h-8 rounded-full bg-[#C9A227] text-neutral-900 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                        <span class="w-8 h-8 rounded-full bg-gold text-neutral-900 font-bold text-[10px] flex items-center justify-center shrink-0">
                                             {{ collect(explode(' ', $user->name))->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('') }}
                                         </span>
                                     @endif
@@ -72,26 +72,26 @@
                             </td>
                             <td class="py-2.5">
                                 <div class="flex flex-wrap gap-3 text-xs font-semibold">
-                                    <a href="{{ route('admin.users.edit', $user) }}" class="text-[#1F573D] hover:underline">Edit</a>
+                                    <a href="{{ route('admin.users.edit', $user) }}" class="text-brand hover:underline">Edit</a>
                                     <form method="POST" action="{{ route('admin.users.reset-password', $user) }}">
                                         @csrf
-                                        <button type="submit" class="text-blue-700 hover:underline">Reset / Re-send</button>
+                                        <button type="submit" class="text-info hover:underline">Reset / Re-send</button>
                                     </form>
                                     @if ($user->isLocked())
                                         <form method="POST" action="{{ route('admin.users.unlock', $user) }}">
                                             @csrf
-                                            <button type="submit" class="text-yellow-700 hover:underline">Unlock</button>
+                                            <button type="submit" class="text-warning hover:underline">Unlock</button>
                                         </form>
                                     @endif
                                     @if ($user->status === 'Active')
                                         <form method="POST" action="{{ route('admin.users.deactivate', $user) }}">
                                             @csrf
-                                            <button type="submit" class="text-red-700 hover:underline">Deactivate</button>
+                                            <button type="submit" class="text-danger hover:underline">Deactivate</button>
                                         </form>
                                     @else
                                         <form method="POST" action="{{ route('admin.users.reactivate', $user) }}">
                                             @csrf
-                                            <button type="submit" class="text-green-700 hover:underline">Reactivate</button>
+                                            <button type="submit" class="text-success hover:underline">Reactivate</button>
                                         </form>
                                     @endif
                                     @if ($user->id !== auth()->id())
@@ -99,7 +99,7 @@
                                             onsubmit="return confirm('Delete {{ $user->name }}? If this account has linked records (grades, attendance, audit history, etc.) it will be anonymized and deactivated instead of removed, to preserve the audit trail.');">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="text-red-800 hover:underline">Delete</button>
+                                            <button type="submit" class="text-danger hover:underline">Delete</button>
                                         </form>
                                     @endif
                                 </div>
@@ -141,7 +141,7 @@
                        placeholder="e.g. Family erasure request, retention period lapsed"
                        class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
-            <button type="submit" class="bg-[#B0392B] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Erase record</button>
+            <button type="submit" class="bg-danger text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-danger-dark transition-colors">Erase record</button>
         </form>
     </x-card>
 </x-app-layout>

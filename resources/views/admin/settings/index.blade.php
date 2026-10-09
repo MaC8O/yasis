@@ -16,7 +16,7 @@
             <nav class="space-y-0.5">
                 @foreach ($schema as $name => $group)
                     <button type="button" @click="tab = '{{ $name }}'"
-                            :class="tab === '{{ $name }}' ? 'bg-[#1F573D] text-white' : 'text-neutral-600 hover:bg-neutral-100'"
+                            :class="tab === '{{ $name }}' ? 'bg-brand text-white' : 'text-neutral-600 hover:bg-neutral-100'"
                             class="w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold text-left">
                         <svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{!! $icons[$group['icon']] ?? '' !!}</svg>
                         <span>{{ $name }}</span>
@@ -49,10 +49,10 @@
                                     <p class="text-xs text-neutral-400 mb-2">PNG, JPG or WebP · up to 4 MB · shown on the app and documents.</p>
                                     <input type="file" name="institution_logo" accept="image/png,image/jpeg,image/webp"
                                            @change="preview = $event.target.files.length ? URL.createObjectURL($event.target.files[0]) : null"
-                                           class="block text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-[#1F573D] file:text-white file:font-semibold file:px-4 file:py-2 file:text-sm hover:file:bg-[#184630] file:cursor-pointer">
+                                           class="block text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:text-white file:font-semibold file:px-4 file:py-2 file:text-sm hover:file:bg-brand-dark file:cursor-pointer">
                                     @if ($logoUrl)
                                         <label class="flex items-center gap-2 mt-3 text-sm text-neutral-600 cursor-pointer">
-                                            <input type="checkbox" name="remove_logo" value="1" class="w-4 h-4 rounded border-neutral-300 text-red-700 focus:ring-red-700">
+                                            <input type="checkbox" name="remove_logo" value="1" class="w-4 h-4 rounded border-neutral-300 text-danger focus:ring-danger">
                                             Remove current logo
                                         </label>
                                     @endif
@@ -66,7 +66,7 @@
                                         <label class="flex items-start gap-3 cursor-pointer">
                                             <input type="hidden" name="{{ $key }}" value="0">
                                             <input type="checkbox" name="{{ $key }}" value="1" @checked($settings[$key] === '1')
-                                                   class="mt-0.5 w-4 h-4 rounded border-neutral-300 text-[#1F573D] focus:ring-[#1F573D]">
+                                                   class="mt-0.5 w-4 h-4 rounded border-neutral-300 text-brand focus:ring-brand">
                                             <span>
                                                 <span class="block text-sm font-semibold">{{ $field['label'] }}</span>
                                                 @isset($field['help'])<span class="block text-xs text-neutral-400 mt-0.5">{{ $field['help'] }}</span>@endisset
@@ -75,17 +75,17 @@
                                     @else
                                         <label class="block text-sm font-semibold mb-1">{{ $field['label'] }}</label>
                                         @if ($field['type'] === 'select')
-                                            <select name="{{ $key }}" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-[#1F573D] focus:ring-1 focus:ring-[#1F573D] outline-none">
+                                            <select name="{{ $key }}" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none">
                                                 @foreach ($field['options'] as $val => $labelText)
                                                     <option value="{{ $val }}" @selected($settings[$key] === $val)>{{ $labelText }}</option>
                                                 @endforeach
                                             </select>
                                         @elseif ($field['type'] === 'textarea')
-                                            <textarea name="{{ $key }}" rows="3" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-[#1F573D] focus:ring-1 focus:ring-[#1F573D] outline-none">{{ $settings[$key] }}</textarea>
+                                            <textarea name="{{ $key }}" rows="3" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none">{{ $settings[$key] }}</textarea>
                                         @else
                                             <input type="{{ $field['type'] === 'number' ? 'number' : ($field['type'] === 'email' ? 'email' : ($field['type'] === 'url' ? 'url' : 'text')) }}"
                                                    name="{{ $key }}" value="{{ $settings[$key] }}" placeholder="{{ $field['placeholder'] ?? '' }}"
-                                                   class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-[#1F573D] focus:ring-1 focus:ring-[#1F573D] outline-none">
+                                                   class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none">
                                         @endif
                                         @isset($field['help'])<p class="text-xs text-neutral-400 mt-1">{{ $field['help'] }}</p>@endisset
                                     @endif
@@ -96,8 +96,8 @@
                         @if ($name === 'Notifications & email')
                             <div class="mt-5 pt-5 border-t border-neutral-100 flex items-center gap-3 flex-wrap">
                                 <button type="submit" formaction="{{ route('admin.settings.test-smtp') }}"
-                                        class="text-sm font-semibold text-[#1F573D] border border-[#1F573D] rounded-lg px-4 py-2 hover:bg-[#1F573D]/5">Test SMTP connection</button>
-                                <span class="text-xs {{ $smtpConfigured ? 'text-neutral-400' : 'text-amber-600' }}">
+                                        class="text-sm font-semibold text-brand border border-brand rounded-lg px-4 py-2 hover:bg-brand/5">Test SMTP connection</button>
+                                <span class="text-xs {{ $smtpConfigured ? 'text-neutral-400' : 'text-warning' }}">
                                     {{ $smtpConfigured ? 'Tests a TCP connection to the SMTP host without sending mail.' : 'No SMTP host set yet — email will not be delivered.' }}
                                 </span>
                             </div>
@@ -107,7 +107,7 @@
             @endforeach
 
             <div class="flex items-center gap-3">
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-2.5 text-sm hover:bg-[#184630]">Save settings</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-2.5 text-sm hover:bg-brand-dark">Save settings</button>
                 <span class="text-xs text-neutral-400">Changes apply across all portals.</span>
             </div>
         </form>

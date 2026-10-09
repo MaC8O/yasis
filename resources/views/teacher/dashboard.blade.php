@@ -1,9 +1,9 @@
 <x-app-layout title="Teacher Dashboard" subtitle="Manage assigned classes, attendance, grading, and announcements." badge="Teacher · Assigned classes only" role="teacher">
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <x-stat-tile label="Assigned classes" color="blue">{{ $assignedClasses }}</x-stat-tile>
-        <x-stat-tile label="Attendance pending" color="yellow">{{ $attendancePending->count() }}</x-stat-tile>
-        <x-stat-tile label="Gradebook tasks" color="yellow">{{ $gradebookTasksCount }}</x-stat-tile>
-        <x-stat-tile label="Announcements">{{ $announcementsCount }}</x-stat-tile>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <x-stat-tile label="Assigned classes" :href="route('teacher.classes.index')" color="blue">{{ $assignedClasses }}</x-stat-tile>
+        <x-stat-tile label="Attendance pending" :href="route('teacher.attendance.index')" color="yellow">{{ $attendancePending->count() }}</x-stat-tile>
+        <x-stat-tile label="Gradebook tasks" :href="route('teacher.gradebook.index')" color="yellow">{{ $gradebookTasksCount }}</x-stat-tile>
+        <x-stat-tile label="Announcements" :href="route('teacher.announcements.index')">{{ $announcementsCount }}</x-stat-tile>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -22,7 +22,7 @@
                     @endforeach
                 </tbody>
             </table>
-            <a href="{{ route('teacher.classes.index') }}" class="inline-block mt-4 text-sm font-semibold text-[#1F573D] hover:underline">Open classes</a>
+            <a href="{{ route('teacher.classes.index') }}" class="inline-block mt-4 text-sm font-semibold text-brand hover:underline">Open classes</a>
         </x-card>
 
         <x-card title="Action queue" subtitle="Quick tasks for today.">
@@ -39,12 +39,12 @@
                     <x-badge color="yellow">Absence notice to acknowledge · {{ $notice->student->name }} ({{ $notice->from_date->format('M j') }}{{ $notice->from_date->ne($notice->to_date) ? '–'.$notice->to_date->format('M j') : '' }})</x-badge>
                 @endforeach
             </div>
-            <a href="{{ route('teacher.attendance.index') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Take attendance</a>
+            <a href="{{ route('teacher.attendance.index') }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Take attendance</a>
         </x-card>
     </div>
 
     @if ($consecutiveAbsentees->isNotEmpty())
-        <div class="bg-red-50 border border-red-200 text-red-900 text-sm rounded-xl px-5 py-3">
+        <div class="bg-danger-soft border border-danger-line text-danger text-sm rounded-xl px-5 py-3">
             <span class="font-semibold">Consecutive absences (3+ days):</span>
             {{ $consecutiveAbsentees->map(fn ($s) => $s->name)->implode(', ') }}
             — consider contacting the guardian or the Registrar's office.
@@ -80,7 +80,7 @@
                     @endforelse
                 </tbody>
             </table>
-            <a href="{{ route('teacher.gradebook.index') }}" class="inline-block mt-4 text-sm font-semibold text-[#1F573D] hover:underline">Open gradebook</a>
+            <a href="{{ route('teacher.gradebook.index') }}" class="inline-block mt-4 text-sm font-semibold text-brand hover:underline">Open gradebook</a>
         </x-card>
 
         <x-card title="My leave balance">
@@ -92,7 +92,7 @@
                     </div>
                 @endforeach
             </div>
-            <a href="{{ route('teacher.leave.index') }}" class="inline-block mt-4 text-sm font-semibold text-[#1F573D] hover:underline">Request leave</a>
+            <a href="{{ route('teacher.leave.index') }}" class="inline-block mt-4 text-sm font-semibold text-brand hover:underline">Request leave</a>
         </x-card>
     </div>
 </x-app-layout>

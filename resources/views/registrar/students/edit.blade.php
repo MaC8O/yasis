@@ -49,7 +49,7 @@
                 </select>
             </div>
             <div class="col-span-2 flex gap-3">
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Save changes</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Save changes</button>
                 <a href="{{ route('registrar.students.show', $student) }}" class="text-sm font-semibold text-neutral-500 self-center">Cancel</a>
             </div>
         </form>

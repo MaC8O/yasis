@@ -35,7 +35,7 @@
                 <label class="block text-sm font-semibold mb-1">GPA point <span class="text-neutral-400 font-normal">(optional)</span></label>
                 <input type="number" step="0.01" name="gpa_point" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Add</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Add</button>
         </form>
     </x-card>
 
@@ -51,7 +51,7 @@
                     <form method="POST" action="{{ route('admin.grade-scale.defaults', $department) }}"
                           onsubmit="return confirm('Replace {{ $department->name }}\'s scale with the YASIS standard? Existing bands will be removed.');">
                         @csrf
-                        <button type="submit" class="text-xs font-semibold text-[#1F573D] border border-[#1F573D] rounded-lg px-3 py-1.5 hover:bg-[#1F573D]/5 whitespace-nowrap">Load YASIS standard</button>
+                        <button type="submit" class="text-xs font-semibold text-brand border border-brand rounded-lg px-3 py-1.5 hover:bg-brand/5 whitespace-nowrap">Load YASIS standard</button>
                     </form>
                 </div>
 
@@ -73,7 +73,7 @@
                                 <td class="py-2.5 text-right">
                                     <form method="POST" action="{{ route('admin.grade-scale.destroy', $band) }}">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="text-xs font-semibold text-red-700 hover:underline">Remove</button>
+                                        <button type="submit" class="text-xs font-semibold text-danger hover:underline">Remove</button>
                                     </form>
                                 </td>
                             </tr>

@@ -1,5 +1,5 @@
 <x-app-layout title="Imported Fee Records" subtitle="Read-only visibility of Treasurer-imported fee records." badge="Read-only" :role="$role">
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-2 gap-4">
         <x-stat-tile label="Outstanding total" color="yellow">{{ number_format($outstandingTotal) }}</x-stat-tile>
         <x-stat-tile label="Paid total" color="green">{{ number_format($paidTotal) }}</x-stat-tile>
     </div>

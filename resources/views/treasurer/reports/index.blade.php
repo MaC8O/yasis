@@ -1,5 +1,5 @@
 <x-app-layout title="Fee Reports" subtitle="Downloadable and printable reports built from imported fee records." badge="Sun account, not Sun Plus" role="treasurer">
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <x-stat-tile label="Outstanding total" color="yellow">{{ number_format($outstandingTotal) }}</x-stat-tile>
         <x-stat-tile label="Paid total" color="green">{{ number_format($paidTotal) }}</x-stat-tile>
         <x-stat-tile label="Students with balance" color="blue">{{ $studentsWithBalance }}</x-stat-tile>
@@ -7,10 +7,10 @@
 
     <x-card title="Reports">
         <div class="flex flex-wrap gap-3">
-            <a href="{{ route('treasurer.reports.outstanding') }}" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">
+            <a href="{{ route('treasurer.reports.outstanding') }}" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">
                 Download outstanding balance list (CSV)
             </a>
-            <a href="{{ route('treasurer.records.index') }}" class="bg-neutral-900 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">
+            <a href="{{ route('treasurer.records.index') }}" class="bg-neutral-900 text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-neutral-700 transition-colors">
                 Open a student fee statement (PDF)
             </a>
         </div>

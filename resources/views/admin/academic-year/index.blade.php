@@ -12,7 +12,7 @@
                 <input type="date" name="start_date" required
                     class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Create year</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Create year</button>
         </form>
     </x-card>
 
@@ -30,17 +30,17 @@
                         @unless ($year->is_active)
                             <form method="POST" action="{{ route('admin.academic-year.activate', $year) }}">
                                 @csrf
-                                <button type="submit" class="text-sm font-semibold text-[#1F573D] hover:underline">Set as active</button>
+                                <button type="submit" class="text-sm font-semibold text-brand hover:underline">Set as active</button>
                             </form>
                         @endunless
-                        <button type="button" @click="editing = !editing" class="text-sm font-semibold text-blue-700 hover:underline">
+                        <button type="button" @click="editing = !editing" class="text-sm font-semibold text-info hover:underline">
                             <span x-text="editing ? 'Close editor' : 'Edit'"></span>
                         </button>
                         @if (! $year->is_active && $year->sections->isEmpty())
                             <form method="POST" action="{{ route('admin.academic-year.destroy', $year) }}"
                                 onsubmit="return confirm('Delete {{ $year->year_label }} and its terms? This cannot be undone.');">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="text-sm font-semibold text-red-700 hover:underline">Delete</button>
+                                <button type="submit" class="text-sm font-semibold text-danger hover:underline">Delete</button>
                             </form>
                         @endif
                     </div>
@@ -68,7 +68,7 @@
                                 </div>
                             @endforeach
                         </div>
-                        <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Save changes</button>
+                        <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Save changes</button>
                     </form>
                 </div>
 

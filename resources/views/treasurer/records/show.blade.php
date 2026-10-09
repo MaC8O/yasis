@@ -1,5 +1,5 @@
 <x-app-layout :title="$student->name" :subtitle="'Fee detail — '.$student->student_id_number" badge="Sun account, not Sun Plus" role="treasurer">
-    <a href="{{ route('treasurer.reports.statement', $student) }}" target="_blank" class="inline-block bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">
+    <a href="{{ route('treasurer.reports.statement', $student) }}" target="_blank" class="inline-block bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">
         Download fee statement (PDF)
     </a>
 

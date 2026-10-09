@@ -1,16 +1,16 @@
 <x-app-layout title="HR Dashboard" subtitle="Staff overview — headcount, attendance, and leave at a glance." :badge="'Academic Year '.($activeYear?->year_label ?? '—')" role="hr_office">
     <div class="grid grid-cols-1 sm:grid-cols-5 gap-4">
-        <x-stat-tile label="Total staff" color="blue">{{ $totalStaff }}</x-stat-tile>
-        <x-stat-tile label="Active today" color="green">{{ $activeToday }}</x-stat-tile>
-        <x-stat-tile label="On leave today" color="yellow">{{ $onLeaveToday }}</x-stat-tile>
-        <x-stat-tile label="Attendance rate" color="green">{{ $attendanceRate }}%</x-stat-tile>
-        <x-stat-tile label="Pending leave requests" color="pink">{{ $pendingCount }}</x-stat-tile>
+        <x-stat-tile label="Total staff" :href="route('hr_office.staff.index')" color="blue">{{ $totalStaff }}</x-stat-tile>
+        <x-stat-tile label="Active today" :href="route('hr_office.attendance.index')" color="green">{{ $activeToday }}</x-stat-tile>
+        <x-stat-tile label="On leave today" :href="route('hr_office.leave.index')" color="yellow">{{ $onLeaveToday }}</x-stat-tile>
+        <x-stat-tile label="Attendance rate" :href="route('hr_office.attendance.index')" color="green">{{ $attendanceRate }}%</x-stat-tile>
+        <x-stat-tile label="Pending leave requests" :href="route('hr_office.leave.index')" color="pink">{{ $pendingCount }}</x-stat-tile>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <x-card title="Headcount by department" subtitle="Across teaching and non-teaching roles.">
             <x-chart.bar-list :items="$headcountByDepartment->map(fn ($d) => ['label' => $d->name, 'value' => $d->staff_profiles_count])" />
-            <a href="{{ route('hr_office.staff.index') }}" class="inline-block mt-5 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Open staff records</a>
+            <a href="{{ route('hr_office.staff.index') }}" class="inline-block mt-5 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Open staff records</a>
         </x-card>
 
         <x-card title="Leave requests — {{ now()->year }}" subtitle="Decisions this calendar year plus the live pending queue.">
@@ -31,22 +31,22 @@
                     <p class="text-sm text-neutral-400">No pending requests.</p>
                 @endforelse
             </div>
-            <a href="{{ route('hr_office.leave.index') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Review leave requests</a>
+            <a href="{{ route('hr_office.leave.index') }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Review leave requests</a>
         </x-card>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <x-card title="Add staff record">
             <p class="text-sm text-neutral-500">Onboard a new employee — teaching or non-teaching — with role, department, and start date.</p>
-            <a href="{{ route('hr_office.staff.create') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Add new staff</a>
+            <a href="{{ route('hr_office.staff.create') }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Add new staff</a>
         </x-card>
 
         <x-card title="Today's attendance">
             <p class="text-sm text-neutral-500">{{ $markedToday }}/{{ $totalStaff }} staff marked for today.</p>
             <div class="h-3 rounded-full bg-neutral-100 overflow-hidden mt-3">
-                <div class="h-full rounded-full bg-[#1F573D]" style="width: {{ $totalStaff > 0 ? $markedToday / $totalStaff * 100 : 0 }}%"></div>
+                <div class="h-full rounded-full bg-brand" style="width: {{ $totalStaff > 0 ? $markedToday / $totalStaff * 100 : 0 }}%"></div>
             </div>
-            <a href="{{ route('hr_office.attendance.index') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Mark attendance</a>
+            <a href="{{ route('hr_office.attendance.index') }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Mark attendance</a>
         </x-card>
 
         <x-card title="Scope note">

@@ -26,7 +26,7 @@
                     @endforeach
                 </select>
             </div>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Assign</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Assign</button>
         </form>
     </x-card>
 
@@ -49,7 +49,7 @@
                         <td class="py-2.5 text-right">
                             <form method="POST" action="{{ route('registrar.teaching-assignments.destroy', $assignment) }}">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="text-xs font-semibold text-red-700 hover:underline">Remove</button>
+                                <button type="submit" class="text-xs font-semibold text-danger hover:underline">Remove</button>
                             </form>
                         </td>
                     </tr>

@@ -25,7 +25,7 @@
     </x-card>
 
     @if ($term?->is_locked)
-        <div class="bg-amber-50 border border-amber-200 text-amber-900 text-sm rounded-xl px-5 py-3">
+        <div class="bg-warning-soft border border-warning-line text-warning text-sm rounded-xl px-5 py-3">
             <span class="font-semibold">{{ $term->name }} is locked by the Principal.</span>
             This gradebook is read-only — submit a grade-change request below; it needs VP Academic review and Principal co-approval (two-key) before it is applied.
         </div>
@@ -59,7 +59,7 @@
                     <input type="text" name="reason" required maxlength="255" placeholder="e.g. transcription error"
                         class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
                 </div>
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Submit request</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-brand-dark transition-colors">Submit request</button>
             </form>
         </x-card>
     @endif
@@ -94,7 +94,7 @@
                                     @if ($req->status === 'Pending')
                                         <form method="POST" action="{{ route('teacher.gradebook.change-requests.cancel', $req) }}">
                                             @csrf
-                                            <button type="submit" class="text-xs font-semibold text-red-700 hover:underline">Cancel</button>
+                                            <button type="submit" class="text-xs font-semibold text-danger hover:underline">Cancel</button>
                                         </form>
                                     @endif
                                 </td>
@@ -121,7 +121,7 @@
                             <form method="POST" action="{{ route('teacher.gradebook.categories.destroy', $category) }}"
                                 onsubmit="return confirm('Delete the “{{ $category->name }}” category and all its items and scores?')">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="text-xs font-semibold text-red-700 hover:underline">Delete category</button>
+                                <button type="submit" class="text-xs font-semibold text-danger hover:underline">Delete category</button>
                             </form>
                         </div>
 
@@ -135,7 +135,7 @@
                                         <form method="POST" action="{{ route('teacher.gradebook.assessments.destroy', $assessment) }}"
                                             onsubmit="return confirm('Delete “{{ $assessment->name }}” and its scores?')">
                                             @csrf @method('DELETE')
-                                            <button type="submit" class="text-xs font-semibold text-red-700 hover:underline">Delete</button>
+                                            <button type="submit" class="text-xs font-semibold text-danger hover:underline">Delete</button>
                                         </form>
                                     </div>
                                     <form x-show="edit" x-cloak method="POST" action="{{ route('teacher.gradebook.assessments.update', $assessment) }}" class="flex items-center gap-2">
@@ -144,7 +144,7 @@
                                             class="w-32 rounded border border-neutral-200 px-2 py-1 text-xs">
                                         <input type="number" step="0.01" min="1" name="max_score" value="{{ rtrim(rtrim(number_format($assessment->max_score, 2), '0'), '.') }}" required
                                             class="w-16 rounded border border-neutral-200 px-2 py-1 text-xs" title="Max points">
-                                        <button type="submit" class="text-xs font-semibold text-[#1F573D] hover:underline">Save</button>
+                                        <button type="submit" class="text-xs font-semibold text-brand hover:underline">Save</button>
                                         <button type="button" @click="edit = false" class="text-xs text-neutral-400 hover:underline">Cancel</button>
                                     </form>
                                 </div>
@@ -164,7 +164,7 @@
                                 <label class="block text-xs font-semibold text-neutral-500 mb-1">Max pts</label>
                                 <input type="number" step="0.01" min="1" name="max_score" required value="100" class="w-20 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">
                             </div>
-                            <button type="submit" class="border border-[#1F573D] text-[#1F573D] font-semibold rounded-lg px-3 py-2 text-sm hover:bg-[#1F573D] hover:text-white transition">+ Add item</button>
+                            <button type="submit" class="border border-brand text-brand font-semibold rounded-lg px-3 py-2 text-sm hover:bg-brand hover:text-white transition">+ Add item</button>
                         </form>
                     </div>
                 @empty
@@ -197,7 +197,7 @@
                         <label class="block text-sm font-semibold mb-1">Weight %</label>
                         <input type="number" step="0.01" name="weight_pct" required class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
                     </div>
-                    <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Add category</button>
+                    <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Add category</button>
                 </form>
             </div>
         @else
@@ -209,7 +209,7 @@
                         <span class="text-neutral-400 text-xs">{{ $category->assessments->pluck('name')->join(', ') ?: 'no items' }}</span>
                     </div>
                 @endforeach
-                <p class="text-xs text-amber-700">Term is locked — categories and items are read-only.</p>
+                <p class="text-xs text-warning">Term is locked — categories and items are read-only.</p>
             </div>
         @endif
     </x-card>
@@ -237,7 +237,7 @@
                         <label class="block text-sm font-semibold mb-1">Filled template (Excel / CSV)</label>
                         <input type="file" name="file" required accept=".xlsx,.xls,.csv" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
                     </div>
-                    <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Upload &amp; Import</button>
+                    <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Upload &amp; Import</button>
                 </form>
 
                 <p class="text-xs text-neutral-500">Columns: <code>student_id_number</code> and <code>score</code> (the <code>name</code> column is for your reference). Blank scores are skipped; out-of-range or non-enrolled rows are reported and never partially saved.</p>
@@ -249,7 +249,7 @@
                     <div>
                         <p class="text-sm font-semibold mb-1">Saved ({{ count($sr['updated']) }}) — {{ $sr['assessment'] }}</p>
                         @forelse ($sr['updated'] as $line)
-                            <p class="text-xs text-green-700 py-0.5">{{ $line }}</p>
+                            <p class="text-xs text-success py-0.5">{{ $line }}</p>
                         @empty
                             <p class="text-xs text-neutral-400">None.</p>
                         @endforelse
@@ -257,7 +257,7 @@
                     <div>
                         <p class="text-sm font-semibold mb-1">Skipped ({{ count($sr['skipped']) }})</p>
                         @forelse ($sr['skipped'] as $line)
-                            <p class="text-xs text-yellow-700 py-0.5">{{ $line }}</p>
+                            <p class="text-xs text-warning py-0.5">{{ $line }}</p>
                         @empty
                             <p class="text-xs text-neutral-400">None.</p>
                         @endforelse
@@ -265,7 +265,7 @@
                     <div>
                         <p class="text-sm font-semibold mb-1">Errors ({{ count($sr['errors']) }})</p>
                         @forelse ($sr['errors'] as $line)
-                            <p class="text-xs text-red-700 py-0.5">{{ $line }}</p>
+                            <p class="text-xs text-danger py-0.5">{{ $line }}</p>
                         @empty
                             <p class="text-xs text-neutral-400">None.</p>
                         @endforelse
@@ -362,7 +362,7 @@
                                         <span class="text-xs font-normal text-neutral-400">· {{ rtrim(rtrim(number_format($category->weight_pct, 2), '0'), '.') }}%</span>
                                     </th>
                                 @endforeach
-                                <th rowspan="2" class="py-2 px-3 text-right font-semibold border-b border-l border-neutral-200 align-bottom bg-emerald-50/50">Result</th>
+                                <th rowspan="2" class="py-2 px-3 text-right font-semibold border-b border-l border-neutral-200 align-bottom bg-success-soft/50">Result</th>
                             </tr>
                             <tr class="text-neutral-400 text-xs">
                                 @foreach ($gridCategories as $category)
@@ -386,13 +386,13 @@
                                                     name="scores[{{ $assessment->id }}][{{ $student->id }}]"
                                                     x-model="scores[{{ $assessment->id }}][{{ $student->id }}]"
                                                     placeholder="—" @if ($readonly) readonly @endif
-                                                    class="w-16 rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-xs text-center focus:border-[#1F573D] focus:ring-1 focus:ring-[#1F573D] @if ($readonly) opacity-60 @endif">
+                                                    class="w-16 rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-xs text-center focus:border-brand focus:ring-1 focus:ring-brand @if ($readonly) opacity-60 @endif">
                                             </td>
                                         @endforeach
                                         <td class="py-1.5 px-2 border-b border-l border-neutral-100 text-center font-medium text-neutral-600 bg-neutral-50/50"
                                             x-text="fmt(catPct(meta.categories[{{ $ci }}], {{ $student->id }}))"></td>
                                     @endforeach
-                                    <td class="py-1.5 px-3 border-b border-l border-neutral-100 text-right font-bold bg-emerald-50/50 whitespace-nowrap">
+                                    <td class="py-1.5 px-3 border-b border-l border-neutral-100 text-right font-bold bg-success-soft/50 whitespace-nowrap">
                                         <span x-text="fmt(finalPct({{ $student->id }}))"></span>
                                         <span class="text-neutral-400 font-medium" x-text="letterFor({{ $student->id }}) ? '(' + letterFor({{ $student->id }}) + ')' : ''"></span>
                                     </td>
@@ -406,7 +406,7 @@
 
                 @unless ($readonly)
                     <div class="flex items-center gap-3 mt-5">
-                        <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-3 text-sm">Save gradebook</button>
+                        <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Save gradebook</button>
                         <span class="text-xs text-neutral-400">Subtotals and results shown are live; they are recomputed and stored when you save. Students &amp; guardians see the breakdown read-only.</span>
                     </div>
                 @endunless
@@ -426,7 +426,7 @@
                         <input type="text" name="comment" value="{{ $comments[$student->id]->comment ?? '' }}" placeholder="Consistent effort this term..."
                             class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
                     </div>
-                    <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Save comment</button>
+                    <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-brand-dark transition-colors">Save comment</button>
                 </form>
             @endforeach
         </x-card>

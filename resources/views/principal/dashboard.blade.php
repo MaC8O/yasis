@@ -1,16 +1,16 @@
 <x-app-layout title="Principal Dashboard" subtitle="Whole-school oversight — enrollment, attendance, academics, staff, finance, and two-key approvals." :badge="'Academic Year '.($activeYear?->year_label ?? '—')" role="principal">
     <div class="grid grid-cols-1 sm:grid-cols-5 gap-4">
-        <x-stat-tile label="Total enrollment" color="blue">{{ $totalEnrollment }}</x-stat-tile>
+        <x-stat-tile label="Total enrollment" :href="route('principal.board-reports.index')" color="blue">{{ $totalEnrollment }}</x-stat-tile>
         <x-stat-tile label="Attendance rate" color="green">{{ $attendanceRate !== null ? $attendanceRate.'%' : '—' }}</x-stat-tile>
         <x-stat-tile label="Academic average" color="green">{{ $academicAverage !== null ? $academicAverage.'%' : '—' }}</x-stat-tile>
         <x-stat-tile label="Fee collection" color="yellow">{{ $feeCollectionRate !== null ? $feeCollectionRate.'%' : '—' }}</x-stat-tile>
-        <x-stat-tile label="Pending approvals" color="pink">{{ $pendingApprovals }}</x-stat-tile>
+        <x-stat-tile label="Pending approvals" :href="route('principal.approvals.index')" color="pink">{{ $pendingApprovals }}</x-stat-tile>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <x-card title="Enrollment by department" subtitle="Board-ready student numbers — {{ $totalEnrollment }} enrolled in total.">
             <x-chart.bar-list :items="$enrollmentByDepartment->map(fn ($d) => ['label' => $d->name, 'value' => $d->students_count])" />
-            <a href="{{ route('principal.board-reports.index') }}" class="inline-block mt-5 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Open Board reports</a>
+            <a href="{{ route('principal.board-reports.index') }}" class="inline-block mt-5 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Open Board reports</a>
         </x-card>
 
         <x-card title="Attendance — recent school days" subtitle="School-wide share of students present, tardy, or excused.">
@@ -27,27 +27,27 @@
 
         <x-card title="Approval queue" subtitle="Two-key items — VP has signed; awaiting you.">
             <p class="text-sm text-neutral-500">{{ $pendingApprovals }} item(s) awaiting your co-approval.</p>
-            <a href="{{ route('principal.approvals.index') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Review all approvals</a>
+            <a href="{{ route('principal.approvals.index') }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Review all approvals</a>
         </x-card>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <x-card title="Assist registration">
             <p class="text-sm text-neutral-500">Step in during admissions peaks — create a student record alongside the Registrar.</p>
-            <a href="{{ route('principal.registration.create') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Assist registration</a>
+            <a href="{{ route('principal.registration.create') }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Assist registration</a>
         </x-card>
 
         <x-card title="Finance oversight">
             <x-badge color="blue">Read-only</x-badge>
             <p class="text-sm text-neutral-500 mt-3">Outstanding balance</p>
-            <p class="text-xl font-bold text-[#C9A227]">{{ number_format($outstandingTotal) }}</p>
-            <p class="text-sm text-neutral-500 mt-2">Collected this term <span class="font-semibold text-green-700">{{ $feeCollectionRate !== null ? $feeCollectionRate.'%' : '—' }}</span></p>
-            <a href="{{ route('principal.fees.index') }}" class="inline-block mt-4 border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-5 py-2.5 text-sm">View fee records</a>
+            <p class="text-xl font-bold text-gold">{{ number_format($outstandingTotal) }}</p>
+            <p class="text-sm text-neutral-500 mt-2">Collected this term <span class="font-semibold text-success">{{ $feeCollectionRate !== null ? $feeCollectionRate.'%' : '—' }}</span></p>
+            <a href="{{ route('principal.fees.index') }}" class="inline-block mt-4 border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-neutral-50 transition-colors">View fee records</a>
         </x-card>
 
         <x-card title="Communication">
             <p class="text-sm text-neutral-500">Publish school-wide or targeted notices to staff, guardians, students, or selected departments.</p>
-            <a href="{{ route('principal.announcements.index') }}" class="inline-block mt-4 bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Create announcement</a>
+            <a href="{{ route('principal.announcements.index') }}" class="inline-block mt-4 bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Create announcement</a>
         </x-card>
     </div>
 

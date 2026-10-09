@@ -1,7 +1,7 @@
 <x-app-layout title="Fee Status" subtitle="View imported fee records from the school finance process." badge="Sun account, not Sun Plus" role="guardian">
     <x-child-switcher :children="$children" :child="$child" route="guardian.fees.index" />
 
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <x-stat-tile label="Total billed" color="blue">{{ number_format($totalBilled) }}</x-stat-tile>
         <x-stat-tile label="Paid" color="green">{{ number_format($paid) }}</x-stat-tile>
         <x-stat-tile label="Outstanding" color="yellow">{{ number_format($balance) }}</x-stat-tile>
@@ -34,7 +34,7 @@
 
         <div class="flex items-center gap-3 mt-4">
             <x-badge color="blue">SDA discount / allowance hidden</x-badge>
-            <a href="{{ route('guardian.fees.statement', ['child' => $child->id]) }}" target="_blank" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Download / Print Statement</a>
+            <a href="{{ route('guardian.fees.statement', ['child' => $child->id]) }}" target="_blank" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Download / Print Statement</a>
         </div>
     </x-card>
 

@@ -3,7 +3,7 @@
         <div class="flex items-center gap-6" x-data="{ preview: null }">
             <div class="relative shrink-0">
                 <template x-if="preview">
-                    <img :src="preview" alt="Preview" class="w-24 h-24 rounded-full object-cover border-2 border-dashed border-[#1F573D]">
+                    <img :src="preview" alt="Preview" class="w-24 h-24 rounded-full object-cover border-2 border-dashed border-brand">
                 </template>
                 <template x-if="!preview">
                     <div>
@@ -11,7 +11,7 @@
                             <img src="{{ Storage::url($editUser->photo_path) }}" alt="{{ $editUser->name }}"
                                 class="w-24 h-24 rounded-full object-cover border border-neutral-200">
                         @else
-                            <div class="w-24 h-24 rounded-full bg-[#C9A227] text-neutral-900 font-bold text-2xl flex items-center justify-center">
+                            <div class="w-24 h-24 rounded-full bg-gold text-neutral-900 font-bold text-2xl flex items-center justify-center">
                                 {{ collect(explode(' ', $editUser->name))->map(fn ($w) => mb_substr($w, 0, 1))->take(2)->implode('') }}
                             </div>
                         @endif
@@ -27,12 +27,12 @@
                                @change="preview = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : null">
                     </label>
                     <span class="text-xs text-neutral-500" x-show="preview" x-cloak>Preview shown — click Upload to save.</span>
-                    <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-4 py-2 text-sm" :disabled="!preview" :class="{ 'opacity-50': !preview }">Upload</button>
+                    <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors" :disabled="!preview" :class="{ 'opacity-50': !preview }">Upload</button>
                 </form>
                 @if ($editUser->photo_path)
                     <form method="POST" action="{{ route('admin.users.photo.delete', $editUser) }}">
                         @csrf @method('DELETE')
-                        <button type="submit" class="text-sm font-semibold text-red-700 hover:underline">Remove photo</button>
+                        <button type="submit" class="text-sm font-semibold text-danger hover:underline">Remove photo</button>
                     </form>
                 @endif
                 <p class="text-xs text-neutral-500">JPG, PNG, or WebP · up to 10 MB. Photos are straightened, center-cropped to a square, and resized automatically.</p>
@@ -100,7 +100,7 @@
             @endif
 
             <div class="flex gap-3">
-                <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Save changes</button>
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Save changes</button>
                 <a href="{{ route('admin.users.index') }}" class="text-sm font-semibold text-neutral-500 self-center">Cancel</a>
             </div>
         </form>
@@ -122,7 +122,7 @@
                 </div>
             </div>
             <div class="flex gap-3">
-                <button type="submit" class="bg-neutral-900 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Set password</button>
+                <button type="submit" class="bg-neutral-900 text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-neutral-700 transition-colors">Set password</button>
                 <button type="button"
                     @click="password = Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%'[b % 60]).join(''); $el.closest('form').querySelector('[name=password_confirmation]').value = password"
                     class="text-sm font-semibold text-neutral-600 hover:underline self-center">Generate strong password</button>

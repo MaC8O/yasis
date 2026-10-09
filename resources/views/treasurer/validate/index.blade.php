@@ -44,7 +44,7 @@
                                     @csrf
                                     <input type="text" name="student_id_number" placeholder="YAS-2026-0001" required
                                         class="flex-1 rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-xs">
-                                    <button type="submit" class="text-xs font-semibold bg-[#1F573D] text-white rounded-lg px-3 py-1.5">Match</button>
+                                    <button type="submit" class="text-xs font-semibold bg-brand text-white rounded-lg px-3 py-1.5 hover:bg-brand-dark transition-colors">Match</button>
                                 </form>
                             </td>
                         </tr>
@@ -93,13 +93,13 @@
                                 <td class="py-2.5 text-right whitespace-nowrap space-x-3">
                                     <form method="POST" action="{{ route('treasurer.validate.toggle-restrict', $row) }}" class="inline">
                                         @csrf
-                                        <button type="submit" class="text-xs font-semibold text-[#2E5AAC] hover:underline">
+                                        <button type="submit" class="text-xs font-semibold text-info hover:underline">
                                             {{ $row->is_restricted ? 'Unrestrict' : 'Restrict' }}
                                         </button>
                                     </form>
                                     <form method="POST" action="{{ route('treasurer.validate.toggle-hold', $row) }}" class="inline">
                                         @csrf
-                                        <button type="submit" class="text-xs font-semibold text-[#8A6D10] hover:underline">
+                                        <button type="submit" class="text-xs font-semibold text-warning hover:underline">
                                             {{ $row->is_held ? 'Release' : 'Hold' }}
                                         </button>
                                     </form>
@@ -117,7 +117,7 @@
             @if ($batch->is_published)
                 <x-badge color="green">Published {{ $batch->published_at->format('M j, Y H:i') }}</x-badge>
             @elseif ($blockingCount > 0)
-                <p class="text-sm text-[#B0392B] mb-2 font-semibold">{{ $blockingCount }} unmatched row(s) block publishing.</p>
+                <p class="text-sm text-danger mb-2 font-semibold">{{ $blockingCount }} unmatched row(s) block publishing.</p>
                 <p class="text-sm text-neutral-500">Match each row to a student, or put it on hold to park it out of this publish.</p>
             @else
                 <p class="text-sm text-neutral-500 mb-4">
@@ -126,7 +126,7 @@
                 </p>
                 <form method="POST" action="{{ route('treasurer.validate.publish', $batch) }}">
                     @csrf
-                    <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-3 text-sm">Publish Valid Rows</button>
+                    <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Publish Valid Rows</button>
                 </form>
             @endif
         </x-card>

@@ -25,7 +25,7 @@
                 Expected columns: <code>student_id</code>, <code>date</code>, <code>amount</code>, <code>balance</code>,
                 optionally <code>status</code> (Owed/Paid/Partial/Outstanding) and <code>restricted</code> (yes/no — SDA discount/allowance rows).
             </p>
-            <button type="submit" class="bg-[#1F573D] text-white font-semibold rounded-lg px-6 py-3 text-sm">Upload &amp; Validate</button>
+            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Upload &amp; Validate</button>
         </form>
     </x-card>
 </x-app-layout>

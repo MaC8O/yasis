@@ -35,9 +35,9 @@
                 @php $offset += ($segment['value'] / $total) * $c; @endphp
             @endforeach
         </g>
-        <text x="60" y="{{ $centerLabel ? 58 : 64 }}" text-anchor="middle" font-size="17" font-weight="700" fill="#131B1B">{{ $center ?? number_format($total) }}</text>
+        <text x="60" y="{{ $centerLabel ? 58 : 64 }}" text-anchor="middle" font-size="17" font-weight="700" fill="#141a17">{{ $center ?? number_format($total) }}</text>
         @if ($centerLabel)
-            <text x="60" y="72" text-anchor="middle" font-size="8.5" fill="#576661">{{ $centerLabel }}</text>
+            <text x="60" y="72" text-anchor="middle" font-size="8.5" fill="#6b7280">{{ $centerLabel }}</text>
         @endif
     </svg>
 

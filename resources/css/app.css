@@ -8,10 +8,118 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /*
+     * YASIS design tokens. Use these (bg-brand, text-danger, bg-tint-blue …)
+     * instead of raw hex values so the palette stays consistent app-wide.
+     */
+    --color-brand: #1f573d;
+    --color-brand-dark: #184630;
+    --color-brand-soft: #e8f0eb;
+    --color-ink: #141a17;
+    --color-canvas: #f4f4f0;
+    --color-gold: #c9a227;
+    --color-gold-dark: #b8942a;
+
+    /* Pastel tiles/badges and their readable foregrounds */
+    --color-tint-blue: #dce7f9;
+    --color-tint-blue-ink: #1e3a6e;
+    --color-tint-yellow: #f5e4a8;
+    --color-tint-yellow-ink: #5c4a0a;
+    --color-tint-pink: #f6d9d9;
+    --color-tint-pink-ink: #7a2020;
+    --color-tint-green: #d7ecd9;
+    --color-tint-green-ink: #1f4d2c;
+    --color-tint-purple: #e4daf3;
+    --color-tint-purple-ink: #4a2d6e;
+    --color-tint-teal: #d9eef0;
+    --color-tint-teal-ink: #155e63;
+
+    /* Semantic feedback colors */
+    --color-success: #1f6b45;
+    --color-success-soft: #edf6ef;
+    --color-success-line: #c6e2cc;
+    --color-warning: #8a6d10;
+    --color-warning-soft: #fcf7e6;
+    --color-warning-line: #eadfb8;
+    --color-danger: #b0392b;
+    --color-danger-dark: #93301f;
+    --color-danger-soft: #fbefed;
+    --color-danger-line: #f2d9d4;
+    --color-info: #2e5aac;
+    --color-info-soft: #eef3fc;
+    --color-info-line: #cfdcf3;
 }
 
 [x-cloak] {
     display: none !important;
+}
+
+@layer base {
+    /* Consistent, visible keyboard focus everywhere (WCAG 2.4.7). */
+    :where(a, button, summary, [role='button'], [tabindex]):focus-visible {
+        outline: 2px solid var(--color-brand);
+        outline-offset: 2px;
+        border-radius: 0.375rem;
+    }
+
+    /* Branded focus state for every form control — no per-view classes needed. */
+    :where(input:not([type='checkbox'], [type='radio'], [type='file'], [type='hidden']), select, textarea) {
+        transition:
+            border-color 120ms ease,
+            box-shadow 120ms ease,
+            background-color 120ms ease;
+    }
+    :where(input:not([type='checkbox'], [type='radio'], [type='file']), select, textarea):focus {
+        outline: none;
+        border-color: var(--color-brand);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-brand) 18%, transparent);
+    }
+    :where(input[type='checkbox'], input[type='radio']) {
+        accent-color: var(--color-brand);
+    }
+    :where(input, select, textarea)[aria-invalid='true'] {
+        border-color: var(--color-danger);
+    }
+
+    :where(button, [type='submit']):disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    button:not(:disabled),
+    [role='button'] {
+        cursor: pointer;
+    }
+
+    ::selection {
+        background: var(--color-tint-yellow);
+        color: var(--color-ink);
+    }
+}
+
+/* Spinner shown on a submit button while its form is in flight (see app.js). */
+.is-submitting {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+}
+.is-submitting::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 9999px;
+    /* --spin is the button's original text color, captured in app.js */
+    border: 2px solid var(--spin, #fff);
+    border-right-color: transparent;
+    animation: isms-spin 0.7s linear infinite;
+}
+@keyframes isms-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /*
@@ -20,6 +128,10 @@
  * Add class="rt" to the <table> and data-label="…" to each body <td>.
  */
 @media (max-width: 767px) {
+    /* Other data tables scroll sideways inside a wrapper added by app.js. */
+    .table-scroll > table {
+        white-space: nowrap;
+    }
     table.rt thead {
         display: none;
     }
