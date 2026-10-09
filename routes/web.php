@@ -273,6 +273,7 @@ Route::middleware(['auth', 'role:hr_office'])->prefix('hr_office')->name('hr_off
     Route::get('/staff', [StaffRecordController::class, 'index'])->name('staff.index');
     Route::get('/staff/create', [StaffRecordController::class, 'create'])->name('staff.create');
     Route::post('/staff', [StaffRecordController::class, 'store'])->name('staff.store');
+    Route::get('/staff/{staffProfile}/panel', [StaffRecordController::class, 'panel'])->name('staff.panel');
     Route::get('/staff/{staffProfile}', [StaffRecordController::class, 'show'])->name('staff.show');
     Route::put('/staff/{staffProfile}/status', [StaffRecordController::class, 'updateStatus'])->name('staff.status');
 

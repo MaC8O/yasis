@@ -185,7 +185,7 @@
                 <div class="mt-2 flex h-2.5 rounded-full overflow-hidden bg-neutral-100" aria-hidden="true">
                     @foreach ($bars as $status => $color)
                         @if ($attendance[$status] ?? 0)
-                            <span class="{{ $color }}" style="width: {{ ($attendance[$status] / $attendanceTotal) * 100 }}%"></span>
+                            <span class="{{ $color }}" @style(['width: '.$attendance[$status] / $attendanceTotal * 100 .'%'])></span>
                         @endif
                     @endforeach
                 </div>

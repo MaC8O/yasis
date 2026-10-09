@@ -294,9 +294,8 @@ class UserManagementController extends Controller
 
             return redirect()->route('admin.users.index')->with('status', "{$name}'s account permanently deleted.");
         } catch (QueryException $e) {
-            if ($e->getCode() !== '23000') {
-                throw $e;
-            }
+            // Only an integrity-constraint violation (23000) means "has dependents"; rethrow anything else.
+            throw_unless($e->getCode() === '23000', $e);
 
             $user->forceFill([
                 'name' => "Erased User #{$userId}",
