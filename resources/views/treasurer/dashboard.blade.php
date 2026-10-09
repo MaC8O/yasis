@@ -16,9 +16,9 @@
     </x-card>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <x-card title="Import pipeline" subtitle="From the finalized Sun account to the family portal.">
+        <x-card title="Import pipeline" subtitle="From the finalized accounts to the family portal.">
             <ol class="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                @foreach (['Sun finalized', 'Export', 'Correct', 'Upload', 'Validate', 'Publish', 'Portal'] as $i => $step)
+                @foreach (['Accounts finalized', 'Export', 'Correct', 'Upload', 'Validate', 'Publish', 'Portal'] as $i => $step)
                     <li class="flex items-center gap-2">
                         <span class="rounded-full bg-brand-soft text-brand px-2.5 py-1">{{ $step }}</span>
                         @unless ($loop->last)<x-icon name="chevron-right" class="w-3.5 h-3.5 text-neutral-400" />@endunless

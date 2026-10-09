@@ -384,7 +384,7 @@ class K12StructureSeeder extends Seeder
         if ($treasurer) {
             $batch = ImportBatch::firstOrCreate(
                 ['period' => 'Q2 2026', 'uploaded_by' => $treasurer->id],
-                ['source_file' => 'sun_account_Q2_2026.xlsx', 'row_count' => 0, 'uploaded_at' => now()->subDays(3), 'published_at' => now()->subDays(2)]
+                ['source_file' => 'fee_export_Q2_2026.xlsx', 'row_count' => 0, 'uploaded_at' => now()->subDays(3), 'published_at' => now()->subDays(2)]
             );
 
             $hsStudents = Student::where('department_id', $departments['High School'])

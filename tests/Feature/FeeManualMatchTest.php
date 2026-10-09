@@ -139,7 +139,7 @@ class FeeManualMatchTest extends TestCase
 
     public function test_matching_a_different_name_warns_the_treasurer(): void
     {
-        $row = $this->unmatched('SUN-0003', 'Naw Paw Eh');
+        $row = $this->unmatched('ACC-0003', 'Naw Paw Eh');
 
         $this->confirm($row, 'YAS-2026-0001')
             ->assertSessionHas('status')
