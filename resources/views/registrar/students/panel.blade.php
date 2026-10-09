@@ -32,11 +32,12 @@
     </div>
 
     {{-- Command band: class block + quick actions --}}
-    <div class="grid grid-cols-[80px_1fr]">
+    <div class="grid grid-cols-[112px_1fr]">
         <div class="bg-gold text-ink flex flex-col items-center justify-center text-center px-2 py-4">
             <x-icon name="student" class="w-5 h-5 opacity-70" />
-            {{-- Non-breaking hyphen so "Grade 9-A" never splits at the dash in this narrow block. --}}
-            <p class="mt-1.5 text-sm font-bold leading-tight">{{ str_replace('-', "\u{2011}", $currentEnrollment?->section?->name ?? 'No class') }}</p>
+            {{-- One line: long names (e.g. "Kindergarten 2") step down a size instead of wrapping. --}}
+            @php $className = $currentEnrollment?->section?->name ?? 'No class'; @endphp
+            <p class="mt-1.5 font-bold leading-tight whitespace-nowrap {{ mb_strlen($className) > 11 ? 'text-xs' : 'text-sm' }}">{{ $className }}</p>
         </div>
         <div class="bg-brand px-1 py-3 flex flex-wrap items-start justify-around gap-y-2">
             <a href="{{ route('registrar.students.edit', $student) }}" class="{{ $tile }}">
