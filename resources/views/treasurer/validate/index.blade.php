@@ -178,7 +178,8 @@
                                 <td class="py-2 pl-2 pr-5 text-right whitespace-nowrap space-x-3">
                                     @if ($manual)
                                         <form method="POST" action="{{ route('treasurer.validate.unmatch', $row) }}" class="inline"
-                                              onsubmit="return confirm(@js('Undo the match of '.$row->raw_student_key.' to '.$row->student->name.'?'));">
+                                              data-confirm="Undo the match of {{ $row->raw_student_key }} to {{ $row->student->name }}?"
+                                              onsubmit="return confirm(this.dataset.confirm);">
                                             @csrf
                                             <button type="submit" class="text-xs font-semibold text-danger hover:underline">Unmatch</button>
                                         </form>

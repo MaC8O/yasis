@@ -49,7 +49,8 @@
                             <td class="py-3 pl-2 pr-5 text-right whitespace-nowrap">
                                 <a href="{{ route('treasurer.validate.index', ['batch' => $batch->id]) }}" class="text-xs font-semibold text-brand hover:underline mr-3">Review</a>
                                 <form method="POST" action="{{ route('treasurer.history.revert', $batch) }}" class="inline"
-                                      onsubmit="return confirm(@js("Revert batch {$batch->period}? This permanently removes its {$batch->imported_fee_records_count} rows".($batch->is_published ? ', including from what leadership and guardians see' : '').'. Other batches are not touched, and the revert is recorded in the audit log.'));">
+                                      data-confirm="Revert batch {{ $batch->period }}? This permanently removes its {{ $batch->imported_fee_records_count }} rows{{ $batch->is_published ? ', including from what leadership and guardians see' : '' }}. Other batches are not touched, and the revert is recorded in the audit log."
+                                      onsubmit="return confirm(this.dataset.confirm);">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-xs font-semibold text-danger hover:underline">Revert</button>
                                 </form>
