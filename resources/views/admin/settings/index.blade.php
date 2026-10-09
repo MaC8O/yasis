@@ -74,8 +74,13 @@
                                         </label>
                                     @else
                                         <label class="block text-sm font-semibold mb-1">{{ $field['label'] }}</label>
-                                        @if ($field['type'] === 'select')
+                                        @if ($field['type'] === 'readonly')
+                                            {{-- Display only: no name attribute, so it is never submitted. --}}
+                                            <input type="text" value="{{ $settings[$key] }}" readonly aria-readonly="true"
+                                                   class="w-full rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-2.5 text-sm text-neutral-600 cursor-not-allowed outline-none">
+                                        @elseif ($field['type'] === 'select')
                                             <select name="{{ $key }}" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand outline-none">
+
                                                 @foreach ($field['options'] as $val => $labelText)
                                                     <option value="{{ $val }}" @selected($settings[$key] === $val)>{{ $labelText }}</option>
                                                 @endforeach
