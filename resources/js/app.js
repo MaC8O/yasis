@@ -24,30 +24,49 @@ document.querySelectorAll('main table:not(.rt)').forEach((table) => {
 Alpine.data('masterDetail', (initial = null) => ({
     selected: initial,
     loading: false,
+    // Set once this page starts navigating away. A panel load still in flight is then cancelled
+    // and must be ignored — otherwise the double-click that opens the full profile would also
+    // trigger the error fallback below and send the user back to the list.
+    leaving: false,
+    request: null,
+    init() {
+        window.addEventListener('pagehide', () => this.leave());
+    },
     async select(id, url) {
-        if (id === this.selected || this.loading) return;
+        if (this.leaving || id === this.selected || this.loading) return;
         const pageUrl = new URL(window.location.href);
         pageUrl.searchParams.set('selected', id);
 
         this.selected = id;
         this.loading = true;
+        this.request = new AbortController();
         try {
-            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, signal: this.request.signal });
+            if (this.leaving) return;
             // Expired session or other failure: fall back to a full page load.
-            if (!res.ok || res.redirected) return window.location.assign(pageUrl);
+            if (!res.ok || res.redirected) return this.go(pageUrl);
             this.$refs.panel.innerHTML = await res.text();
             history.replaceState(null, '', pageUrl);
             if (window.matchMedia('(max-width: 1279px)').matches) {
                 this.$refs.panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         } catch {
-            window.location.assign(pageUrl);
+            if (!this.leaving) this.go(pageUrl);
         } finally {
             this.loading = false;
+            this.request = null;
         }
     },
     open(url) {
+        this.go(url);
+    },
+    go(url) {
+        this.leave();
         window.location.assign(url);
+    },
+    leave() {
+        this.leaving = true;
+        this.request?.abort();
     },
 }));
 
