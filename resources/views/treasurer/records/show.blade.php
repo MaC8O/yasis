@@ -5,7 +5,7 @@
     $closing = $lines->last()?->balance ?? 0;
     $latestStatus = $lines->isEmpty() ? null : app(\App\Services\FeeSummaryService::class)->accountStatus($lines->sum('charge'), $closing);
 @endphp
-<x-app-layout :title="$student->name" subtitle="Statement of account" badge="Sun account, not Sun Plus" role="treasurer">
+<x-app-layout :title="$student->name" subtitle="Statement of account" badge="Treasurer" role="treasurer">
     {{-- Account header --}}
     <div class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
         <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 px-5 py-4">

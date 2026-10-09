@@ -1,4 +1,4 @@
-<x-app-layout title="Import Fee Records" subtitle="Upload the corrected Excel/CSV file prepared from the Sun account process." badge="Sun account, not Sun Plus" role="treasurer">
+<x-app-layout title="Import Fee Records" subtitle="Upload the corrected Excel/CSV file prepared from the Sun account process." badge="Treasurer" role="treasurer">
     <x-card title="Import behavior" subtitle="Designed for student-ID mismatch and duplicate prevention.">
         <div class="flex flex-wrap gap-2">
             <x-badge color="blue">Match by ISMS student ID (agreed key)</x-badge>

@@ -1,7 +1,6 @@
 @use('App\Support\Money')
-<x-app-layout title="Finance Dashboard" subtitle="Receivables, collection and the import pipeline at a glance." badge="Sun account, not Sun Plus" role="treasurer">
+<x-app-layout title="Finance Dashboard" subtitle="Receivables, collection and the import pipeline at a glance." badge="Treasurer" role="treasurer">
     <div class="flex flex-wrap gap-2 -mt-2">
-        <x-badge color="yellow">Sun account, not Sun Plus</x-badge>
         <x-badge color="neutral">No transactions in ISMS</x-badge>
     </div>
 

@@ -1,4 +1,4 @@
-<x-app-layout title="Source Prep" subtitle="Finance office workflow: how the source file gets from Sun account to a valid ISMS import." badge="Sun account, not Sun Plus" role="treasurer">
+<x-app-layout title="Source Prep" subtitle="Finance office workflow: how the source file gets from Sun account to a valid ISMS import." badge="Treasurer" role="treasurer">
     <x-card title="Questionnaire-aligned finance workflow">
         <div class="flex flex-wrap items-center gap-3 text-sm">
             <x-badge color="yellow">Sun account finalized</x-badge>
@@ -17,7 +17,7 @@
 
     <x-card title="Finance office reality" subtitle="Built from the requirements questionnaire (§3.4).">
         <ul class="space-y-2 text-sm text-neutral-600 list-disc list-inside">
-            <li>The school uses a Sun account process — not Sun Plus — for all accounting.</li>
+            <li>The school uses a Sun account process for all accounting.</li>
             <li>Records are exported to Excel, with occasional manual Word adjustments before upload.</li>
             <li>Uploads follow the school's installment-payment cycle: quarterly, or on demand.</li>
             <li>Corrections are made in the source system and re-uploaded — never edited directly in ISMS.</li>

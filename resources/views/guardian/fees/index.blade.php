@@ -1,5 +1,5 @@
 @use('App\Support\Money')
-<x-app-layout title="Fee Status" subtitle="Your child's fee account, from the school finance office." badge="Sun account, not Sun Plus" role="guardian">
+<x-app-layout title="Fee Status" subtitle="Your child's fee account, from the school finance office." badge="Guardian · Read-only access" role="guardian">
     <x-child-switcher :children="$children" :child="$child" route="guardian.fees.index" />
 
     <div class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">

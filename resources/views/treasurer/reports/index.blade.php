@@ -1,5 +1,5 @@
 @use('App\Support\Money')
-<x-app-layout title="Fee Reports" subtitle="Receivables, aging and collection reports built from imported fee records." badge="Sun account, not Sun Plus" role="treasurer">
+<x-app-layout title="Fee Reports" subtitle="Receivables, aging and collection reports built from imported fee records." badge="Treasurer" role="treasurer">
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <x-stat-tile label="Total billed ({{ Money::CURRENCY }})" color="blue">{{ Money::format($billedTotal) }}</x-stat-tile>
         <x-stat-tile label="Collected ({{ Money::CURRENCY }})" color="green">{{ Money::format($paidTotal) }}</x-stat-tile>

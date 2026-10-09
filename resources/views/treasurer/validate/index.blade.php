@@ -1,5 +1,5 @@
 @use('App\Support\Money')
-<x-app-layout title="Validate & Match Import" subtitle="Resolve unmatched rows and publish before they're visible to leadership and guardians." badge="Sun account, not Sun Plus" role="treasurer">
+<x-app-layout title="Validate & Match Import" subtitle="Resolve unmatched rows and publish before they're visible to leadership and guardians." badge="Treasurer" role="treasurer">
     <x-card>
         <form method="GET" class="flex gap-4 items-end">
             <div class="flex-1">

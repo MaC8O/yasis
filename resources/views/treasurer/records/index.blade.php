@@ -1,5 +1,5 @@
 @use('App\Support\Money')
-<x-app-layout title="Accounts Receivable" subtitle="Every student's fee account, from imported records — balances, aging, and drill-down statements." badge="Sun account, not Sun Plus" role="treasurer">
+<x-app-layout title="Accounts Receivable" subtitle="Every student's fee account, from imported records — balances, aging, and drill-down statements." badge="Treasurer" role="treasurer">
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <x-stat-tile label="Total receivables ({{ Money::CURRENCY }})" color="yellow">{{ Money::format($stats['receivables']) }}</x-stat-tile>
         <x-stat-tile label="Accounts with a balance" color="blue">{{ $stats['accounts'] }}</x-stat-tile>
