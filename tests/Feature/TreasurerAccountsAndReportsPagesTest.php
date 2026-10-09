@@ -122,4 +122,54 @@ class TreasurerAccountsAndReportsPagesTest extends TestCase
             ->assertSee('Print copy for the family')
             ->assertSee('How long the money has been owed');
     }
+
+    public function test_history_counts_the_rows_that_exist_not_the_stored_file_count(): void
+    {
+        // The stored row_count says 3, but a 4th row was added to the batch later (e.g. by re-seeding).
+        $batch = ImportBatch::firstOrFail();
+        ImportedFeeRecord::create([
+            'import_batch_id' => $batch->id, 'student_id' => null, 'raw_student_key' => 'ACC-1', 'is_held' => true,
+            'txn_date' => now()->toDateString(), 'amount' => 50000, 'balance' => 50000, 'status' => 'Outstanding',
+        ]);
+
+        $this->actingAs($this->treasurer->user)->get(route('treasurer.history.index'))
+            ->assertOk()
+            ->assertViewHas('batches', fn ($b) => $b->first()->imported_fee_records_count === 4
+                && $b->first()->matched_count === 3 && $b->first()->held_count === 1)
+            ->assertSeeInOrder(['Q1 2026', '4', '3 matched', '1 held'], false)
+            ->assertSee("removes its 4 rows", false);
+    }
+
+    public function test_revert_reports_how_many_rows_it_removed(): void
+    {
+        $batch = ImportBatch::firstOrFail();
+
+        $this->actingAs($this->treasurer->user)->delete(route('treasurer.history.revert', $batch))
+            ->assertSessionHas('status', 'Batch Q1 2026 reverted — its 3 rows were removed.');
+
+        $this->assertSame(0, ImportedFeeRecord::count());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'Reverted fee import batch', 'entity_id' => $batch->id]);
+    }
+
+    public function test_csv_downloads_use_the_same_words_as_the_screens(): void
+    {
+        $outstanding = $this->actingAs($this->treasurer->user)->get(route('treasurer.reports.outstanding'))->streamedContent();
+        $aging = $this->actingAs($this->treasurer->user)->get(route('treasurer.reports.aging'))->streamedContent();
+
+        foreach (['"Charged (MMK)"', '"Still owed (MMK)"', '"Days unpaid (if over 30)"'] as $header) {
+            $this->assertStringContainsString($header, $outstanding);
+        }
+        $this->assertStringContainsString('"Under 30 days (MMK)"', $aging);
+        $this->assertStringContainsString('"Still owed (MMK)"', $aging);
+
+        foreach ([$outstanding, $aging] as $csv) {
+            foreach (['billed', 'Balance (MMK)', 'Current 0-30', 'Total balance'] as $old) {
+                $this->assertStringNotContainsString($old, $csv);
+            }
+        }
+
+        // Chit Chit Late: 300,000 owed for 120 days.
+        $this->assertStringContainsString('"Chit Chit Late"', $outstanding);
+        $this->assertMatchesRegularExpression('/"Chit Chit Late".*,300000,Outstanding,120,/', $outstanding);
+    }
 }

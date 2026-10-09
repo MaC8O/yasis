@@ -62,7 +62,7 @@ class FeeReportController extends Controller
         $audit->log($request->user(), 'Generated outstanding balance report', 'FeeReport', null);
 
         return $this->csv('outstanding-balances-'.now()->format('Y-m-d').'.csv',
-            ['Student ID', 'Full name', 'Department', 'Class', 'Primary guardian', 'Guardian phone', 'Total billed (MMK)', 'Paid (MMK)', 'Balance (MMK)', 'Status', 'Last activity'],
+            ['Student ID', 'Full name', 'Department', 'Class', 'Primary guardian', 'Guardian phone', 'Charged (MMK)', 'Paid (MMK)', 'Still owed (MMK)', 'Status', 'Days unpaid (if over 30)', 'Last charge date'],
             $rows->map(function ($row) {
                 $guardian = $this->primaryGuardian($row->student);
 
@@ -77,6 +77,7 @@ class FeeReportController extends Controller
                     $row->paid,
                     $row->balance,
                     $row->status,
+                    $row->overdue_days ?? '',
                     $row->last_activity?->format('Y-m-d'),
                 ];
             }));
@@ -92,7 +93,7 @@ class FeeReportController extends Controller
         $totals = $service->agingTotals($rows);
 
         return $this->csv('aged-receivables-'.now()->format('Y-m-d').'.csv',
-            ['Student ID', 'Full name', 'Department', 'Class', 'Current 0-30 (MMK)', '31-60 days (MMK)', '61-90 days (MMK)', 'Over 90 days (MMK)', 'Total balance (MMK)'],
+            ['Student ID', 'Full name', 'Department', 'Class', 'Under 30 days (MMK)', '31-60 days (MMK)', '61-90 days (MMK)', 'Over 90 days (MMK)', 'Still owed (MMK)'],
             $rows->map(fn ($row) => [
                 $row->student->student_id_number,
                 $row->student->name,
