@@ -6,7 +6,29 @@ use Illuminate\Database\Eloquent\Model;
 
 class Section extends Model
 {
-    protected $fillable = ['academic_year_id', 'department_id', 'name', 'homeroom_teacher_id', 'capacity'];
+    protected $fillable = ['academic_year_id', 'department_id', 'name', 'homeroom_teacher_id', 'capacity', 'archived_at'];
+
+    protected function casts(): array
+    {
+        return ['archived_at' => 'datetime'];
+    }
+
+    /** Sections still in use (not archived). */
+    public function scopeActive($query)
+    {
+        return $query->whereNull('archived_at');
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    /** The grade number in the section name ("Grade 9-A" → 9), or null for Nursery/KG-style names. */
+    public function gradeNumber(): ?int
+    {
+        return preg_match('/\bgrade\s*(\d{1,2})\b/i', $this->name, $m) ? (int) $m[1] : null;
+    }
 
     public function academicYear()
     {

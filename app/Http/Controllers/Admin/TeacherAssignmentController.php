@@ -67,9 +67,8 @@ class TeacherAssignmentController extends Controller
         if (empty($data['teacher_id'])) {
             // Cleared — remove any existing assignment.
             if ($existing) {
-                $id = $existing->id;
-                $existing->delete();
-                $audit->log($request->user(), 'Removed teaching assignment', 'TeachingAssignment', $id);
+                // Refused (with a readable message) once grades exist for this section + subject.
+                $service->remove($existing, $request->user());
 
                 return back()->with('status', 'Subject unassigned.');
             }

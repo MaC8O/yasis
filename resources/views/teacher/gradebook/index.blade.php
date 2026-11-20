@@ -4,9 +4,9 @@
         <form method="GET" class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
             <div>
                 <label class="block text-sm font-semibold mb-1">Class / Subject</label>
-                <select name="section" onchange="this.form.submit()" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
+                <select name="assignment" onchange="this.form.submit()" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
                     @foreach ($assignments as $a)
-                        <option value="{{ $a->section_id }}" @selected($a->section_id === $section->id)>{{ $a->section->name }} — {{ $a->subject->name }}</option>
+                        <option value="{{ $a->id }}" @selected($a->section_id === $section->id && $a->subject_id === $subject->id)>{{ $a->section->name }} — {{ $a->subject->name }}</option>
                     @endforeach
                 </select>
             </div>
