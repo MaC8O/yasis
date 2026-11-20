@@ -76,11 +76,10 @@ class SubjectCatalogController extends Controller
         return back()->with('status', 'Teaching assignment saved.');
     }
 
-    public function destroyAssignment(Request $request, TeachingAssignment $teachingAssignment, AuditService $audit)
+    public function destroyAssignment(Request $request, TeachingAssignment $teachingAssignment, TeachingAssignmentService $service)
     {
-        $id = $teachingAssignment->id;
-        $teachingAssignment->delete();
-        $audit->log($request->user(), 'Removed teaching assignment', 'TeachingAssignment', $id);
+        // Refused (with a readable message) once grades exist for this section + subject.
+        $service->remove($teachingAssignment, $request->user());
 
         return back()->with('status', 'Teaching assignment removed.');
     }

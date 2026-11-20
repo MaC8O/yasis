@@ -3,32 +3,63 @@
 namespace App\Http\Controllers\Registrar;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Registrar\SectionRequest;
 use App\Models\AcademicYear;
 use App\Models\Department;
 use App\Models\Enrollment;
 use App\Models\Section;
 use App\Models\StaffProfile;
 use App\Models\Student;
+use App\Models\Subject;
+use App\Models\TeachingAssignment;
 use App\Services\AuditService;
+use App\Services\SectionService;
+use App\Services\TeachingAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class SectionController extends Controller
 {
+    public function __construct(private SectionService $sections)
+    {
+    }
+
     public function index(Request $request)
     {
         $activeYear = AcademicYear::where('is_active', true)->first();
+        $yearId = $request->integer('academic_year') ?: $activeYear?->id;
+        $search = $request->string('search')->trim()->value();
+        $showArchived = $request->boolean('archived');
 
-        $query = Section::query()->with(['department', 'homeroomTeacher.user', 'enrollments'])
-            ->where('academic_year_id', $request->integer('academic_year', $activeYear?->id));
+        $query = Section::query()
+            ->with(['department', 'homeroomTeacher.user', 'enrollments', 'teachingAssignments.teacher.user'])
+            ->where('academic_year_id', $yearId)
+            ->when(! $showArchived, fn ($q) => $q->active());
 
         if ($departmentId = $request->string('department')->value()) {
             $query->where('department_id', $departmentId);
         }
 
+        if ($search !== '') {
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")
+                ->orWhereHas('homeroomTeacher.user', fn ($u) => $u->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('teachingAssignments.teacher.user', fn ($u) => $u->where('name', 'like', "%{$search}%")));
+        }
+
         // Natural order so grades read 1,2,…,12 rather than the alphabetical 1,10,11,12,2,…
         $sections = $query->orderByRaw('LENGTH(name), name')->get();
+
+        $subjectsByDepartment = Subject::whereIn('department_id', $sections->pluck('department_id')->unique())
+            ->orderBy('name')->get()->groupBy('department_id');
+        $coverage = $sections->mapWithKeys(function ($section) use ($subjectsByDepartment) {
+            $expected = $this->sections->expectedSubjects($section, $subjectsByDepartment->get($section->department_id, collect()));
+            $assigned = $section->teachingAssignments->pluck('subject_id');
+
+            return [$section->id => ['assigned' => $expected->whereIn('id', $assigned)->count(), 'expected' => $expected->count()]];
+        });
+
+        $activeSections = Section::active()->where('academic_year_id', $activeYear?->id)->orderByRaw('LENGTH(name), name')->with('enrollments')->get();
 
         // Active students not yet placed in any section of the active year (§7.5 "place students").
         $unplacedStudents = Student::where('enrollment_status', 'Enrolled')
@@ -40,63 +71,101 @@ class SectionController extends Controller
             ->orderBy('name')
             ->get();
 
+        $teachers = StaffProfile::where('role_type', 'Teacher')->whereIn('status', ['Active', 'Probation'])
+            ->with('user')->get()->sortBy('user.name')->values();
+        $homerooms = Section::active()->where('academic_year_id', $yearId)->whereNotNull('homeroom_teacher_id')
+            ->get(['id', 'name', 'homeroom_teacher_id'])->groupBy('homeroom_teacher_id');
+
         return view('registrar.sections.index', [
             'sections' => $sections,
+            'grouped' => $sections->groupBy(fn ($s) => $s->department?->name ?? 'No department'),
+            'coverage' => $coverage,
+            'activeSections' => $activeSections,
             'unplacedStudents' => $unplacedStudents,
-            'departments' => Department::orderBy('name')->get(),
+            'departments' => Department::academic()->orderBy('name')->get(),
             'academicYears' => AcademicYear::orderByDesc('year_label')->get(),
             'activeYear' => $activeYear,
-            'teachers' => StaffProfile::where('role_type', 'Teacher')->with('user')->get(),
-            'filters' => $request->only(['academic_year', 'department']),
+            'yearId' => $yearId,
+            'teachers' => $teachers,
+            'homerooms' => $homerooms,
+            'filters' => ['department' => $request->string('department')->value(), 'search' => $search, 'archived' => $showArchived],
             'stats' => [
                 'sections' => $sections->count(),
                 'assignedTeachers' => $sections->whereNotNull('homeroom_teacher_id')->count(),
-                'studentsPlaced' => $sections->sum(fn ($s) => $s->enrollments->count()),
-                'openSeats' => $sections->sum(fn ($s) => max($s->capacity - $s->enrollments->count(), 0)),
+                'studentsPlaced' => $sections->sum(fn ($s) => $s->enrollments->where('status', 'Active')->count()),
+                'openSeats' => $sections->sum(fn ($s) => max($s->capacity - $s->enrollments->where('status', 'Active')->count(), 0)),
             ],
         ]);
     }
 
-    public function store(Request $request, AuditService $audit)
+    public function show(Section $section, TeachingAssignmentService $assignments)
     {
-        $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
+        $section->load(['department', 'academicYear', 'homeroomTeacher.user', 'teachingAssignments.teacher.user', 'teachingAssignments.subject']);
 
-        $data = $request->validate([
-            'name' => [
-                'required', 'string', 'max:255',
-                // §7.5: section name unique per (academic year, department).
-                Rule::unique('sections', 'name')
-                    ->where('academic_year_id', $activeYear->id)
-                    ->where('department_id', $request->input('department_id')),
-            ],
-            'department_id' => ['required', 'exists:departments,id'],
-            'homeroom_teacher_id' => ['nullable', Rule::exists('staff_profiles', 'id')->where('role_type', 'Teacher')],
-            'capacity' => ['required', 'integer', 'min:1', 'max:100'],
-        ], [
-            'name.unique' => 'A section with this name already exists for that department in the active year.',
-            'homeroom_teacher_id.exists' => 'The homeroom teacher must be a staff member with the Teacher role.',
+        $expected = $this->sections->expectedSubjects($section);
+        $current = $section->teachingAssignments->keyBy('subject_id');
+        // Expected subjects first, then any extra subject already assigned outside the expected set.
+        $subjects = $expected->concat($section->teachingAssignments->pluck('subject')->filter()
+            ->reject(fn ($s) => $expected->contains('id', $s->id)))->values();
+
+        $gradeCounts = $subjects->mapWithKeys(fn ($s) => [$s->id => $assignments->gradeCount($section->id, $s->id)]);
+
+        return view('registrar.sections.show', [
+            'section' => $section,
+            'roster' => $section->enrollments()->with('student')->orderByDesc('status')->get()
+                ->sortBy(fn ($e) => [$e->status !== 'Active', $e->student?->name])->values(),
+            'subjects' => $subjects,
+            'expectedIds' => $expected->pluck('id'),
+            'current' => $current,
+            'gradeCounts' => $gradeCounts,
+            'teachers' => StaffProfile::where('role_type', 'Teacher')->whereIn('status', ['Active', 'Probation'])
+                ->with('user')->get()->sortBy('user.name')->values(),
+            'deleteBlockers' => $this->sections->deleteBlockers($section),
+            'tab' => request('tab') === 'students' ? 'students' : 'assignments',
         ]);
-        $data['academic_year_id'] = $activeYear->id;
-
-        $section = Section::create($data);
-        $audit->log($request->user(), 'Created section', 'Section', $section->id);
-
-        return back()->with('status', "Section {$section->name} created.");
     }
 
-    public function update(Request $request, Section $section, AuditService $audit)
+    public function store(SectionRequest $request)
     {
-        $data = $request->validate([
-            'homeroom_teacher_id' => ['nullable', Rule::exists('staff_profiles', 'id')->where('role_type', 'Teacher')],
-            'capacity' => ['required', 'integer', 'min:1', 'max:100'],
-        ], [
-            'homeroom_teacher_id.exists' => 'The homeroom teacher must be a staff member with the Teacher role.',
-        ]);
+        $section = $this->sections->create($request->validated(), $request->user());
+        $warning = $this->sections->homeroomWarning($section->homeroom_teacher_id, $section->academic_year_id, $section->id);
 
-        $section->update($data);
-        $audit->log($request->user(), 'Updated section', 'Section', $section->id);
+        return back()->with('status', "Section {$section->name} created.")->with('warning', $warning);
+    }
 
-        return back()->with('status', "Section {$section->name} updated.");
+    public function update(SectionRequest $request, Section $section)
+    {
+        $this->sections->update($section, $request->validated(), $request->user());
+        $warning = $this->sections->homeroomWarning($section->homeroom_teacher_id, $section->academic_year_id, $section->id);
+
+        return back()->with('status', "Section {$section->name} updated.")->with('warning', $warning);
+    }
+
+    public function destroy(Request $request, Section $section)
+    {
+        try {
+            $this->sections->delete($section, $request->user());
+        } catch (ValidationException $e) {
+            // Offer Archive right where the refusal is shown.
+            return back()->withErrors($e->errors())->with('archiveOffer', $section->id);
+        }
+
+        return redirect()->route('registrar.sections.index')->with('status', "Section {$section->name} deleted.");
+    }
+
+    public function archive(Request $request, Section $section)
+    {
+        $this->sections->archive($section, $request->user());
+
+        return redirect()->route('registrar.sections.index')
+            ->with('status', "Section {$section->name} archived. Its students, attendance and grades are kept; use “Show archived” to find it.");
+    }
+
+    public function restore(Request $request, Section $section)
+    {
+        $this->sections->restore($section, $request->user());
+
+        return back()->with('status', "Section {$section->name} restored.");
     }
 
     /**
@@ -110,6 +179,10 @@ class SectionController extends Controller
             'student_ids' => ['required', 'array', 'min:1'],
             'student_ids.*' => ['required', 'distinct', 'exists:students,id'],
         ]);
+
+        if ($section->isArchived()) {
+            return back()->withErrors(['student_ids' => "{$section->name} is archived. Restore it before placing students."]);
+        }
 
         $students = Student::whereIn('id', $data['student_ids'])->get();
 

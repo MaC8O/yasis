@@ -181,11 +181,17 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
 
     Route::get('/sections', [SectionController::class, 'index'])->name('sections.index');
     Route::post('/sections', [SectionController::class, 'store'])->name('sections.store');
+    Route::get('/sections/{section}', [SectionController::class, 'show'])->name('sections.show');
     Route::put('/sections/{section}', [SectionController::class, 'update'])->name('sections.update');
+    Route::delete('/sections/{section}', [SectionController::class, 'destroy'])->name('sections.destroy');
+    Route::post('/sections/{section}/archive', [SectionController::class, 'archive'])->name('sections.archive');
+    Route::post('/sections/{section}/restore', [SectionController::class, 'restore'])->name('sections.restore');
     Route::post('/sections/{section}/enroll', [SectionController::class, 'enroll'])->name('sections.enroll');
+    Route::put('/sections/{section}/assignments', [TeachingAssignmentController::class, 'bulk'])->name('sections.assignments.bulk');
 
     Route::get('/teaching-assignments', [TeachingAssignmentController::class, 'index'])->name('teaching-assignments.index');
     Route::post('/teaching-assignments', [TeachingAssignmentController::class, 'store'])->name('teaching-assignments.store');
+    Route::put('/teaching-assignments/{teachingAssignment}', [TeachingAssignmentController::class, 'update'])->name('teaching-assignments.update');
     Route::delete('/teaching-assignments/{teachingAssignment}', [TeachingAssignmentController::class, 'destroy'])->name('teaching-assignments.destroy');
 
     Route::get('/documents', [DocumentRequestController::class, 'index'])->name('documents.index');
