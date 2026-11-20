@@ -32,8 +32,10 @@ class StudentDashboardController extends Controller
         $gpas = $snapshot->pluck('result.gpa')->filter();
 
         $departmentId = $student->department_id;
+        $sectionIds = $student->enrollments()->where('status', 'Active')->pluck('section_id');
         $notices = Announcement::where(fn ($q) => $q->whereIn('audience_type', ['School', 'Students'])
-            ->orWhere(fn ($q2) => $q2->where('audience_type', 'Department')->where('audience_id', $departmentId)))
+            ->orWhere(fn ($q2) => $q2->where('audience_type', 'Department')->where('audience_id', $departmentId))
+            ->orWhere(fn ($q3) => $q3->where('audience_type', 'Section')->whereIn('audience_id', $sectionIds)))
             ->latest('published_at')->take(5)->get();
 
         return view('student.dashboard', [

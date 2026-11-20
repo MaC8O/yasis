@@ -13,11 +13,15 @@ class GuardianNoticeController extends Controller
 
     public function index(Request $request)
     {
-        $departmentIds = $this->guardianChildren($request)->pluck('department_id')->unique();
+        $children = $this->guardianChildren($request);
+        $departmentIds = $children->pluck('department_id')->unique();
+        // Class announcements from teachers target the children's current sections.
+        $sectionIds = \App\Models\Enrollment::whereIn('student_id', $children->pluck('id'))->where('status', 'Active')->pluck('section_id');
 
-        $announcements = Announcement::where(function ($q) use ($departmentIds) {
+        $announcements = Announcement::where(function ($q) use ($departmentIds, $sectionIds) {
             $q->whereIn('audience_type', ['School', 'Guardians'])
-                ->orWhere(fn ($q2) => $q2->where('audience_type', 'Department')->whereIn('audience_id', $departmentIds));
+                ->orWhere(fn ($q2) => $q2->where('audience_type', 'Department')->whereIn('audience_id', $departmentIds))
+                ->orWhere(fn ($q3) => $q3->where('audience_type', 'Section')->whereIn('audience_id', $sectionIds));
         })->latest('published_at')->get();
 
         return view('guardian.notices.index', ['announcements' => $announcements]);
