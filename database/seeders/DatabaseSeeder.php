@@ -77,7 +77,8 @@ class DatabaseSeeder extends Seeder
             ['letter' => 'D', 'min_score' => 60, 'gpa_point' => 1.00],
             ['letter' => 'F', 'min_score' => 0, 'gpa_point' => 0.00],
         ];
-        foreach (Department::all() as $department) {
+        // Only academic departments have students and grades; administrative ones (Finance, Canteen, …) get no scale.
+        foreach (Department::academic()->get() as $department) {
             foreach ($bands as $band) {
                 GradeScaleBand::firstOrCreate(array_merge(['department_id' => $department->id], $band));
             }

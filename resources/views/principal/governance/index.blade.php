@@ -82,22 +82,44 @@
         </x-card>
     </div>
 
-    <x-card title="Grade scale" subtitle="Admin-managed; applied school-wide, GPA where the department's scale defines it.">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            @foreach ($gradeScaleBands as $departmentName => $bands)
-                <div>
-                    <p class="font-semibold text-sm mb-2">{{ $departmentName }}</p>
-                    <table class="w-full text-xs">
-                        @foreach ($bands as $band)
-                            <tr class="border-b border-neutral-100 last:border-0">
-                                <td class="py-1">{{ $band->letter }}</td>
-                                <td class="py-1 text-neutral-500">{{ number_format($band->min_score, 0) }}+</td>
-                                <td class="py-1 text-neutral-500">{{ number_format($band->gpa_point, 1) }}</td>
-                            </tr>
-                        @endforeach
-                    </table>
-                </div>
-            @endforeach
-        </div>
+    <x-card title="Grade scale" subtitle="How term scores become letter grades in each academic department. Set by the Admin (Grade Scale); shown here read-only so you can see what report cards will use.">
+        @php $fmt = fn ($v) => rtrim(rtrim(number_format((float) $v, 2), '0'), '.'); @endphp
+        @if ($gradeScales->isEmpty())
+            <p class="text-sm text-neutral-400">No academic departments are set up yet.</p>
+        @else
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                @foreach ($gradeScales as $scale)
+                    <div class="rounded-xl border border-neutral-200 p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <p class="font-semibold text-sm">{{ $scale['department']->name }}</p>
+                            <x-badge :color="$scale['hasGpa'] ? 'blue' : 'neutral'">{{ $scale['hasGpa'] ? 'GPA scale' : 'Descriptive (no GPA)' }}</x-badge>
+                        </div>
+                        @if ($scale['bands']->isEmpty())
+                            <p class="text-xs text-warning">No grade bands defined — ask the Admin to set this department's scale.</p>
+                        @else
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="text-left text-neutral-400 border-b border-neutral-200">
+                                        <th class="py-1 font-semibold">Letter</th>
+                                        <th class="py-1 font-semibold">Score</th>
+                                        <th class="py-1 font-semibold text-right">GPA</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($scale['bands'] as $band)
+                                        <tr class="border-b border-neutral-100 last:border-0">
+                                            <td class="py-1.5 font-semibold">{{ $band['letter'] }}</td>
+                                            <td class="py-1.5 text-neutral-600">{{ $fmt($band['min']) }}–{{ $fmt($band['max']) }}%</td>
+                                            <td class="py-1.5 text-neutral-600 text-right">{{ $band['gpa'] === null ? '—' : number_format((float) $band['gpa'], 1) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+            <p class="mt-4 text-xs text-neutral-400">Administrative departments (Finance, HR, Canteen, …) have no students, so they have no grade scale.</p>
+        @endif
     </x-card>
 </x-app-layout>
