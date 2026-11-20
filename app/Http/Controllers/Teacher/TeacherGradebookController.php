@@ -49,7 +49,12 @@ class TeacherGradebookController extends Controller
         $assignments = $this->assignments($teacher);
         abort_if($assignments->isEmpty(), 403, 'No subject assignments yet.');
 
-        $assignment = $assignments->firstWhere('section_id', $request->integer('section')) ?? $assignments->first();
+        // A teacher can hold several subjects in one section, so pick by assignment (or section + subject)
+        // before falling back to the section alone.
+        $assignment = $assignments->firstWhere('id', $request->integer('assignment'))
+            ?? $assignments->first(fn ($a) => $a->section_id === $request->integer('section') && $a->subject_id === $request->integer('subject'))
+            ?? $assignments->firstWhere('section_id', $request->integer('section'))
+            ?? $assignments->first();
         $section = Section::findOrFail($assignment->section_id);
         $subject = Subject::findOrFail($assignment->subject_id);
 

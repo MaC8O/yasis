@@ -27,7 +27,7 @@
                         <td class="py-2.5">
                             <a href="{{ route('teacher.attendance.index', ['section' => $row['section']->id]) }}" class="text-xs font-semibold text-brand hover:underline">Attendance</a>
                             @if ($row['gradebook'])
-                                / <a href="{{ route('teacher.gradebook.index', ['section' => $row['section']->id]) }}" class="text-xs font-semibold text-brand hover:underline">Gradebook</a>
+                                / <a href="{{ route('teacher.gradebook.index', ['section' => $row['section']->id, 'subject' => $row['subject_id'] ?? null]) }}" class="text-xs font-semibold text-brand hover:underline">Gradebook</a>
                             @endif
                         </td>
                     </tr>

@@ -17,6 +17,7 @@ class TeacherClassesController extends Controller
         $rows = $taught->map(fn ($assignment) => [
             'section' => $assignment->section,
             'subject' => $assignment->subject->name,
+            'subject_id' => $assignment->subject_id,
             'students' => $assignment->section->enrollments()->count(),
             'gradebook' => true,
         ]);
