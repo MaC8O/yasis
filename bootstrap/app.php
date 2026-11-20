@@ -16,6 +16,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
         ]);
 
+        // Signed-in users who open a guest-only page (/login, or / which redirects there) go to
+        // their own dashboard. Laravel's default target is "/", which redirects back to /login —
+        // an endless loop. Users without a role land on the calendar, open to every signed-in user.
+        $middleware->redirectUsersTo(function (\Illuminate\Http\Request $request) {
+            $role = $request->user()?->getRoleNames()->first();
+
+            return $role ? "/{$role}/dashboard" : '/calendar';
+        });
+
         // Idle-session timeout (§3.2), then funnel users with a pending admin-forced
         // reset to the set-password screen (§3.1).
         $middleware->web(append: [
