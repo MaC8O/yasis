@@ -29,6 +29,21 @@ class TeacherGradebookController extends Controller
         return $teacher->teachingAssignments()->with(['section', 'subject'])->get();
     }
 
+    /** Every gradebook write is limited to a section + subject the teacher is assigned to teach. */
+    protected function assertTeaches(Request $request, int $sectionId, int $subjectId): void
+    {
+        $teaches = $this->assignments($request->user()->staffProfile)
+            ->contains(fn ($a) => $a->section_id === $sectionId && $a->subject_id === $subjectId);
+
+        abort_unless($teaches, 403, 'You are not assigned to this class and subject.');
+    }
+
+    /** Active roster student ids for a section. */
+    protected function rosterIds(int $sectionId)
+    {
+        return \App\Models\Enrollment::where('section_id', $sectionId)->where('status', 'Active')->pluck('student_id');
+    }
+
     /**
      * Governance control (§3.6): once the Principal locks a term, its gradebook is
      * read-only for teachers — changes after finalisation require the VP + Principal
@@ -120,6 +135,7 @@ class TeacherGradebookController extends Controller
             'weight_pct' => ['required', 'numeric', 'min:0.01', 'max:100'],
         ]);
 
+        $this->assertTeaches($request, (int) $data['section_id'], (int) $data['subject_id']);
         $this->assertTermUnlocked(Term::find($data['term_id']));
 
         $existingTotal = AssessmentCategory::where('section_id', $data['section_id'])
@@ -137,6 +153,7 @@ class TeacherGradebookController extends Controller
 
     public function destroyCategory(Request $request, AssessmentCategory $assessmentCategory, AuditService $audit)
     {
+        $this->assertTeaches($request, $assessmentCategory->section_id, $assessmentCategory->subject_id);
         $this->assertTermUnlocked($assessmentCategory->term);
 
         $id = $assessmentCategory->id;
@@ -151,10 +168,13 @@ class TeacherGradebookController extends Controller
         $data = $request->validate([
             'category_id' => ['required', 'exists:assessment_categories,id'],
             'name' => ['required', 'string', 'max:255'],
+            'type' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(Assessment::TYPES))],
             'max_score' => ['required', 'numeric', 'min:1', 'max:1000'],
         ]);
 
-        $this->assertTermUnlocked(AssessmentCategory::findOrFail($data['category_id'])->term);
+        $category = AssessmentCategory::findOrFail($data['category_id']);
+        $this->assertTeaches($request, $category->section_id, $category->subject_id);
+        $this->assertTermUnlocked($category->term);
 
         $assessment = Assessment::create($data);
         $audit->log($request->user(), 'Created assessment', 'Assessment', $assessment->id);
@@ -169,8 +189,12 @@ class TeacherGradebookController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'type' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(Assessment::TYPES))],
             'max_score' => ['required', 'numeric', 'min:1', 'max:1000'],
         ]);
+        if (empty($data['type'])) {
+            unset($data['type']); // keep the current type when the form doesn't send one
+        }
 
         // Lowering the maximum below a score already entered would make that grade impossible
         // (>100%); block it and tell the teacher which score is in the way.
@@ -344,40 +368,133 @@ class TeacherGradebookController extends Controller
             'scores.*.*' => ['nullable', 'numeric', 'min:0'],
         ]);
 
+        $this->assertTeaches($request, (int) $data['section_id'], (int) $data['subject_id']);
         $this->assertTermUnlocked(Term::find($data['term_id']));
 
-        $teacher = $request->user()->staffProfile;
-
-        $changes = [];
-        foreach ($data['scores'] ?? [] as $assessmentId => $studentScores) {
-            foreach ($studentScores as $studentId => $score) {
-                if ($score === null || $score === '') {
-                    continue;
-                }
-
-                $existing = Grade::where('assessment_id', $assessmentId)->where('student_id', $studentId)->first();
-
-                // Record only genuine value changes (a new grade, or a different score) so the
-                // audit detail reconstructs exactly what a teacher altered.
-                if ($existing === null || (float) $existing->score !== (float) $score) {
-                    $changes[] = [
-                        'assessment_id' => (int) $assessmentId,
-                        'student_id' => (int) $studentId,
-                        'from' => $existing?->score,
-                        'to' => (float) $score,
-                    ];
-                }
-
-                Grade::updateOrCreate(
-                    ['assessment_id' => $assessmentId, 'student_id' => $studentId],
-                    ['score' => $score, 'entered_by' => $teacher->id]
-                );
-            }
-        }
+        $changes = $this->writeScores($request, (int) $data['section_id'], (int) $data['subject_id'], $data['scores'] ?? []);
 
         $audit->log($request->user(), 'Entered grades', 'Section', $data['section_id'], $changes ? ['changes' => $changes] : null);
 
         return back()->with('status', 'Gradebook saved.');
+    }
+
+    /**
+     * Validate and save [assessmentId => [studentId => score]] for one section + subject, all or
+     * nothing. Every assessment must belong to that section + subject, every student must be on
+     * its active roster, and each score must be within 0..max_score. Blank scores are skipped.
+     *
+     * @return list<array{assessment_id: int, student_id: int, from: mixed, to: float}>
+     */
+    protected function writeScores(Request $request, int $sectionId, int $subjectId, array $scores): array
+    {
+        $assessments = Assessment::with('category')->whereIn('id', array_keys($scores))->get()->keyBy('id');
+        $rosterIds = $this->rosterIds($sectionId);
+        $errors = [];
+
+        foreach ($scores as $assessmentId => $studentScores) {
+            $assessment = $assessments->get((int) $assessmentId);
+            abort_if(! $assessment || $assessment->category->section_id !== $sectionId || $assessment->category->subject_id !== $subjectId,
+                403, 'That item does not belong to your class and subject.');
+
+            foreach ((array) $studentScores as $studentId => $score) {
+                if ($score === null || $score === '') {
+                    continue;
+                }
+                if (! $rosterIds->contains((int) $studentId)) {
+                    $errors["scores.{$assessmentId}.{$studentId}"] = 'A student in this save is not on the class roster. Refresh the page and try again.';
+                } elseif ((float) $score > (float) $assessment->max_score) {
+                    $errors["scores.{$assessmentId}.{$studentId}"] = "A score of {$score} is above the maximum of ".rtrim(rtrim(number_format($assessment->max_score, 2), '0'), '.')." for {$assessment->name}.";
+                }
+            }
+        }
+
+        if ($errors) {
+            throw \Illuminate\Validation\ValidationException::withMessages($errors);
+        }
+
+        $teacher = $request->user()->staffProfile;
+        $changes = [];
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($scores, $teacher, &$changes) {
+            foreach ($scores as $assessmentId => $studentScores) {
+                foreach ((array) $studentScores as $studentId => $score) {
+                    if ($score === null || $score === '') {
+                        continue;
+                    }
+
+                    $existing = Grade::where('assessment_id', $assessmentId)->where('student_id', $studentId)->first();
+
+                    // Record only genuine value changes (a new grade, or a different score) so the
+                    // audit detail reconstructs exactly what a teacher altered.
+                    if ($existing === null || (float) $existing->score !== (float) $score) {
+                        $changes[] = [
+                            'assessment_id' => (int) $assessmentId,
+                            'student_id' => (int) $studentId,
+                            'from' => $existing?->score,
+                            'to' => (float) $score,
+                        ];
+                    }
+
+                    Grade::updateOrCreate(
+                        ['assessment_id' => $assessmentId, 'student_id' => $studentId],
+                        ['score' => $score, 'entered_by' => $teacher->id]
+                    );
+                }
+            }
+        });
+
+        return $changes;
+    }
+
+    /**
+     * One item, whole class: a fast entry screen (one row per student, Enter/Tab to move on,
+     * one save for everyone).
+     */
+    public function itemScores(Request $request, Assessment $assessment)
+    {
+        $category = $this->assertTeachesAssessment($request, $assessment);
+        $section = Section::findOrFail($category->section_id);
+        $term = $category->term;
+
+        $roster = $section->enrollments()->with('student')->where('status', 'Active')->get()
+            ->pluck('student')->filter()->sortBy('name')->values();
+        $grades = $assessment->grades()->whereIn('student_id', $roster->pluck('id'))->get()->keyBy('student_id');
+
+        // Neighbouring items in the same category, for quick next/previous navigation.
+        $siblings = Assessment::where('category_id', $category->id)->orderBy('id')->get(['id', 'name']);
+        $index = $siblings->search(fn ($s) => $s->id === $assessment->id);
+
+        return view('teacher.gradebook.item-scores', [
+            'assessment' => $assessment,
+            'category' => $category,
+            'section' => $section,
+            'subject' => Subject::find($category->subject_id),
+            'term' => $term,
+            'roster' => $roster,
+            'grades' => $grades,
+            'previous' => $index > 0 ? $siblings[$index - 1] : null,
+            'next' => $index !== false && $index < $siblings->count() - 1 ? $siblings[$index + 1] : null,
+            'backUrl' => route('teacher.gradebook.index', ['section' => $section->id, 'subject' => $category->subject_id, 'term' => $term?->id]),
+        ]);
+    }
+
+    public function saveItemScores(Request $request, Assessment $assessment, AuditService $audit)
+    {
+        $category = $this->assertTeachesAssessment($request, $assessment);
+        $this->assertTermUnlocked($category->term);
+
+        $data = $request->validate([
+            'scores' => ['array'],
+            'scores.*' => ['nullable', 'numeric', 'min:0'],
+        ], ['scores.*.numeric' => 'Scores must be numbers.', 'scores.*.min' => 'Scores cannot be negative.']);
+
+        $changes = $this->writeScores($request, $category->section_id, $category->subject_id, [$assessment->id => $data['scores'] ?? []]);
+
+        $audit->log($request->user(), "Entered scores for item \"{$assessment->name}\"", 'Assessment', $assessment->id, $changes ? ['changes' => $changes] : null);
+
+        $saved = collect($data['scores'] ?? [])->filter(fn ($s) => $s !== null && $s !== '')->count();
+
+        return back()->with('status', "Saved {$saved} ".str('score')->plural($saved)." for {$assessment->name} (".count($changes).' changed).');
     }
 
     public function saveComment(Request $request, AuditService $audit)
@@ -391,6 +508,11 @@ class TeacherGradebookController extends Controller
         $this->assertTermUnlocked(Term::find($data['term_id']));
 
         $teacher = $request->user()->staffProfile;
+
+        // Report-card comments are written by the student's homeroom teacher only.
+        $isHomeroomStudent = \App\Models\Enrollment::where('student_id', $data['student_id'])->where('status', 'Active')
+            ->whereIn('section_id', $teacher->homeroomSections->pluck('id'))->exists();
+        abort_unless($isHomeroomStudent, 403, 'Only the homeroom teacher can write this student\'s report-card comment.');
 
         $comment = ReportCardComment::updateOrCreate(
             ['student_id' => $data['student_id'], 'term_id' => $data['term_id']],

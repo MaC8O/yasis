@@ -43,6 +43,9 @@ class AuditEnrichmentTest extends TestCase
             'name' => 'Quiz', 'weight_pct' => 100,
         ]);
         $assessment = Assessment::create(['category_id' => $category->id, 'name' => 'Quiz 1', 'max_score' => 100]);
+        // Grade entry is limited to the teacher's own class and roster.
+        \App\Models\TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => $teacher->id]);
+        \App\Models\Enrollment::create(['student_id' => $student->id, 'section_id' => $section->id, 'status' => 'Active']);
 
         $payload = [
             'section_id' => $section->id,
@@ -87,6 +90,9 @@ class AuditEnrichmentTest extends TestCase
         $student = Student::create(['student_id_number' => 'YAS-0002', 'name' => 'Su Su', 'admission_date' => now()->subYear(), 'department_id' => $department->id, 'enrollment_status' => 'Enrolled']);
         $category = AssessmentCategory::create(['section_id' => $section->id, 'subject_id' => $subject->id, 'term_id' => $term->id, 'name' => 'Test', 'weight_pct' => 100]);
         $assessment = Assessment::create(['category_id' => $category->id, 'name' => 'Test 1', 'max_score' => 100]);
+        // Grade entry is limited to the teacher's own class and roster.
+        \App\Models\TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $subject->id, 'teacher_id' => $teacher->id]);
+        \App\Models\Enrollment::create(['student_id' => $student->id, 'section_id' => $section->id, 'status' => 'Active']);
         Grade::create(['assessment_id' => $assessment->id, 'student_id' => $student->id, 'score' => 80, 'entered_by' => $teacher->id]);
 
         // Re-submitting the same score changes nothing, so no change detail is recorded.
