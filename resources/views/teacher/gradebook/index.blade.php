@@ -109,68 +109,7 @@
     @php $categoryPresets = ['Homework', 'Quiz', 'Test / Exam', 'Project', 'Classwork', 'Participation', 'Lab', 'Assignment', 'Extra Credit']; @endphp
     <x-card title="Categories & items" subtitle="Group work into weighted categories, then add the graded items (quizzes, tests, projects…) inside each. Weights should total 100%.">
         @if (! $term?->is_locked)
-            <div class="space-y-4 mb-6">
-                @forelse ($categories as $category)
-                    <div class="border border-neutral-200 rounded-xl p-4">
-                        <div class="flex items-center justify-between gap-3 mb-3">
-                            <div class="flex items-center gap-2">
-                                <span class="font-semibold">{{ $category->name }}</span>
-                                <x-badge color="blue">{{ rtrim(rtrim(number_format($category->weight_pct, 2), '0'), '.') }}% weight</x-badge>
-                                <span class="text-xs text-neutral-400">{{ $category->assessments->count() }} {{ Str::plural('item', $category->assessments->count()) }}</span>
-                            </div>
-                            <form method="POST" action="{{ route('teacher.gradebook.categories.destroy', $category) }}"
-                                onsubmit="return confirm('Delete the “{{ $category->name }}” category and all its items and scores?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="text-xs font-semibold text-danger hover:underline">Delete category</button>
-                            </form>
-                        </div>
-
-                        <div class="flex flex-wrap gap-2 mb-3">
-                            @forelse ($category->assessments as $assessment)
-                                <div x-data="{ edit: false }" class="border border-neutral-200 rounded-lg bg-neutral-50 px-3 py-2 text-sm">
-                                    <div x-show="!edit" class="flex items-center gap-2">
-                                        <span class="font-medium">{{ $assessment->name }}</span>
-                                        <span class="text-xs text-neutral-400">/ {{ rtrim(rtrim(number_format($assessment->max_score, 2), '0'), '.') }} pts</span>
-                                        <button type="button" @click="edit = true" class="text-xs font-semibold text-neutral-500 hover:underline">Edit</button>
-                                        <form method="POST" action="{{ route('teacher.gradebook.assessments.destroy', $assessment) }}"
-                                            onsubmit="return confirm('Delete “{{ $assessment->name }}” and its scores?')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="text-xs font-semibold text-danger hover:underline">Delete</button>
-                                        </form>
-                                    </div>
-                                    <form x-show="edit" x-cloak method="POST" action="{{ route('teacher.gradebook.assessments.update', $assessment) }}" class="flex items-center gap-2">
-                                        @csrf @method('PATCH')
-                                        <input type="text" name="name" value="{{ $assessment->name }}" required maxlength="255"
-                                            class="w-32 rounded border border-neutral-200 px-2 py-1 text-xs">
-                                        <input type="number" step="0.01" min="1" name="max_score" value="{{ rtrim(rtrim(number_format($assessment->max_score, 2), '0'), '.') }}" required
-                                            class="w-16 rounded border border-neutral-200 px-2 py-1 text-xs" title="Max points">
-                                        <button type="submit" class="text-xs font-semibold text-brand hover:underline">Save</button>
-                                        <button type="button" @click="edit = false" class="text-xs text-neutral-400 hover:underline">Cancel</button>
-                                    </form>
-                                </div>
-                            @empty
-                                <span class="text-xs text-neutral-400 italic">No items yet — add the first one below.</span>
-                            @endforelse
-                        </div>
-
-                        <form method="POST" action="{{ route('teacher.gradebook.assessments.store') }}" class="flex flex-wrap gap-2 items-end">
-                            @csrf
-                            <input type="hidden" name="category_id" value="{{ $category->id }}">
-                            <div>
-                                <label class="block text-xs font-semibold text-neutral-500 mb-1">New item</label>
-                                <input type="text" name="name" required placeholder="e.g. Quiz 1" class="w-40 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-neutral-500 mb-1">Max pts</label>
-                                <input type="number" step="0.01" min="1" name="max_score" required value="100" class="w-20 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">
-                            </div>
-                            <button type="submit" class="border border-brand text-brand font-semibold rounded-lg px-3 py-2 text-sm hover:bg-brand hover:text-white transition">+ Add item</button>
-                        </form>
-                    </div>
-                @empty
-                    <p class="text-sm text-neutral-400 mb-4">No categories yet — add your first one below (e.g. Quiz 30%, Test 40%, Homework 30%).</p>
-                @endforelse
-            </div>
+            @include('teacher.gradebook.partials.category-groups', ['editable' => true])
 
             <div class="border-t border-neutral-100 pt-4">
                 <form method="POST" action="{{ route('teacher.gradebook.categories.store') }}" x-data="{ pick: 'Homework', custom: '' }" class="flex flex-wrap gap-3 items-end">
@@ -201,16 +140,8 @@
                 </form>
             </div>
         @else
-            <div class="space-y-3">
-                @foreach ($categories as $category)
-                    <div class="flex items-center gap-2 text-sm">
-                        <span class="font-semibold">{{ $category->name }}</span>
-                        <x-badge color="blue">{{ rtrim(rtrim(number_format($category->weight_pct, 2), '0'), '.') }}%</x-badge>
-                        <span class="text-neutral-400 text-xs">{{ $category->assessments->pluck('name')->join(', ') ?: 'no items' }}</span>
-                    </div>
-                @endforeach
-                <p class="text-xs text-warning">Term is locked — categories and items are read-only.</p>
-            </div>
+            @include('teacher.gradebook.partials.category-groups', ['editable' => false])
+            <p class="text-xs text-warning">Term is locked — categories and items are read-only. Open an item to view its scores.</p>
         @endif
     </x-card>
 
