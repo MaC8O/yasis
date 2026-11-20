@@ -70,6 +70,14 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('login'));
 
+// Short role addresses (§3.3: Admin → /admin, VP → /vp, HR → /hr, …) forward to the role's dashboard,
+// so typing /admin opens the sign-in page (then the dashboard) instead of a 404.
+foreach (['admin', 'principal', 'vp_academic', 'registrar', 'teacher', 'treasurer', 'hr_office', 'guardian', 'student'] as $roleHome) {
+    Route::redirect("/{$roleHome}", "/{$roleHome}/dashboard");
+}
+Route::redirect('/vp', '/vp_academic/dashboard');
+Route::redirect('/hr', '/hr_office/dashboard');
+
 // --- AUTHENTICATION ---
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
