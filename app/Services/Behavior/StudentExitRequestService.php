@@ -75,8 +75,13 @@ class StudentExitRequestService
     public function markProcessed(User $registrar, StudentExitRequest $request, int $studentId): void
     {
         $request = StudentExitRequest::whereKey($request->id)->lockForUpdate()->firstOrFail();
-        if (! $request->isPending() || (int) $request->student_id !== $studentId) {
-            throw new ActionRefused('That exit request is no longer pending for this student. Reload the page and try again.');
+        $message = 'That exit request is no longer pending for this student. Reload the page and try again.';
+        // The transfer form only lists this student's own exit requests.
+        if ((int) $request->student_id !== $studentId) {
+            throw ActionRefused::unexpected('behavior.exit_request_other_student', $message);
+        }
+        if (! $request->isPending()) {
+            throw new ActionRefused($message);
         }
 
         $request->update(['status' => 'Processed', 'processed_by' => $registrar->id, 'processed_at' => now()]);

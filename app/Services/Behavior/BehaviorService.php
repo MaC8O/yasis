@@ -219,7 +219,8 @@ class BehaviorService
             $deduction = BehaviorLedgerEntry::whereKey($deduction->id)->firstOrFail();
 
             if (! $deduction->isDeduction()) {
-                throw new ActionRefused('Only a deduction can be restored.');
+                // The page only offers Restore on deductions, and an entry's type never changes.
+                throw ActionRefused::unexpected('behavior.restore_non_deduction', 'Only a deduction can be restored.');
             }
             if ((int) $deduction->academic_year_id !== $this->requireActiveYear()) {
                 throw new ActionRefused('That deduction belongs to an earlier school year. Earlier years are kept as history and cannot be changed.');

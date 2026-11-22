@@ -2,7 +2,7 @@
 
 namespace App\Exceptions;
 
-use Illuminate\Contracts\Debug\ShouldntReport;
+use App\Exceptions\Concerns\ReportsRefusals;
 use Illuminate\Http\RedirectResponse;
 use RuntimeException;
 
@@ -12,11 +12,13 @@ use RuntimeException;
  * changed; the person sees why as a warning on the page they came from. Out-of-scope requests are
  * authorization failures (403) instead.
  *
- * Not reported to the error log: it is an expected answer, not a fault, and logging it would
- * bury real errors.
+ * Logging: see {@see ReportsRefusals}. Normal refusals are not logged; ::unexpected() ones write
+ * one WARNING line with the user ID and an action key.
  */
-class ActionRefused extends RuntimeException implements ShouldntReport
+class ActionRefused extends RuntimeException
 {
+    use ReportsRefusals;
+
     public function render(): RedirectResponse
     {
         return back()->withInput()->with('warning', $this->getMessage());
