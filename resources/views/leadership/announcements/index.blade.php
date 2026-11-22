@@ -1,7 +1,8 @@
-<x-app-layout title="Announcements" subtitle="Publish school-wide or targeted notices." badge="Multi-channel" role="principal">
+{{-- Shared by the Principal and the VP (Academic). $portal: principal | vp_academic --}}
+<x-app-layout title="Announcements" subtitle="Publish school-wide or targeted notices." badge="Multi-channel" :role="$portal">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <x-card title="New announcement" subtitle="Choose an audience, then publish." x-data="{ audience: 'All' }">
-            <form method="POST" action="{{ route('principal.announcements.store') }}" class="space-y-4">
+            <form method="POST" action="{{ route($portal.'.announcements.store') }}" class="space-y-4">
                 @csrf
                 <div>
                     <label class="block text-xs font-semibold text-neutral-500 mb-2">AUDIENCE</label>
