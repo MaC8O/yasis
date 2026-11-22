@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use Illuminate\Contracts\Debug\ShouldntReport;
 use Illuminate\Http\RedirectResponse;
 use RuntimeException;
 
@@ -13,8 +14,10 @@ use RuntimeException;
  *
  * Out-of-scope changes (a Registrar touching a staff account) are not this — those are
  * authorization failures and return 403.
+ *
+ * Not reported to the error log: it is an expected answer, not a fault.
  */
-class AccountChangeRefused extends RuntimeException
+class AccountChangeRefused extends RuntimeException implements ShouldntReport
 {
     public function render(): RedirectResponse
     {

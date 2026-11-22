@@ -38,6 +38,18 @@ return [
             'report' => false,
         ],
 
+        // Lesson plan files. Private: outside every web root, no URL and not served by Laravel's
+        // local file route. The only way to read one is LessonPlanController::download, which
+        // checks permission on every request. Back this folder up together with the database.
+        'lesson_plans' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/lesson-plans'),
+            'serve' => false,
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

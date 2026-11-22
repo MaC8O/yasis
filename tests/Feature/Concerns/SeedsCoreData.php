@@ -28,6 +28,7 @@ trait SeedsCoreData
         }
 
         \App\Support\BehaviorPermissions::sync();
+        \App\Support\LessonPlanPermissions::sync();
     }
 
     protected function makeStaff(string $role, string $roleType, string $email = null, array $overrides = []): StaffProfile

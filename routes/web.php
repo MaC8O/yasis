@@ -29,6 +29,7 @@ use App\Http\Controllers\Guardian\GuardianGradeController;
 use App\Http\Controllers\Guardian\GuardianNoticeController;
 use App\Http\Controllers\Guardian\GuardianBehaviorController;
 use App\Http\Controllers\Behavior\BehaviorAdminController;
+use App\Http\Controllers\LessonPlans\LessonPlanController;
 use App\Http\Controllers\Behavior\BehaviorReportController;
 use App\Http\Controllers\Behavior\BehaviorStudentController;
 use App\Http\Controllers\NotificationController;
@@ -148,6 +149,21 @@ Route::middleware(['auth', 'role:vp_academic|principal|admin|registrar|teacher']
     Route::get('/policy', [BehaviorAdminController::class, 'policy'])->middleware('permission:behavior.policy.view')->name('policy.show');
     Route::get('/policy/preview', [BehaviorAdminController::class, 'previewPolicy'])->middleware('permission:behavior.policy.manage')->name('policy.preview');
     Route::put('/policy', [BehaviorAdminController::class, 'updatePolicy'])->middleware('permission:behavior.policy.manage')->name('policy.update');
+});
+
+// --- LESSON PLANS --- staff documents: Teacher, VP, Principal, Admin only (students and guardians
+// are refused by the role check). Each write needs its permission; LessonPlanAccess decides every
+// plan and file on every request, and LessonPlanService checks again.
+Route::middleware(['auth', 'role:teacher|vp_academic|principal|admin'])->prefix('lesson-plans')->name('lesson-plans.')->group(function () {
+    Route::get('/', [LessonPlanController::class, 'index'])->name('index');
+    Route::get('/review-queue', [LessonPlanController::class, 'queue'])->middleware('permission:lesson_plans.view_all')->name('queue');
+    Route::post('/', [LessonPlanController::class, 'store'])->middleware('permission:lesson_plans.submit')->name('store');
+    Route::get('/{lessonPlan}', [LessonPlanController::class, 'show'])->name('show');
+    Route::put('/{lessonPlan}', [LessonPlanController::class, 'update'])->middleware('permission:lesson_plans.submit')->name('update');
+    Route::delete('/{lessonPlan}', [LessonPlanController::class, 'destroy'])->middleware('permission:lesson_plans.submit')->name('destroy');
+    Route::post('/{lessonPlan}/versions', [LessonPlanController::class, 'storeVersion'])->middleware('permission:lesson_plans.submit')->name('versions.store');
+    Route::post('/{lessonPlan}/reviews', [LessonPlanController::class, 'review'])->middleware('permission:lesson_plans.review')->name('reviews.store');
+    Route::get('/{lessonPlan}/versions/{version}/download', [LessonPlanController::class, 'download'])->scopeBindings()->name('versions.download');
 });
 
 // --- ADMIN ---
