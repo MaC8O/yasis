@@ -133,7 +133,8 @@ class UserAccountService
         $this->assertCanManage($actor, $user);
 
         if ($actor->is($user)) {
-            throw new AccountChangeRefused('You cannot deactivate your own account. Ask another Admin to do it.');
+            // The pages never show Deactivate on your own account.
+            throw AccountChangeRefused::unexpected('account.deactivate_self', 'You cannot deactivate your own account. Ask another Admin to do it.');
         }
 
         return DB::transaction(function () use ($actor, $user) {
@@ -172,7 +173,7 @@ class UserAccountService
 
         return DB::transaction(function () use ($actor, $user) {
             $user = $this->lockTarget($user);
-            $this->refuseWithoutPortalAccess($user, 'reactivate');
+            $this->refuseWithoutPortalAccess($user, 'reactivate', 'reactivate');
 
             if ($user->status === 'Pending') {
                 throw new AccountChangeRefused("{$user->name} hasn't finished setting up their account yet, so there is nothing to reactivate. Use “Activate” to give them a temporary password, or “Resend invite” to e-mail the setup link again.");
@@ -211,7 +212,7 @@ class UserAccountService
 
         return DB::transaction(function () use ($actor, $user) {
             $user = $this->lockTarget($user);
-            $this->refuseWithoutPortalAccess($user, 'activate');
+            $this->refuseWithoutPortalAccess($user, 'activate', 'activate');
 
             if ($user->status !== 'Pending') {
                 throw new AccountChangeRefused("{$user->name}'s account is {$user->status}, not waiting for setup, so it can't be activated with a temporary password.");
@@ -248,7 +249,7 @@ class UserAccountService
 
         return DB::transaction(function () use ($actor, $user) {
             $user = $this->lockTarget($user);
-            $this->refuseWithoutPortalAccess($user, 'send a setup link to');
+            $this->refuseWithoutPortalAccess($user, 'send a setup link to', 'resend_invite');
 
             if ($user->status !== 'Pending') {
                 throw new AccountChangeRefused("{$user->name}'s account is {$user->status}, not waiting for setup, so there is no setup link to resend.");
@@ -274,14 +275,23 @@ class UserAccountService
         };
     }
 
-    private function refuseWithoutPortalAccess(User $user, string $verb): void
+    /**
+     * The pages show a reason ("Erased account" / "No portal access") instead of these actions, so
+     * reaching this takes a hand-made request (or, rarely, a page left open while the account was
+     * erased or lost its role). Logged as unexpected: user ID and action key only, no names.
+     *
+     * @param  string  $action  reactivate | activate | resend_invite
+     */
+    private function refuseWithoutPortalAccess(User $user, string $verb, string $action): void
     {
         if ($user->isErased()) {
-            throw new AccountChangeRefused("You cannot {$verb} this account: it was erased under a data-erasure request, and bringing it back would undo that erasure.");
+            throw AccountChangeRefused::unexpected("account.{$action}_erased",
+                "You cannot {$verb} this account: it was erased under a data-erasure request, and bringing it back would undo that erasure.");
         }
 
         if (! $user->hasPortalAccess()) {
-            throw new AccountChangeRefused("You cannot {$verb} {$user->name}: this is an HR staff record without portal access, not a login account. To give them portal access, edit the account to set a role and their real e-mail address first.");
+            throw AccountChangeRefused::unexpected("account.{$action}_no_portal_access",
+                "You cannot {$verb} {$user->name}: this is an HR staff record without portal access, not a login account. To give them portal access, edit the account to set a role and their real e-mail address first.");
         }
     }
 

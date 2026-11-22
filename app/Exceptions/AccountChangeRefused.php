@@ -2,7 +2,7 @@
 
 namespace App\Exceptions;
 
-use Illuminate\Contracts\Debug\ShouldntReport;
+use App\Exceptions\Concerns\ReportsRefusals;
 use Illuminate\Http\RedirectResponse;
 use RuntimeException;
 
@@ -15,10 +15,13 @@ use RuntimeException;
  * Out-of-scope changes (a Registrar touching a staff account) are not this — those are
  * authorization failures and return 403.
  *
- * Not reported to the error log: it is an expected answer, not a fault.
+ * Logging: see {@see ReportsRefusals}. Normal refusals are not logged; ::unexpected() ones write
+ * one WARNING line with the user ID and an action key.
  */
-class AccountChangeRefused extends RuntimeException implements ShouldntReport
+class AccountChangeRefused extends RuntimeException
 {
+    use ReportsRefusals;
+
     public function render(): RedirectResponse
     {
         return back()->with('warning', $this->getMessage());

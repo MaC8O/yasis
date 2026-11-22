@@ -1,4 +1,14 @@
 <x-app-layout title="Admin Dashboard" subtitle="Manage system access, users, roles, credentials, configuration, backups, and data retention." badge="Admin" role="admin">
+    @unless ($activeYear)
+        {{-- A setup gap, not an error: the pages that need a year tell staff to ask the Admin. --}}
+        <div role="status" id="no-active-year" class="flex flex-col sm:flex-row sm:items-center gap-3 bg-warning-soft border border-warning-line text-warning text-sm rounded-xl px-4 py-3">
+            <x-icon name="alert" class="w-5 h-5 shrink-0" />
+            <p class="flex-1"><span class="font-semibold">There is no active school year.</span>
+                Until one is activated, staff can’t record new behavior reports, deduct or restore points, or upload lesson plans.</p>
+            <a href="{{ route('admin.academic-year.index') }}" class="shrink-0 font-semibold underline">Activate a school year</a>
+        </div>
+    @endunless
+
     <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <x-stat-tile label="Active users" :href="route('admin.users.index')" color="blue">{{ number_format($activeUsers) }}</x-stat-tile>
         <x-stat-tile label="Logins today" :href="route('admin.audit-logs.index')" color="blue">{{ number_format($loginsToday) }}</x-stat-tile>
