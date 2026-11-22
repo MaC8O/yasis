@@ -125,6 +125,7 @@ class StudentImportController extends Controller
                             'email' => $guardianEmail,
                         ],
                         'guardian',
+                        $request->user(),
                         invite: false,
                         auditAction: null,
                     );

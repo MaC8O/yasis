@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\SystemSettingsController;
 use App\Http\Controllers\Admin\TeacherAssignmentController as AdminTeacherAssignmentController;
 use App\Http\Controllers\Admin\UserImportController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Registrar\AccountStatusController as RegistrarAccountStatusController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\CalendarController;
@@ -177,6 +178,11 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
     Route::put('/students/{student}', [StudentController::class, 'update'])->name('students.update');
     Route::post('/students/{student}/transfer', [StudentController::class, 'transfer'])->name('students.transfer');
     Route::post('/students/{student}/graduate', [StudentController::class, 'graduate'])->name('students.graduate');
+    Route::post('/students/{student}/login', [StudentController::class, 'storeLogin'])->name('students.login.store');
+
+    // Guardian and student portal accounts only — the service refuses (403) any other account id.
+    Route::post('/accounts/{user}/deactivate', [RegistrarAccountStatusController::class, 'deactivate'])->name('accounts.deactivate');
+    Route::post('/accounts/{user}/reactivate', [RegistrarAccountStatusController::class, 'reactivate'])->name('accounts.reactivate');
 
     Route::get('/guardians', [GuardianController::class, 'index'])->name('guardians.index');
     Route::post('/guardians', [GuardianController::class, 'store'])->name('guardians.store');

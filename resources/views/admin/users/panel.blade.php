@@ -82,9 +82,10 @@
                 </form>
             @endif
 
-            @if ($u->status === 'Active')
+            @if (in_array($u->status, ['Active', 'Pending'], true) && ! $isSelf)
                 <form method="POST" action="{{ route('admin.users.deactivate', $u) }}"
-                      onsubmit="return confirm('Deactivate {{ e(addslashes($u->name)) }}? They will no longer be able to sign in.');">
+                      data-confirm="Deactivate {{ $u->name }}? They will no longer be able to sign in. The account is kept and can be reactivated."
+                      onsubmit="return confirm(this.dataset.confirm);">
                     @csrf
                     <button type="submit" class="{{ $tile }}">
                         <span class="{{ $circle }}"><x-icon name="power" class="w-4 h-4" /></span> Deactivate
@@ -295,7 +296,8 @@
         <a href="{{ route('admin.users.edit', $u) }}" class="font-semibold text-brand hover:underline">Open full profile →</a>
         @unless ($isSelf)
             <form method="POST" action="{{ route('admin.users.destroy', $u) }}"
-                  onsubmit="return confirm('Delete {{ e(addslashes($u->name)) }}? If this account has linked records (grades, attendance, audit history, etc.) it will be anonymized and deactivated instead of removed, to preserve the audit trail.');">
+                  data-confirm="Delete {{ $u->name }}? This is for data-erasure requests only — to stop someone signing in, use Deactivate instead. If this account has linked records (grades, attendance, audit history, etc.) it will be anonymized and deactivated instead of removed, to preserve the audit trail."
+                  onsubmit="return confirm(this.dataset.confirm);">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="flex items-center gap-1 font-semibold text-danger hover:underline">

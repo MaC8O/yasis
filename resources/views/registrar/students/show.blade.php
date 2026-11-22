@@ -42,6 +42,23 @@
             <a href="{{ route('registrar.guardians.index', ['student' => $student->id]) }}" class="inline-block mt-4 text-sm font-semibold text-brand hover:underline">Manage guardian links</a>
         </x-card>
 
+        <x-card title="Portal login" subtitle="The student's own sign-in to view grades, attendance and schedule.">
+            @if ($student->user)
+                <p class="text-sm text-neutral-500 mb-3">{{ $student->user->email }}</p>
+                <x-badge :color="match ($student->user->status) { 'Active' => 'green', 'Inactive' => 'pink', default => 'yellow' }">Portal {{ strtolower($student->user->status) }}</x-badge>
+                @include('registrar.partials.account-status-actions', ['account' => $student->user])
+            @else
+                <p class="text-sm text-neutral-400 mb-3">No portal login yet. Creating one e-mails the student a link to set their password.</p>
+                <form method="POST" action="{{ route('registrar.students.login.store', $student) }}" class="flex flex-col sm:flex-row gap-2">
+                    @csrf
+                    <label for="student-login-email" class="sr-only">Student e-mail</label>
+                    <input id="student-login-email" type="email" name="email" value="{{ old('email') }}" required placeholder="student@example.com"
+                           class="flex-1 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm">
+                    <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors">Create portal login</button>
+                </form>
+            @endif
+        </x-card>
+
         <x-card title="Enrollment">
             @forelse ($student->enrollments as $enrollment)
                 <div class="flex justify-between items-center py-2 border-b border-neutral-100 last:border-0 text-sm">

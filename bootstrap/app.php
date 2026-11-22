@@ -25,9 +25,10 @@ return Application::configure(basePath: dirname(__DIR__))
             return $role ? "/{$role}/dashboard" : '/calendar';
         });
 
-        // Idle-session timeout (§3.2), then funnel users with a pending admin-forced
-        // reset to the set-password screen (§3.1).
+        // End sessions of accounts deactivated after sign-in, then idle-session timeout (§3.2),
+        // then funnel users with a pending admin-forced reset to the set-password screen (§3.1).
         $middleware->web(append: [
+            \App\Http\Middleware\EnsureAccountIsActive::class,
             \App\Http\Middleware\EnforceSessionTimeout::class,
             \App\Http\Middleware\EnsurePasswordIsSet::class,
             \App\Http\Middleware\SecurityHeaders::class,

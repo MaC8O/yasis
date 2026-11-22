@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Registrar;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Registrar\StoreStudentLoginRequest;
 use App\Models\AttendanceRecord;
 use App\Models\Department;
 use App\Models\DocumentRequest;
@@ -13,6 +14,7 @@ use App\Models\Student;
 use App\Services\AuditService;
 use App\Services\UserProvisioningService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class StudentController extends Controller
 {
@@ -123,49 +125,57 @@ class StudentController extends Controller
             'guardian_phone' => ['nullable', 'string', 'max:30'],
         ]);
 
-        $student = Student::create([
-            'student_id_number' => $data['student_id_number'],
-            'name' => $data['name'],
-            'photo_path' => $request->hasFile('photo') ? $avatars->storeSquare($request->file('photo'), 512, 'student-photos') : null,
-            'date_of_birth' => $data['date_of_birth'] ?? null,
-            'gender' => $data['gender'] ?? null,
-            'admission_date' => $data['admission_date'],
-            'department_id' => $data['department_id'],
-            'enrollment_status' => 'Enrolled',
-        ]);
+        $photoPath = $request->hasFile('photo') ? $avatars->storeSquare($request->file('photo'), 512, 'student-photos') : null;
 
-        if ($data['guardian_mode'] === 'existing') {
-            $guardian = Guardian::findOrFail($data['guardian_id']);
-        } elseif ($data['guardian_mode'] === 'new') {
-            // Same provisioning path as the dedicated guardian screen: a Pending account
-            // with a portal setup invite (audit is covered by the student's own log line).
-            $guardianUser = $this->provisioning->provisionAccount(
-                ['name' => $data['guardian_name'], 'email' => $data['guardian_email']],
-                'guardian',
-                auditAction: null,
-            );
-            $guardian = Guardian::create([
-                'user_id' => $guardianUser->id,
-                'relationship' => $data['guardian_relationship'] ?? null,
-                'phone' => $data['guardian_phone'] ?? null,
+        // Student, any new guardian account, links and the audit entry commit together.
+        $student = DB::transaction(function () use ($data, $request, $audit, $photoPath) {
+            $student = Student::create([
+                'student_id_number' => $data['student_id_number'],
+                'name' => $data['name'],
+                'photo_path' => $photoPath,
+                'date_of_birth' => $data['date_of_birth'] ?? null,
+                'gender' => $data['gender'] ?? null,
+                'admission_date' => $data['admission_date'],
+                'department_id' => $data['department_id'],
+                'enrollment_status' => 'Enrolled',
             ]);
-        } else {
-            $guardian = null;
-        }
 
-        if ($guardian) {
-            $student->guardians()->attach($guardian->id, ['is_primary' => true]);
-        }
+            if ($data['guardian_mode'] === 'existing') {
+                $guardian = Guardian::findOrFail($data['guardian_id']);
+            } elseif ($data['guardian_mode'] === 'new') {
+                // Same provisioning path as the dedicated guardian screen: a Pending account
+                // with a portal setup invite (audit is covered by the student's own log line).
+                $guardianUser = $this->provisioning->provisionAccount(
+                    ['name' => $data['guardian_name'], 'email' => $data['guardian_email']],
+                    'guardian',
+                    $request->user(),
+                    auditAction: null,
+                );
+                $guardian = Guardian::create([
+                    'user_id' => $guardianUser->id,
+                    'relationship' => $data['guardian_relationship'] ?? null,
+                    'phone' => $data['guardian_phone'] ?? null,
+                ]);
+            } else {
+                $guardian = null;
+            }
 
-        if (! empty($data['section_id'])) {
-            Enrollment::create([
-                'student_id' => $student->id,
-                'section_id' => $data['section_id'],
-                'status' => 'Active',
-            ]);
-        }
+            if ($guardian) {
+                $student->guardians()->attach($guardian->id, ['is_primary' => true]);
+            }
 
-        $audit->log($request->user(), 'Registered student', 'Student', $student->id);
+            if (! empty($data['section_id'])) {
+                Enrollment::create([
+                    'student_id' => $student->id,
+                    'section_id' => $data['section_id'],
+                    'status' => 'Active',
+                ]);
+            }
+
+            $audit->log($request->user(), 'Registered student', 'Student', $student->id);
+
+            return $student;
+        });
 
         return redirect()->route('registrar.students.index')->with('status', "{$student->name} registered.");
     }
@@ -176,8 +186,16 @@ class StudentController extends Controller
         $audit->log($request->user(), 'Viewed student record', 'Student', $student->id);
 
         return view('registrar.students.show', [
-            'student' => $student->load(['department', 'guardians.user', 'enrollments.section', 'documentRequests']),
+            'student' => $student->load(['user', 'department', 'guardians.user', 'enrollments.section', 'documentRequests']),
         ]);
+    }
+
+    /** Give a student record its portal login (Pending until the student sets a password). */
+    public function storeLogin(StoreStudentLoginRequest $request, Student $student)
+    {
+        $user = $this->provisioning->provisionStudentLogin($student, $request->validated('email'), $request->user());
+
+        return back()->with('status', "Portal login created for {$student->name}. A setup link was e-mailed to {$user->email}.");
     }
 
     public function edit(Student $student)

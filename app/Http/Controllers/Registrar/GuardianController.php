@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Registrar;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Registrar\StoreGuardianRequest;
 use App\Models\Guardian;
 use App\Models\Student;
 use App\Services\AuditService;
@@ -36,37 +37,35 @@ class GuardianController extends Controller
         ]);
     }
 
-    public function store(Request $request, AuditService $audit)
+    public function store(StoreGuardianRequest $request, AuditService $audit)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'relationship' => ['nullable', 'string', 'max:50'],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'student_id_number' => ['nullable', 'exists:students,student_id_number'],
-        ]);
+        $data = $request->validated();
 
-        // The portal invite is sent by the service; audit is logged against the Guardian below.
-        $user = $this->provisioning->provisionAccount(
-            ['name' => $data['name'], 'email' => $data['email']],
-            'guardian',
-            auditAction: null,
-        );
+        DB::transaction(function () use ($data, $request, $audit) {
+            // Always a guardian account; the service refuses it if the actor may not create one.
+            // The portal invite goes out after commit; audit is logged against the Guardian below.
+            $user = $this->provisioning->provisionAccount(
+                ['name' => $data['name'], 'email' => $data['email']],
+                'guardian',
+                $request->user(),
+                auditAction: null,
+            );
 
-        $guardian = Guardian::create([
-            'user_id' => $user->id,
-            'relationship' => $data['relationship'] ?? null,
-            'phone' => $data['phone'] ?? null,
-        ]);
+            $guardian = Guardian::create([
+                'user_id' => $user->id,
+                'relationship' => $data['relationship'] ?? null,
+                'phone' => $data['phone'] ?? null,
+            ]);
 
-        if (! empty($data['student_id_number'])) {
-            $student = Student::where('student_id_number', $data['student_id_number'])->first();
-            // §4.1: exactly one primary guardian per student — only take primary if the seat is empty.
-            $hasPrimary = $student->guardians()->wherePivot('is_primary', true)->exists();
-            $guardian->students()->attach($student->id, ['is_primary' => ! $hasPrimary]);
-        }
+            if (! empty($data['student_id_number'])) {
+                $student = Student::where('student_id_number', $data['student_id_number'])->first();
+                // §4.1: exactly one primary guardian per student — only take primary if the seat is empty.
+                $hasPrimary = $student->guardians()->wherePivot('is_primary', true)->exists();
+                $guardian->students()->attach($student->id, ['is_primary' => ! $hasPrimary]);
+            }
 
-        $audit->log($request->user(), 'Added guardian', 'Guardian', $guardian->id);
+            $audit->log($request->user(), 'Added guardian', 'Guardian', $guardian->id, ['user_id' => $user->id, 'role' => 'guardian']);
+        });
 
         return redirect()->route('registrar.guardians.index')->with('status', 'Guardian added and portal invite sent.');
     }

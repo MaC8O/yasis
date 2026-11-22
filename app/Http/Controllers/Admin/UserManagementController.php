@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreUserRequest;
+use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\AuditLog;
 use App\Models\Department;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\UserAccountService;
 use App\Services\UserProvisioningService;
 use App\Support\SecurityPolicy;
 use Illuminate\Database\QueryException;
@@ -91,23 +94,10 @@ class UserManagementController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
         $staffRoles = $this->provisioning->staffRoles();
-
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'role' => ['required', 'string', 'in:'.implode(',', Role::pluck('name')->all())],
-            'date_of_birth' => ['nullable', 'date', 'before:today'],
-            'gender' => ['nullable', 'in:Male,Female'],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'address' => ['nullable', 'string', 'max:255'],
-            'staff_id_number' => ['nullable', 'required_if:role,'.implode(',', $staffRoles), 'string', 'max:30', 'unique:staff_profiles,staff_id_number'],
-            'department_id' => ['nullable', 'exists:departments,id'],
-            'joined_date' => ['nullable', 'required_if:role,'.implode(',', $staffRoles), 'date'],
-            'password' => ['nullable', 'confirmed', SecurityPolicy::passwordRule()],
-        ]);
+        $data = $request->validated();
 
         // With an initial password the account is usable immediately (Active);
         // without one it stays Pending until the emailed setup link is completed.
@@ -138,8 +128,7 @@ class UserManagementController extends Controller
                 ->with('status', "User created and active — {$user->email} can sign in with the password you set.");
         }
 
-        Password::sendResetLink(['email' => $user->email]);
-
+        // The setup e-mail was sent by the provisioning service once the account was saved.
         return redirect()->route('admin.users.index')
             ->with('status', "User created (pending) and a login-setup email was sent to {$user->email}. The account activates when they set their password.");
     }
@@ -152,51 +141,23 @@ class UserManagementController extends Controller
         ]);
     }
 
-    public function update(Request $request, User $user, AuditService $audit)
+    public function update(UpdateUserRequest $request, User $user, UserAccountService $accounts)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', "unique:users,email,{$user->id}"],
-            'role' => ['required', 'string', 'in:'.implode(',', Role::pluck('name')->all())],
-            'date_of_birth' => ['nullable', 'date', 'before:today'],
-            'gender' => ['nullable', 'in:Male,Female'],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'address' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        $user->update([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'date_of_birth' => $data['date_of_birth'] ?? null,
-            'gender' => $data['gender'] ?? null,
-            'phone' => $data['phone'] ?? null,
-            'address' => $data['address'] ?? null,
-        ]);
-        $user->syncRoles([$data['role']]);
-
-        $audit->log($request->user(), 'Edited user', 'User', $user->id);
+        $accounts->update($request->user(), $user, $request->validated());
 
         return redirect()->route('admin.users.index', ['selected' => $user->id])->with('status', 'User updated.');
     }
 
-    public function deactivate(Request $request, User $user, AuditService $audit)
+    public function deactivate(Request $request, User $user, UserAccountService $accounts)
     {
-        $user->update(['status' => 'Inactive']);
-        $audit->log($request->user(), 'Deactivated user', 'User', $user->id);
+        $accounts->deactivate($request->user(), $user);
 
-        return back()->with('status', "{$user->name} deactivated.");
+        return back()->with('status', "{$user->name} deactivated. They can no longer sign in.");
     }
 
-    public function reactivate(Request $request, User $user, AuditService $audit)
+    public function reactivate(Request $request, User $user, UserAccountService $accounts)
     {
-        // A Pending account has never set a password: making it Active would not let anyone in,
-        // it would only hide that the invite was never completed. Re-send the invite instead.
-        if ($user->status === 'Pending') {
-            return back()->with('warning', "{$user->name} hasn't finished setting up their account yet, so there is nothing to reactivate. Use “Resend invite” to e-mail the setup link again.");
-        }
-
-        $user->update(['status' => 'Active']);
-        $audit->log($request->user(), 'Reactivated user', 'User', $user->id);
+        $accounts->reactivate($request->user(), $user);
 
         return back()->with('status', "{$user->name} reactivated.");
     }
@@ -295,27 +256,32 @@ class UserManagementController extends Controller
             $user->photo_path = null;
         }
 
+        // The stated exception to "never hard delete": the data-retention erasure path. Each
+        // outcome commits together with its audit entry, so an erasure can never go unrecorded.
         try {
-            DB::transaction(fn () => $user->delete());
-
-            $audit->log($request->user(), 'Deleted user', 'User', $userId);
+            DB::transaction(function () use ($user, $request, $audit, $userId, $name) {
+                $user->delete();
+                $audit->log($request->user(), 'Deleted user', 'User', $userId, ['name' => $name, 'outcome' => 'deleted']);
+            });
 
             return redirect()->route('admin.users.index')->with('status', "{$name}'s account permanently deleted.");
         } catch (QueryException $e) {
             // Only an integrity-constraint violation (23000) means "has dependents"; rethrow anything else.
             throw_unless($e->getCode() === '23000', $e);
 
-            $user->forceFill([
-                'name' => "Erased User #{$userId}",
-                'email' => "erased-{$userId}@deleted.yasis.edu",
-                'password' => Hash::make(Str::random(32)),
-                'status' => 'Inactive',
-                'failed_login_attempts' => 0,
-                'locked_until' => null,
-                'remember_token' => Str::random(60),
-            ])->save();
+            DB::transaction(function () use ($user, $request, $audit, $userId) {
+                $user->forceFill([
+                    'name' => "Erased User #{$userId}",
+                    'email' => "erased-{$userId}@deleted.yasis.edu",
+                    'password' => Hash::make(Str::random(32)),
+                    'status' => 'Inactive',
+                    'failed_login_attempts' => 0,
+                    'locked_until' => null,
+                    'remember_token' => Str::random(60),
+                ])->save();
 
-            $audit->log($request->user(), 'Erased user PII — linked records retained for audit trail', 'User', $userId);
+                $audit->log($request->user(), 'Erased user PII — linked records retained for audit trail', 'User', $userId, ['outcome' => 'anonymized']);
+            });
 
             return redirect()->route('admin.users.index')
                 ->with('status', "{$name} has linked academic, financial, or audit records, so the account was anonymized and deactivated instead of being removed, to preserve the audit trail.");

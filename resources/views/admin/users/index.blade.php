@@ -43,14 +43,17 @@
                 </p>
                 <p class="text-[11px] text-neutral-400 hidden sm:block">Click to view · double-click to open full profile</p>
             </div>
-            <div class="overflow-x-auto">
+            {{-- relative: keeps the absolutely-positioned sr-only header label inside the scroller,
+                 otherwise it escapes and widens the whole page on phones. --}}
+            <div class="relative overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left text-[11px] uppercase tracking-wider text-neutral-500 border-b border-neutral-200">
                             <th class="py-2 pl-4 pr-2 font-semibold">Name</th>
                             <th class="py-2 px-2 font-semibold">ID / Email</th>
                             <th class="py-2 px-2 font-semibold">Role</th>
-                            <th class="py-2 pl-2 pr-4 font-semibold">Status</th>
+                            <th class="py-2 px-2 font-semibold">Status</th>
+                            <th class="py-2 pl-2 pr-4"><span class="sr-only">Actions</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -75,7 +78,7 @@
                                 </td>
                                 <td class="py-2 px-2 text-neutral-500">{{ $user->staffProfile?->staff_id_number ?? $user->email }}</td>
                                 <td class="py-2 px-2">{{ ucwords(str_replace('_', ' ', $user->roles->first()?->name ?? '—')) }}</td>
-                                <td class="py-2 pl-2 pr-4 whitespace-nowrap">
+                                <td class="py-2 px-2 whitespace-nowrap">
                                     <span class="inline-flex items-center gap-1.5 text-xs font-medium {{ $user->status === 'Active' ? 'text-success' : ($user->status === 'Pending' ? 'text-warning' : 'text-danger') }}">
                                         <span class="w-2 h-2 rounded-full bg-current" aria-hidden="true"></span>{{ $user->status }}
                                     </span>
@@ -83,9 +86,24 @@
                                         <span class="ml-1 text-xs font-semibold text-danger">· Locked</span>
                                     @endif
                                 </td>
+                                <td class="py-2 pl-2 pr-4 text-right whitespace-nowrap" @click.stop @dblclick.stop>
+                                    @if (in_array($user->status, ['Active', 'Pending'], true) && $user->id !== auth()->id())
+                                        <form method="POST" action="{{ route('admin.users.deactivate', $user) }}"
+                                              data-confirm="Deactivate {{ $user->name }}? They will no longer be able to sign in. The account is kept and can be reactivated."
+                                              onsubmit="return confirm(this.dataset.confirm);">
+                                            @csrf
+                                            <button type="submit" class="text-xs font-semibold text-danger hover:underline">Deactivate</button>
+                                        </form>
+                                    @elseif ($user->status === 'Inactive')
+                                        <form method="POST" action="{{ route('admin.users.reactivate', $user) }}">
+                                            @csrf
+                                            <button type="submit" class="text-xs font-semibold text-brand hover:underline">Reactivate</button>
+                                        </form>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="py-6 px-4 text-neutral-400">No users found.</td></tr>
+                            <tr><td colspan="5" class="py-6 px-4 text-neutral-400">No users found.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
