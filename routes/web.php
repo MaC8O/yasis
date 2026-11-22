@@ -27,6 +27,11 @@ use App\Http\Controllers\Guardian\GuardianDashboardController;
 use App\Http\Controllers\Guardian\GuardianFeeController;
 use App\Http\Controllers\Guardian\GuardianGradeController;
 use App\Http\Controllers\Guardian\GuardianNoticeController;
+use App\Http\Controllers\Guardian\GuardianBehaviorController;
+use App\Http\Controllers\Behavior\BehaviorAdminController;
+use App\Http\Controllers\Behavior\BehaviorReportController;
+use App\Http\Controllers\Behavior\BehaviorStudentController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Hr\StaffRecordController;
 use App\Http\Controllers\Leadership\FeeVisibilityController;
 use App\Http\Controllers\Principal\BoardReportController;
@@ -49,6 +54,7 @@ use App\Http\Controllers\Student\StudentAttendanceController;
 use App\Http\Controllers\Student\StudentDashboardController;
 use App\Http\Controllers\Student\StudentGradeController;
 use App\Http\Controllers\Student\StudentNoticeController;
+use App\Http\Controllers\Student\StudentBehaviorController;
 use App\Http\Controllers\Student\StudentScheduleController;
 use App\Http\Controllers\Teacher\GradeChangeRequestController;
 use App\Http\Controllers\Teacher\TeacherAnnouncementController;
@@ -98,6 +104,50 @@ Route::middleware('auth')->group(function () {
 
     // Read-only academic calendar available to every signed-in user (Published events only).
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+
+    // Personal in-app notices, every role.
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+    Route::get('/notifications/{id}', [NotificationController::class, 'open'])->name('notifications.open');
+});
+
+// --- BEHAVIOR (staff) ---
+// Who sees which student is decided by BehaviorAccess on every request; each write group below
+// is also limited by role here, and the services check again.
+Route::middleware(['auth', 'role:vp_academic|principal|admin|registrar|teacher'])->prefix('behavior')->name('behavior.')->group(function () {
+    Route::get('/', [BehaviorStudentController::class, 'index'])->name('index');
+    Route::get('/students/{student}', [BehaviorStudentController::class, 'show'])->name('students.show');
+    Route::get('/reports/{report}', [BehaviorReportController::class, 'show'])->name('reports.show');
+
+    Route::middleware('role:teacher')->group(function () {
+        Route::get('/students/{student}/reports/create', [BehaviorReportController::class, 'create'])->name('reports.create');
+        Route::post('/students/{student}/reports', [BehaviorReportController::class, 'store'])->name('reports.store');
+        Route::get('/reports/{report}/edit', [BehaviorReportController::class, 'edit'])->name('reports.edit');
+        Route::put('/reports/{report}', [BehaviorReportController::class, 'update'])->name('reports.update');
+        Route::post('/reports/{report}/void', [BehaviorReportController::class, 'void'])->name('reports.void');
+    });
+
+    Route::middleware('role:vp_academic')->group(function () {
+        Route::post('/students/{student}/vp-reports', [BehaviorReportController::class, 'vpStore'])->name('reports.vp-store');
+        Route::post('/reports/{report}/dismiss', [BehaviorReportController::class, 'dismiss'])->name('reports.dismiss');
+        Route::post('/reports/{report}/deduct', [BehaviorReportController::class, 'deduct'])->name('reports.deduct');
+        Route::post('/entries/{entry}/restore', [BehaviorAdminController::class, 'restore'])->name('entries.restore');
+        Route::get('/categories', [BehaviorAdminController::class, 'categories'])->name('categories.index');
+        Route::post('/categories', [BehaviorAdminController::class, 'storeCategory'])->name('categories.store');
+        Route::put('/categories/{category}', [BehaviorAdminController::class, 'updateCategory'])->name('categories.update');
+    });
+
+    Route::middleware('role:vp_academic|principal|admin|registrar')->group(function () {
+        Route::get('/cases', [BehaviorAdminController::class, 'cases'])->name('cases.index');
+        Route::get('/cases/{case}', [BehaviorAdminController::class, 'showCase'])->name('cases.show');
+    });
+    Route::post('/cases/{case}/decide', [BehaviorAdminController::class, 'decide'])->middleware('role:vp_academic|principal')->name('cases.decide');
+    Route::post('/exit-requests/{exitRequest}/withdraw', [BehaviorAdminController::class, 'withdrawExit'])->middleware('role:principal')->name('exit-requests.withdraw');
+
+    // Thresholds: a separate permission, not the Admin technical or Principal governance settings.
+    Route::get('/policy', [BehaviorAdminController::class, 'policy'])->middleware('permission:behavior.policy.view')->name('policy.show');
+    Route::get('/policy/preview', [BehaviorAdminController::class, 'previewPolicy'])->middleware('permission:behavior.policy.manage')->name('policy.preview');
+    Route::put('/policy', [BehaviorAdminController::class, 'updatePolicy'])->middleware('permission:behavior.policy.manage')->name('policy.update');
 });
 
 // --- ADMIN ---
@@ -381,6 +431,7 @@ Route::middleware(['auth', 'role:guardian'])->prefix('guardian')->name('guardian
     Route::get('/fees/statement', [GuardianFeeController::class, 'statement'])->name('fees.statement');
 
     Route::get('/notices', [GuardianNoticeController::class, 'index'])->name('notices.index');
+    Route::get('/behavior', [GuardianBehaviorController::class, 'index'])->name('behavior.index');
 
     Route::get('/absence-notices', [GuardianAbsenceNoticeController::class, 'index'])->name('absence-notices.index');
     Route::post('/absence-notices', [GuardianAbsenceNoticeController::class, 'store'])->name('absence-notices.store');
@@ -398,4 +449,5 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
     Route::get('/schedule', [StudentScheduleController::class, 'index'])->name('schedule.index');
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance.index');
     Route::get('/notices', [StudentNoticeController::class, 'index'])->name('notices.index');
+    Route::get('/behavior', [StudentBehaviorController::class, 'index'])->name('behavior.index');
 });

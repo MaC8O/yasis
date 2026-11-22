@@ -26,6 +26,8 @@ trait SeedsCoreData
         foreach (['admin', 'principal', 'vp_academic', 'registrar', 'teacher', 'treasurer', 'hr_office', 'guardian', 'student'] as $role) {
             Role::findOrCreate($role, 'web');
         }
+
+        \App\Support\BehaviorPermissions::sync();
     }
 
     protected function makeStaff(string $role, string $roleType, string $email = null, array $overrides = []): StaffProfile

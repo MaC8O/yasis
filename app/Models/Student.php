@@ -63,6 +63,31 @@ class Student extends Model
         return $this->hasMany(DocumentRequest::class);
     }
 
+    public function behaviorReports()
+    {
+        return $this->hasMany(BehaviorReport::class);
+    }
+
+    public function behaviorLedgerEntries()
+    {
+        return $this->hasMany(BehaviorLedgerEntry::class);
+    }
+
+    public function behaviorFlags()
+    {
+        return $this->hasMany(BehaviorFlag::class);
+    }
+
+    public function behaviorCases()
+    {
+        return $this->hasMany(BehaviorCase::class);
+    }
+
+    public function exitRequests()
+    {
+        return $this->hasMany(StudentExitRequest::class);
+    }
+
     public function guardiansList(): string
     {
         return $this->guardians->pluck('user.name')->filter()->implode(', ');

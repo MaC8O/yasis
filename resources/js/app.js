@@ -70,6 +70,47 @@ Alpine.data('masterDetail', (initial = null) => ({
     },
 }));
 
+/**
+ * Behavior policy page: previews how many students each threshold change would newly flag or
+ * unflag (read-only endpoint), before the VP saves. Save is disabled only for invalid numbers;
+ * if the preview merely fails to load, the VP can still save.
+ */
+Alpine.data('behaviorPolicy', (initial, url, enabled) => ({
+    values: initial,
+    stages: null,
+    error: null,
+    invalid: false,
+    loading: false,
+    init() {
+        if (enabled) this.preview();
+    },
+    async preview() {
+        if (!enabled) return;
+        this.loading = true;
+        const query = new URLSearchParams(Object.entries(this.values).map(([k, v]) => [k, v ?? '']));
+        try {
+            const res = await fetch(`${url}?${query}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+            const body = await res.json();
+            if (res.status === 422) {
+                this.error = Object.values(body.errors).flat()[0];
+                this.invalid = true;
+                this.stages = null;
+            } else if (res.ok) {
+                this.error = null;
+                this.invalid = false;
+                this.stages = body.stages;
+            } else {
+                this.error = 'The preview could not be loaded. You can still save.';
+                this.invalid = false;
+            }
+        } catch {
+            this.error = 'The preview could not be loaded. You can still save.';
+            this.invalid = false;
+        }
+        this.loading = false;
+    },
+}));
+
 Alpine.start();
 
 /*
