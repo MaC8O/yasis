@@ -29,7 +29,14 @@
         </div>
 
         <ul class="mt-5 space-y-2 text-sm text-neutral-700 list-disc pl-5">
-            <li><span class="font-semibold">This is the only time it is shown.</span> It is not saved anywhere you can look it up again. If it is lost, use Reset password.</li>
+            {{-- Only the Admin has Reset password; the Registrar has to ask one. --}}
+            <li><span class="font-semibold">This is the only time it is shown.</span> It is not saved anywhere you can look it up again.
+                @if ($layoutRole === 'admin')
+                    If it is lost, use Reset password.
+                @else
+                    If it is lost, ask an Admin to reset the password.
+                @endif
+            </li>
             <li>Give it to {{ $account->name }} in person or by phone, not by e-mail.</li>
             <li>They must choose their own password the first time they sign in.</li>
         </ul>

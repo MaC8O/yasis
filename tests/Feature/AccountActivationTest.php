@@ -330,6 +330,22 @@ class AccountActivationTest extends TestCase
         $this->assertSame('Active', $inactive->fresh()->status);
     }
 
+    public function test_the_lost_password_hint_matches_what_each_role_can_do(): void
+    {
+        $forAdmin = $this->makeAccount('teacher', 'hint.admin@test.local', 'Pending');
+        $this->actingAs($this->admin)->post(route('admin.users.activate', $forAdmin))
+            ->assertOk()
+            ->assertSee('If it is lost, use Reset password.')
+            ->assertDontSee('ask an Admin to reset the password');
+
+        // The Registrar has no Reset password action, so the page points them to an Admin.
+        $forRegistrar = $this->makeAccount('guardian', 'hint.registrar@test.local', 'Pending');
+        $this->actingAs($this->registrar)->post(route('registrar.accounts.activate', $forRegistrar))
+            ->assertOk()
+            ->assertSee('If it is lost, ask an Admin to reset the password.')
+            ->assertDontSee('use Reset password');
+    }
+
     // ── Registrar ──────────────────────────────────────────────────────────
 
     public function test_registrar_activates_and_resends_the_invite_for_a_pending_guardian(): void
