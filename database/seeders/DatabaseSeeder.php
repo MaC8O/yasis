@@ -46,6 +46,7 @@ class DatabaseSeeder extends Seeder
         // Behavior-policy permissions: the migration created them, but the roles may not have
         // existed yet then. Assign them now that they do (safe to re-run).
         \App\Support\BehaviorPermissions::sync();
+        \App\Support\LessonPlanPermissions::sync();
 
         $departments = [
             ['name' => 'High School', 'level' => 'Secondary'],
