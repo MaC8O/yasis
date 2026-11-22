@@ -53,6 +53,7 @@
                             'Academic Records' => 'bg-tint-green text-tint-green-ink',
                             'Grades & Assessment' => 'bg-tint-purple text-tint-purple-ink',
                             'Attendance & Leave' => 'bg-tint-pink text-tint-pink-ink',
+                            'Behavior' => 'bg-tint-purple text-tint-purple-ink',
                             'Finance' => 'bg-tint-teal text-tint-teal-ink',
                             'System' => 'bg-neutral-200 text-neutral-700',
                         ];

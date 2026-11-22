@@ -71,10 +71,24 @@
         </x-card>
 
         <x-card title="Student exit" subtitle="Transfer/drop or graduation processing.">
+            @foreach ($pendingExitRequests as $exitRequest)
+                <div role="status" class="mb-4 flex items-start gap-3 bg-warning-soft border border-warning-line text-warning text-sm rounded-xl px-4 py-3">
+                    <x-icon name="alert" class="w-5 h-5 mt-0.5 shrink-0" />
+                    <p><span class="font-semibold">Pending exit request</span> from an expulsion review, created {{ $exitRequest->created_at->format('j M Y') }}. {{ $exitRequest->reason }}
+                        The student’s status has not been changed. Process it with Transfer / Drop below and tick the box to confirm this exit is that request.</p>
+                </div>
+            @endforeach
             @if ($student->enrollment_status === 'Enrolled')
-                <div class="flex gap-3">
-                    <form method="POST" action="{{ route('registrar.students.transfer', $student) }}" onsubmit="return confirm('Mark this student as Transferred and create a Transfer/Leaving Certificate draft?');">
+                <div class="flex flex-wrap gap-3 items-start">
+                    <form method="POST" action="{{ route('registrar.students.transfer', $student) }}" class="space-y-2"
+                          data-confirm="Mark this student as Transferred and create a Transfer/Leaving Certificate draft?" onsubmit="return confirm(this.dataset.confirm);">
                         @csrf
+                        @foreach ($pendingExitRequests as $exitRequest)
+                            <label class="flex items-start gap-2 text-sm max-w-sm">
+                                <input type="checkbox" name="exit_request_id" value="{{ $exitRequest->id }}" class="w-5 h-5 mt-0.5 rounded border-neutral-300">
+                                <span>This exit is the pending exit request from {{ $exitRequest->created_at->format('j M Y') }}</span>
+                            </label>
+                        @endforeach
                         <button type="submit" class="bg-neutral-900 text-white font-semibold rounded-lg px-4 py-2.5 text-sm hover:bg-neutral-700 transition-colors">Transfer / Drop</button>
                     </form>
                     <form method="POST" action="{{ route('registrar.students.graduate', $student) }}" onsubmit="return confirm('Mark this student as Graduated and create Completion Certificate + final transcript drafts?');">

@@ -43,6 +43,10 @@ class DatabaseSeeder extends Seeder
             Role::findOrCreate($role, 'web');
         }
 
+        // Behavior-policy permissions: the migration created them, but the roles may not have
+        // existed yet then. Assign them now that they do (safe to re-run).
+        \App\Support\BehaviorPermissions::sync();
+
         $departments = [
             ['name' => 'High School', 'level' => 'Secondary'],
             ['name' => 'Middle School', 'level' => 'Secondary'],

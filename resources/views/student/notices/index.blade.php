@@ -1,4 +1,11 @@
 <x-app-layout title="Notices" subtitle="School notices visible to students." badge="Student view" role="student">
+    @php $personal = auth()->user()->notifications()->limit(5)->get(); @endphp
+    @if ($personal->isNotEmpty())
+        <h2 class="text-lg font-bold text-ink">For you</h2>
+        @include('notifications.partials.list', ['notifications' => $personal])
+        <a href="{{ route('notifications.index') }}" class="text-sm font-semibold text-brand hover:underline">See all your notices →</a>
+        <h2 class="text-lg font-bold text-ink">School announcements</h2>
+    @endif
     <x-card>
         <div class="space-y-4">
             @forelse ($announcements as $announcement)

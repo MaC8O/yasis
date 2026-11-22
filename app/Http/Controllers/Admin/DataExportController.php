@@ -46,6 +46,14 @@ class DataExportController extends Controller
         'promotion_batch_items' => ['id', 'promotion_batch_id', 'student_id', 'action', 'to_section_id'],
         'document_requests' => ['id', 'student_id', 'type', 'status', 'prepared_by', 'approved_by', 'approved_at', 'principal_approved_by', 'principal_approved_at', 'generated_at'],
         'announcements' => ['id', 'author_id', 'title', 'audience_type', 'published_at'],
+        'behavior_categories' => ['id', 'name', 'description', 'is_active', 'sort_order'],
+        'behavior_reports' => ['id', 'student_id', 'academic_year_id', 'reported_by', 'source', 'incident_date', 'behavior_category_id', 'description', 'is_office_referral', 'status', 'reviewed_by', 'reviewed_at', 'dismiss_reason', 'voided_by', 'voided_at', 'void_reason', 'version', 'edited_at', 'created_at'],
+        'behavior_report_versions' => ['id', 'behavior_report_id', 'version', 'incident_date', 'behavior_category_id', 'description', 'is_office_referral', 'recorded_by', 'recorded_at'],
+        'behavior_ledger_entries' => ['id', 'student_id', 'academic_year_id', 'type', 'points_requested', 'points_applied', 'reason', 'behavior_report_id', 'restores_entry_id', 'score_before', 'score_after', 'actor_id', 'created_at'],
+        'behavior_flags' => ['id', 'student_id', 'academic_year_id', 'stage', 'threshold_at_open', 'score_at_open', 'opened_by_entry_id', 'opened_at', 'closed_at', 'closed_by_entry_id', 'close_reason'],
+        'behavior_cases' => ['id', 'student_id', 'academic_year_id', 'opened_by_flag_id', 'status', 'round', 'awaiting', 'outcome', 'resolution', 'decided_at', 'created_at'],
+        'behavior_case_decisions' => ['id', 'behavior_case_id', 'round', 'role', 'decision', 'reason', 'decided_by', 'decided_at'],
+        'student_exit_requests' => ['id', 'student_id', 'source_type', 'source_id', 'reason', 'status', 'processed_by', 'processed_at', 'withdrawn_by', 'withdrawn_at', 'withdraw_reason', 'created_at'],
         'audit_logs' => ['id', 'user_id', 'role', 'action', 'entity_type', 'entity_id', 'created_at'],
     ];
 

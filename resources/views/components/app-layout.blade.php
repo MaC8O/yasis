@@ -64,6 +64,18 @@
             @endforeach
         </nav>
 
+        @auth
+            @php $unreadNotices = auth()->user()->unreadNotifications()->count(); @endphp
+            <a href="{{ route('notifications.index') }}" @if (request()->routeIs('notifications.*')) aria-current="page" @endif
+               class="mt-4 flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors {{ request()->routeIs('notifications.*') ? 'bg-brand text-white font-semibold' : 'text-neutral-300 hover:bg-white/5 hover:text-white' }}">
+                <x-icon name="bell" class="w-[18px] h-[18px] shrink-0 text-neutral-500" />
+                <span class="flex-1 truncate">My notifications</span>
+                @if ($unreadNotices > 0)
+                    <span class="rounded-full bg-gold text-ink text-[11px] font-bold px-2 py-0.5 tabular-nums" aria-label="{{ $unreadNotices }} unread">{{ $unreadNotices }}</span>
+                @endif
+            </a>
+        @endauth
+
         <div class="mt-6 pt-5 border-t border-white/10">
             <div class="flex items-center gap-3 mb-4 px-2">
                 @if (auth()->user()?->photo_path)

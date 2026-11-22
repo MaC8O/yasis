@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Registrar;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Registrar\StoreStudentLoginRequest;
+use App\Http\Requests\Registrar\TransferStudentRequest;
+use App\Models\StudentExitRequest;
+use App\Services\Behavior\StudentExitRequestService;
 use App\Models\AttendanceRecord;
 use App\Models\Department;
 use App\Models\DocumentRequest;
@@ -187,6 +190,7 @@ class StudentController extends Controller
 
         return view('registrar.students.show', [
             'student' => $student->load(['user', 'department', 'guardians.user', 'enrollments.section', 'documentRequests']),
+            'pendingExitRequests' => $student->exitRequests()->pending()->latest('id')->get(),
         ]);
     }
 
@@ -231,21 +235,32 @@ class StudentController extends Controller
         return redirect()->route('registrar.students.show', $student)->with('status', 'Student profile updated.');
     }
 
-    public function transfer(Request $request, Student $student, AuditService $audit)
+    public function transfer(TransferStudentRequest $request, Student $student, AuditService $audit, StudentExitRequestService $exits)
     {
-        $student->update(['enrollment_status' => 'Transferred']);
+        $exitRequestId = $request->validated('exit_request_id');
 
-        DocumentRequest::create([
-            'student_id' => $student->id,
-            'type' => 'Transfer/Leaving Certificate',
-            'status' => 'Draft',
-            'prepared_by' => $request->user()->id,
-        ]);
+        DB::transaction(function () use ($request, $student, $audit, $exits, $exitRequestId) {
+            $student->update(['enrollment_status' => 'Transferred']);
 
-        $audit->log($request->user(), 'Transferred/dropped student', 'Student', $student->id);
+            DocumentRequest::create([
+                'student_id' => $student->id,
+                'type' => 'Transfer/Leaving Certificate',
+                'status' => 'Draft',
+                'prepared_by' => $request->user()->id,
+            ]);
+
+            $audit->log($request->user(), 'Transferred/dropped student', 'Student', $student->id,
+                $exitRequestId ? ['exit_request_id' => (int) $exitRequestId] : null);
+
+            // Linked only when the Registrar confirmed this exit is that pending request.
+            if ($exitRequestId) {
+                $exits->markProcessed($request->user(), StudentExitRequest::findOrFail($exitRequestId), $student->id);
+            }
+        });
 
         return redirect()->route('registrar.students.show', $student)
-            ->with('status', "{$student->name} marked Transferred. A Transfer/Leaving Certificate draft was created.");
+            ->with('status', "{$student->name} marked Transferred. A Transfer/Leaving Certificate draft was created."
+                .($exitRequestId ? ' The pending exit request was marked processed.' : ''));
     }
 
     public function graduate(Request $request, Student $student, AuditService $audit)
