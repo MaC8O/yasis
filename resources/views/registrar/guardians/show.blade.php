@@ -10,14 +10,16 @@
                     <p class="text-sm text-neutral-500">{{ $guardian->user->email }} · {{ $guardian->phone ?? 'No phone' }}</p>
                 </div>
             </div>
-            <x-badge :color="$guardian->user->status === 'Active' ? 'green' : 'yellow'">Portal {{ strtolower($guardian->user->status) }}</x-badge>
+            <x-badge :color="match ($guardian->user->status) { 'Active' => 'green', 'Inactive' => 'pink', default => 'yellow' }">Portal {{ strtolower($guardian->user->status) }}</x-badge>
 
-            @if ($guardian->user->status !== 'Active')
+            @if ($guardian->user->status === 'Pending')
                 <form method="POST" action="{{ route('registrar.guardians.resend-invite', $guardian) }}" class="inline-block ml-2">
                     @csrf
                     <button type="submit" class="text-xs font-semibold text-info hover:underline">Re-send invite</button>
                 </form>
             @endif
+
+            @include('registrar.partials.account-status-actions', ['account' => $guardian->user])
 
             <form method="POST" action="{{ route('registrar.guardians.update', $guardian) }}" class="mt-5 pt-5 border-t border-neutral-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 @csrf @method('PUT')
