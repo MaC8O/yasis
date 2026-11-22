@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Exceptions\AccountChangeRefused;
 use App\Models\User;
+use App\Support\SecurityPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
@@ -154,33 +157,166 @@ class UserAccountService
         });
     }
 
-    /** Return an Inactive account to Active. */
+    /**
+     * Bring an Inactive account back. With a password someone knows (password_set_at) it returns
+     * to Active. Without one (it was deactivated before setup was finished) it returns to
+     * Pending and the setup link is e-mailed again, because an Active account holding only the
+     * random placeholder password would look usable while nobody could sign in.
+     *
+     * Erased accounts and HR staff records without portal access are refused
+     * ({@see reactivationBlocker()}).
+     */
     public function reactivate(User $actor, User $user): User
     {
         $this->assertCanManage($actor, $user);
 
         return DB::transaction(function () use ($actor, $user) {
             $user = $this->lockTarget($user);
+            $this->refuseWithoutPortalAccess($user, 'reactivate');
 
-            // A Pending account has never set a password: making it Active would not let anyone in,
-            // it would only hide that the invite was never completed. Re-send the invite instead.
             if ($user->status === 'Pending') {
-                throw new AccountChangeRefused("{$user->name} hasn't finished setting up their account yet, so there is nothing to reactivate. Use “Resend invite” to e-mail the setup link again.");
+                throw new AccountChangeRefused("{$user->name} hasn't finished setting up their account yet, so there is nothing to reactivate. Use “Activate” to give them a temporary password, or “Resend invite” to e-mail the setup link again.");
             }
 
             if ($user->status === 'Active') {
                 return $user;
             }
 
-            $from = $user->status;
-            $user->forceFill(['status' => 'Active'])->save();
+            $to = $user->hasKnownPassword() ? 'Active' : 'Pending';
+            $user->forceFill(['status' => $to])->save();
 
-            $this->audit->log($actor, 'Reactivated user', 'User', $user->id, [
-                'status' => ['from' => $from, 'to' => 'Active'],
-            ]);
+            $details = ['status' => ['from' => 'Inactive', 'to' => $to]];
+            if ($to === 'Pending') {
+                $details['setup_link_sent'] = true;
+                $this->sendSetupLinkAfterCommit($user);
+            }
+
+            $this->audit->log($actor, 'Reactivated user', 'User', $user->id, $details);
 
             return $user;
         });
+    }
+
+    /**
+     * Activate a Pending account with a temporary password, returned so the caller can show it
+     * once. The account must change it at first sign-in. The password is never written anywhere
+     * in plain text: only its hash is saved, and the audit entry records that one was issued, not
+     * what it is. The unused setup link is withdrawn so it cannot be used afterwards.
+     *
+     * A second call on the same account is refused, because it is no longer Pending.
+     */
+    public function activate(User $actor, User $user): string
+    {
+        $this->assertCanManage($actor, $user);
+
+        return DB::transaction(function () use ($actor, $user) {
+            $user = $this->lockTarget($user);
+            $this->refuseWithoutPortalAccess($user, 'activate');
+
+            if ($user->status !== 'Pending') {
+                throw new AccountChangeRefused("{$user->name}'s account is {$user->status}, not waiting for setup, so it can't be activated with a temporary password.");
+            }
+
+            $temporary = $this->temporaryPassword();
+
+            $user->forceFill([
+                'password' => Hash::make($temporary),
+                'password_set_at' => now(),
+                'status' => 'Active',
+                'must_reset_password' => true,
+                'failed_login_attempts' => 0,
+                'locked_until' => null,
+                'remember_token' => Str::random(60),
+            ])->save();
+
+            DB::table(config('auth.passwords.users.table', 'password_reset_tokens'))->where('email', $user->email)->delete();
+
+            $this->audit->log($actor, 'Activated user', 'User', $user->id, [
+                'status' => ['from' => 'Pending', 'to' => 'Active'],
+                'temporary_password_issued' => true,
+                'must_reset_password' => true,
+            ]);
+
+            return $temporary;
+        });
+    }
+
+    /** E-mail the account-setup link again to a Pending account. */
+    public function resendInvite(User $actor, User $user): User
+    {
+        $this->assertCanManage($actor, $user);
+
+        return DB::transaction(function () use ($actor, $user) {
+            $user = $this->lockTarget($user);
+            $this->refuseWithoutPortalAccess($user, 'send a setup link to');
+
+            if ($user->status !== 'Pending') {
+                throw new AccountChangeRefused("{$user->name}'s account is {$user->status}, not waiting for setup, so there is no setup link to resend.");
+            }
+
+            $this->sendSetupLinkAfterCommit($user);
+            $this->audit->log($actor, 'Resent account-setup link', 'User', $user->id, ['status' => 'Pending']);
+
+            return $user;
+        });
+    }
+
+    /**
+     * Why this account can never be reactivated or activated, as a short label for the screens,
+     * or null when it can. The server enforces the same rule ({@see refuseWithoutPortalAccess()}).
+     */
+    public function reactivationBlocker(User $user): ?string
+    {
+        return match (true) {
+            $user->isErased() => 'Erased account',
+            ! $user->hasPortalAccess() => 'No portal access',
+            default => null,
+        };
+    }
+
+    private function refuseWithoutPortalAccess(User $user, string $verb): void
+    {
+        if ($user->isErased()) {
+            throw new AccountChangeRefused("You cannot {$verb} this account: it was erased under a data-erasure request, and bringing it back would undo that erasure.");
+        }
+
+        if (! $user->hasPortalAccess()) {
+            throw new AccountChangeRefused("You cannot {$verb} {$user->name}: this is an HR staff record without portal access, not a login account. To give them portal access, edit the account to set a role and their real e-mail address first.");
+        }
+    }
+
+    /** Only once the change has committed, so a rolled-back change never leaves a live link. */
+    private function sendSetupLinkAfterCommit(User $user): void
+    {
+        $email = $user->email;
+        DB::afterCommit(fn () => Password::sendResetLink(['email' => $email]));
+    }
+
+    /**
+     * A temporary password that always meets the password policy: at least 12 characters (or the
+     * policy minimum if longer), with lower case, upper case and a digit. Look-alike characters
+     * (0/O, 1/l/I) are left out so it can be read out or copied by hand.
+     */
+    private function temporaryPassword(): string
+    {
+        $lower = 'abcdefghijkmnopqrstuvwxyz';
+        $upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        $digits = '23456789';
+        $all = $lower.$upper.$digits;
+        $pick = fn (string $set) => $set[random_int(0, strlen($set) - 1)];
+
+        $chars = [$pick($lower), $pick($upper), $pick($digits)];
+        $length = max(12, SecurityPolicy::passwordMinLength());
+        while (count($chars) < $length) {
+            $chars[] = $pick($all);
+        }
+
+        for ($i = count($chars) - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            [$chars[$i], $chars[$j]] = [$chars[$j], $chars[$i]];
+        }
+
+        return implode('', $chars);
     }
 
     /**

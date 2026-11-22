@@ -12,6 +12,8 @@
     $department = $staff?->department?->name ?? $u->student?->department?->name;
     $statusColor = $u->status === 'Active' ? 'green' : ($u->status === 'Pending' ? 'yellow' : 'pink');
     $isSelf = $u->id === auth()->id();
+    // Erased accounts and HR records without portal access: no Activate / Reactivate (server-enforced too).
+    $blocker = app(\App\Services\UserAccountService::class)->reactivationBlocker($u);
 
     // Drops rows whose value is false (fields that don't apply to this user).
     $rows = fn (array $pairs) => collect($pairs)->filter(fn ($v) => $v !== false);
@@ -82,6 +84,17 @@
                 </form>
             @endif
 
+            @if ($u->status === 'Pending' && ! $blocker)
+                <form method="POST" action="{{ route('admin.users.activate', $u) }}"
+                      data-confirm="Activate {{ $u->name }} now? A temporary password will be shown once, on the next page. They must change it at first sign-in."
+                      onsubmit="return confirm(this.dataset.confirm);">
+                    @csrf
+                    <button type="submit" class="{{ $tile }}" title="Activate with a temporary password, shown once">
+                        <span class="{{ $circle }}"><x-icon name="check" class="w-4 h-4" /></span> Activate
+                    </button>
+                </form>
+            @endif
+
             @if (in_array($u->status, ['Active', 'Pending'], true) && ! $isSelf)
                 <form method="POST" action="{{ route('admin.users.deactivate', $u) }}"
                       data-confirm="Deactivate {{ $u->name }}? They will no longer be able to sign in. The account is kept and can be reactivated."
@@ -91,6 +104,10 @@
                         <span class="{{ $circle }}"><x-icon name="power" class="w-4 h-4" /></span> Deactivate
                     </button>
                 </form>
+            @elseif ($u->status === 'Inactive' && $blocker)
+                <p class="{{ $tile }} cursor-default text-center opacity-80" title="{{ $blocker === 'Erased account' ? 'Erased under a data-erasure request; it cannot be reactivated.' : 'An HR staff record without portal access. Edit the account to set a role and real e-mail first.' }}">
+                    <span class="{{ $circle }}"><x-icon name="power" class="w-4 h-4" /></span> {{ $blocker }}
+                </p>
             @elseif ($u->status === 'Inactive')
                 <form method="POST" action="{{ route('admin.users.reactivate', $u) }}">
                     @csrf

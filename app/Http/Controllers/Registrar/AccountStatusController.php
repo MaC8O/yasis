@@ -27,8 +27,36 @@ class AccountStatusController extends Controller
 
     public function reactivate(Request $request, User $user)
     {
-        $this->accounts->reactivate($request->user(), $user);
+        $user = $this->accounts->reactivate($request->user(), $user);
 
-        return back()->with('status', "{$user->name}'s portal account reactivated.");
+        return back()->with('status', $user->status === 'Pending'
+            ? "{$user->name}'s portal account reactivated. They had never set a password, so it is Pending again and the setup link was e-mailed to {$user->email}."
+            : "{$user->name}'s portal account reactivated.");
+    }
+
+    public function resendInvite(Request $request, User $user)
+    {
+        $this->accounts->resendInvite($request->user(), $user);
+
+        return back()->with('status', "Account-setup link re-sent to {$user->email}.");
+    }
+
+    /**
+     * The temporary password is shown on this response only: not redirected, not flashed (so not
+     * in the session), and no-store. A refresh re-sends the POST, which is refused.
+     */
+    public function activate(Request $request, User $user)
+    {
+        $temporary = $this->accounts->activate($request->user(), $user);
+
+        return response()
+            ->view('accounts.activated', [
+                'account' => $user->fresh(),
+                'temporaryPassword' => $temporary,
+                'layoutRole' => 'registrar',
+                'backUrl' => url()->previous(route('registrar.dashboard')),
+            ])
+            ->header('Cache-Control', 'no-store, private, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 }

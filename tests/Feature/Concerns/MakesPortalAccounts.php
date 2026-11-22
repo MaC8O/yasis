@@ -10,7 +10,11 @@ use Illuminate\Support\Facades\Hash;
 /** Guardian and student portal accounts for user-management tests. Needs {@see SeedsCoreData}. */
 trait MakesPortalAccounts
 {
-    protected function makeAccount(string|array $roles, string $email, string $status = 'Active'): User
+    /**
+     * $passwordSet: whether a person has ever been given a working password (password_set_at).
+     * Defaults to true except for Pending accounts, which by definition never have.
+     */
+    protected function makeAccount(string|array $roles, string $email, string $status = 'Active', ?bool $passwordSet = null): User
     {
         $user = User::create([
             'name' => ucfirst(strtok($email, '@')).' Person',
@@ -18,6 +22,7 @@ trait MakesPortalAccounts
             'password' => Hash::make('password'),
             'status' => $status,
         ]);
+        $user->forceFill(['password_set_at' => ($passwordSet ?? $status !== 'Pending') ? now() : null])->save();
         $user->assignRole((array) $roles);
 
         return $user;

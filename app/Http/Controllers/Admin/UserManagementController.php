@@ -157,13 +157,43 @@ class UserManagementController extends Controller
 
     public function reactivate(Request $request, User $user, UserAccountService $accounts)
     {
-        $accounts->reactivate($request->user(), $user);
+        $user = $accounts->reactivate($request->user(), $user);
 
-        return back()->with('status', "{$user->name} reactivated.");
+        return back()->with('status', $user->status === 'Pending'
+            ? "{$user->name} reactivated. They had never set a password, so the account is Pending again and the setup link was e-mailed to {$user->email}."
+            : "{$user->name} reactivated.");
     }
 
-    public function resetPassword(Request $request, User $user, AuditService $audit)
+    /**
+     * Activate a Pending account and show its temporary password on this response, once. It is
+     * not redirected or flashed, so it is never written into the session, and no-store keeps it
+     * out of the browser cache. Refreshing re-sends the POST, which is refused: the account is no
+     * longer Pending.
+     */
+    public function activate(Request $request, User $user, UserAccountService $accounts)
     {
+        $temporary = $accounts->activate($request->user(), $user);
+
+        return response()
+            ->view('accounts.activated', [
+                'account' => $user->fresh(),
+                'temporaryPassword' => $temporary,
+                'layoutRole' => 'admin',
+                'backUrl' => route('admin.users.index', ['selected' => $user->id]),
+            ])
+            ->header('Cache-Control', 'no-store, private, max-age=0')
+            ->header('Pragma', 'no-cache');
+    }
+
+    public function resetPassword(Request $request, User $user, AuditService $audit, UserAccountService $accounts)
+    {
+        // A Pending account has no password yet: this is "Resend invite".
+        if ($user->status === 'Pending') {
+            $accounts->resendInvite($request->user(), $user);
+
+            return back()->with('status', "Account-setup link re-sent to {$user->email}.");
+        }
+
         // §3.1/§6.2: force the user through the set-password screen on next login and
         // e-mail a fresh reset link. The password itself is never exposed here.
         $user->forceFill(['must_reset_password' => true])->save();
@@ -171,9 +201,7 @@ class UserManagementController extends Controller
         Password::sendResetLink(['email' => $user->email]);
         $audit->log($request->user(), 'Reset password / re-sent login', 'User', $user->id);
 
-        return back()->with('status', $user->status === 'Pending'
-            ? "Account-setup link re-sent to {$user->email}."
-            : "Password reset link re-sent to {$user->email}.");
+        return back()->with('status', "Password reset link re-sent to {$user->email}.");
     }
 
     public function unlock(Request $request, User $user, AuditService $audit)
@@ -218,12 +246,19 @@ class UserManagementController extends Controller
 
     public function setPassword(Request $request, User $user, AuditService $audit)
     {
+        // A Pending account is brought in with Activate (temporary password, forced change), so a
+        // password set here would leave it Pending and still unable to sign in.
+        if ($user->status === 'Pending') {
+            return back()->with('warning', "{$user->name} hasn't finished setting up their account. Use “Activate” to give them a temporary password instead.");
+        }
+
         $data = $request->validate([
             'password' => ['required', 'confirmed', SecurityPolicy::passwordRule()],
         ]);
 
         $user->forceFill([
             'password' => Hash::make($data['password']),
+            'password_set_at' => now(),
             'failed_login_attempts' => 0,
             'locked_until' => null,
             'remember_token' => Str::random(60),
