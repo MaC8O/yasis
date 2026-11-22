@@ -34,10 +34,10 @@ use App\Http\Controllers\Behavior\BehaviorReportController;
 use App\Http\Controllers\Behavior\BehaviorStudentController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Hr\StaffRecordController;
+use App\Http\Controllers\Leadership\AnnouncementComposerController;
 use App\Http\Controllers\Leadership\FeeVisibilityController;
 use App\Http\Controllers\Principal\BoardReportController;
 use App\Http\Controllers\Principal\GovernanceController;
-use App\Http\Controllers\Principal\PrincipalAnnouncementController;
 use App\Http\Controllers\Principal\PrincipalApprovalController;
 use App\Http\Controllers\Principal\PrincipalDashboardController;
 use App\Http\Controllers\Principal\PrincipalRegistrationController;
@@ -402,8 +402,8 @@ Route::middleware(['auth', 'role:principal'])->prefix('principal')->name('princi
     Route::get('/board-reports/enrollment.pdf', [BoardReportController::class, 'enrollmentPdf'])->name('board-reports.enrollment-pdf');
     Route::get('/board-reports/religious-background.pdf', [BoardReportController::class, 'religiousPdf'])->name('board-reports.religious-pdf');
 
-    Route::get('/announcements', [PrincipalAnnouncementController::class, 'index'])->name('announcements.index');
-    Route::post('/announcements', [PrincipalAnnouncementController::class, 'store'])->name('announcements.store');
+    Route::get('/announcements', [AnnouncementComposerController::class, 'index'])->name('announcements.index');
+    Route::post('/announcements', [AnnouncementComposerController::class, 'store'])->name('announcements.store');
 
     Route::get('/governance', [GovernanceController::class, 'index'])->name('governance.index');
     Route::put('/governance', [GovernanceController::class, 'update'])->name('governance.update');
@@ -432,6 +432,11 @@ Route::middleware(['auth', 'role:vp_academic'])->prefix('vp_academic')->name('vp
     Route::delete('/subjects/{subject}', [SubjectCatalogController::class, 'destroySubject'])->name('subjects.destroy');
     Route::post('/assignments', [SubjectCatalogController::class, 'storeAssignment'])->name('assignments.store');
     Route::delete('/assignments/{teachingAssignment}', [SubjectCatalogController::class, 'destroyAssignment'])->name('assignments.destroy');
+
+    // Same composer as the Principal's (shared controller and view); this group's role check
+    // limits publishing here to the VP.
+    Route::get('/announcements', [AnnouncementComposerController::class, 'index'])->name('announcements.index');
+    Route::post('/announcements', [AnnouncementComposerController::class, 'store'])->name('announcements.store');
 
     Route::get('/fees', [FeeVisibilityController::class, 'index'])->name('fees.index');
     Route::get('/fees/{student}', [FeeVisibilityController::class, 'show'])->name('fees.show');

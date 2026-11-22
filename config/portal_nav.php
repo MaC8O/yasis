@@ -48,6 +48,7 @@ return [
             ['label' => 'Lesson Plan Reviews', 'route' => 'lesson-plans.queue', 'icon' => 'approve'],
             ['label' => 'Lesson Plans', 'route' => 'lesson-plans.index', 'icon' => 'document'],
             ['label' => 'Subjects & Teaching', 'route' => 'vp_academic.subjects.index', 'icon' => 'book'],
+            ['label' => 'Announcements', 'route' => 'vp_academic.announcements.index', 'icon' => 'megaphone'],
             ['label' => 'Fee Records', 'route' => 'vp_academic.fees.index', 'icon' => 'money'],
             ['label' => 'Academic Calendar', 'route' => 'calendar.index', 'icon' => 'calendar'],
         ],
