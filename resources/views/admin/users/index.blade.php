@@ -1,3 +1,4 @@
+@inject('accounts', 'App\Services\UserAccountService')
 <x-app-layout title="User Management" subtitle="Create, edit, deactivate/reactivate accounts and assign roles." badge="Admin" role="admin">
     <x-card>
         <form method="GET" class="grid grid-cols-1 sm:grid-cols-6 gap-4 items-end">
@@ -86,14 +87,25 @@
                                         <span class="ml-1 text-xs font-semibold text-danger">· Locked</span>
                                     @endif
                                 </td>
+                                @php($blocker = $accounts->reactivationBlocker($user))
                                 <td class="py-2 pl-2 pr-4 text-right whitespace-nowrap" @click.stop @dblclick.stop>
+                                    @if ($user->status === 'Pending' && ! $blocker)
+                                        <form method="POST" action="{{ route('admin.users.activate', $user) }}" class="inline-block mr-3"
+                                              data-confirm="Activate {{ $user->name }} now? A temporary password will be shown once, on the next page. They must change it at first sign-in."
+                                              onsubmit="return confirm(this.dataset.confirm);">
+                                            @csrf
+                                            <button type="submit" class="text-xs font-semibold text-brand hover:underline">Activate</button>
+                                        </form>
+                                    @endif
                                     @if (in_array($user->status, ['Active', 'Pending'], true) && $user->id !== auth()->id())
-                                        <form method="POST" action="{{ route('admin.users.deactivate', $user) }}"
+                                        <form method="POST" action="{{ route('admin.users.deactivate', $user) }}" class="inline-block"
                                               data-confirm="Deactivate {{ $user->name }}? They will no longer be able to sign in. The account is kept and can be reactivated."
                                               onsubmit="return confirm(this.dataset.confirm);">
                                             @csrf
                                             <button type="submit" class="text-xs font-semibold text-danger hover:underline">Deactivate</button>
                                         </form>
+                                    @elseif ($user->status === 'Inactive' && $blocker)
+                                        <span class="text-xs text-neutral-500" title="{{ $blocker === 'Erased account' ? 'Erased under a data-erasure request; it cannot be reactivated.' : 'An HR staff record without portal access. Edit the account to set a role and real e-mail first.' }}">{{ $blocker }}</span>
                                     @elseif ($user->status === 'Inactive')
                                         <form method="POST" action="{{ route('admin.users.reactivate', $user) }}">
                                             @csrf

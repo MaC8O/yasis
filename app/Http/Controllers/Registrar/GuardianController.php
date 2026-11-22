@@ -7,6 +7,7 @@ use App\Http\Requests\Registrar\StoreGuardianRequest;
 use App\Models\Guardian;
 use App\Models\Student;
 use App\Services\AuditService;
+use App\Services\UserAccountService;
 use App\Services\UserProvisioningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -169,10 +170,14 @@ class GuardianController extends Controller
         return back()->with('status', 'Primary guardian updated.');
     }
 
-    public function resendInvite(Request $request, Guardian $guardian, AuditService $audit)
+    /**
+     * Older address for "Re-send invite" on a guardian; it now goes through the same rules as
+     * {@see AccountStatusController::resendInvite()} (Pending accounts only, guardian and student
+     * scope checked on the server, audited in the same transaction).
+     */
+    public function resendInvite(Request $request, Guardian $guardian, UserAccountService $accounts)
     {
-        Password::sendResetLink(['email' => $guardian->user->email]);
-        $audit->log($request->user(), 'Re-sent guardian portal invite', 'Guardian', $guardian->id);
+        $accounts->resendInvite($request->user(), $guardian->user);
 
         return back()->with('status', 'Portal invite re-sent.');
     }

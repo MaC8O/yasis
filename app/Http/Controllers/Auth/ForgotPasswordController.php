@@ -47,6 +47,7 @@ class ForgotPasswordController extends Controller
                 // any forced-reset flag is satisfied by the password they just chose.
                 $user->forceFill([
                     'password' => $password,
+                    'password_set_at' => now(),
                     'status' => $user->status === 'Pending' ? 'Active' : $user->status,
                     'must_reset_password' => false,
                     'failed_login_attempts' => 0,

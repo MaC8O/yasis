@@ -106,6 +106,13 @@
         </form>
     </x-card>
 
+    {{-- A Pending account is brought in with Activate (temporary password, forced change at first
+         sign-in); a password set here would leave it Pending. The server refuses it too. --}}
+    @if ($editUser->status === 'Pending')
+    <x-card title="Set a new password">
+        <p class="text-sm text-neutral-600">{{ $editUser->name }} hasn't finished setting up their account, so a password can't be set here. Use <span class="font-semibold">Activate</span> in the user list to give them a temporary password, or <span class="font-semibold">Resend invite</span> to e-mail the setup link again.</p>
+    </x-card>
+    @else
     <x-card title="Set a new password" subtitle="Directly sets the login password — use this for in-person handoff. The self-service reset-link email is still available from the user list.">
         <form method="POST" action="{{ route('admin.users.set-password', $editUser) }}" class="space-y-4" x-data="{ password: '' }">
             @csrf
@@ -130,4 +137,5 @@
             <p class="text-xs text-neutral-500">Minimum 8 characters. The account's failed-attempt counter and any lock are cleared when a new password is set.</p>
         </form>
     </x-card>
+    @endif
 </x-app-layout>

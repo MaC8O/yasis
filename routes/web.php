@@ -165,6 +165,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
     Route::post('/users/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('users.deactivate');
     Route::post('/users/{user}/reactivate', [UserManagementController::class, 'reactivate'])->name('users.reactivate');
+    Route::post('/users/{user}/activate', [UserManagementController::class, 'activate'])->name('users.activate');
     Route::post('/users/{user}/reset-password', [UserManagementController::class, 'resetPassword'])->name('users.reset-password');
     Route::post('/users/{user}/set-password', [UserManagementController::class, 'setPassword'])->name('users.set-password');
     Route::post('/users/{user}/unlock', [UserManagementController::class, 'unlock'])->name('users.unlock');
@@ -233,6 +234,8 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
     // Guardian and student portal accounts only — the service refuses (403) any other account id.
     Route::post('/accounts/{user}/deactivate', [RegistrarAccountStatusController::class, 'deactivate'])->name('accounts.deactivate');
     Route::post('/accounts/{user}/reactivate', [RegistrarAccountStatusController::class, 'reactivate'])->name('accounts.reactivate');
+    Route::post('/accounts/{user}/activate', [RegistrarAccountStatusController::class, 'activate'])->name('accounts.activate');
+    Route::post('/accounts/{user}/resend-invite', [RegistrarAccountStatusController::class, 'resendInvite'])->name('accounts.resend-invite');
 
     Route::get('/guardians', [GuardianController::class, 'index'])->name('guardians.index');
     Route::post('/guardians', [GuardianController::class, 'store'])->name('guardians.store');
