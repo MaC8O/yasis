@@ -54,6 +54,9 @@ class SubjectCatalogController extends Controller
         if ($subject->teachingAssignments()->exists() || $subject->assessmentCategories()->exists()) {
             return back()->withErrors(['subject' => "{$subject->code} has teaching assignments or gradebook data and cannot be removed. Remove its assignments first."]);
         }
+        if ($subject->offerings()->exists()) {
+            return back()->withErrors(['subject' => "{$subject->code} is in a grade level's curriculum and cannot be removed. The Admin can retire it from the curriculum instead."]);
+        }
 
         $id = $subject->id;
         $code = $subject->code;

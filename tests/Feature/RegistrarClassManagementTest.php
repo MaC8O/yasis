@@ -245,14 +245,14 @@ class RegistrarClassManagementTest extends TestCase
     {
         $section = $this->section('Grade 9-A', ['homeroom_teacher_id' => $this->teacherA->id]);
         $this->section('Grade 9-B');
-        $math9 = $this->subject('MATH9', 'Mathematics 9');
-        $this->subject('ENG9', 'English 9');
-        $this->subject('ENG10', 'English 10'); // other grade — not expected in Grade 9
-        $this->subject('HS-BIB', 'Bible');
-        TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $math9->id, 'teacher_id' => $this->teacherB->id]);
+        // Grade 9's curriculum has 10 subjects; one curriculum subject and one outside it are assigned.
+        $math = Subject::where('code', 'MATH')->firstOrFail();
+        $outside = $this->subject('ENG10', 'English 10');
+        TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $math->id, 'teacher_id' => $this->teacherB->id]);
+        TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $outside->id, 'teacher_id' => $this->teacherB->id]);
 
         $this->asRegistrar()->get('/registrar/sections')
-            ->assertOk()->assertSee('High School')->assertSee('1 / 3');
+            ->assertOk()->assertSee('High School')->assertSee('1 / 10');
 
         $this->asRegistrar()->get('/registrar/sections?search='.urlencode($this->teacherB->user->name))
             ->assertOk()->assertSee('Grade 9-A')->assertDontSee('Grade 9-B</a>', false);
@@ -261,14 +261,19 @@ class RegistrarClassManagementTest extends TestCase
     public function test_section_detail_page_shows_both_tabs_and_expected_subjects(): void
     {
         $section = $this->section();
-        $this->subject('MATH9', 'Mathematics 9');
-        $this->subject('MATH10', 'Mathematics 10');
+        $outside = $this->subject('MATH10', 'Mathematics 10');
+        $this->subject('MATH11', 'Mathematics 11');
+        TeachingAssignment::create(['section_id' => $section->id, 'subject_id' => $outside->id, 'teacher_id' => $this->teacherA->id]);
         Enrollment::create(['student_id' => $this->student()->id, 'section_id' => $section->id, 'status' => 'Active']);
 
+        // Grade 9's curriculum is listed; an assigned subject outside it is shown and labelled;
+        // an unassigned catalogue subject outside it is not listed.
         $this->asRegistrar()->get("/registrar/sections/{$section->id}")
             ->assertOk()
             ->assertSee('Teaching assignments')->assertSee('Students (1)')
-            ->assertSee('Mathematics 9')->assertDontSee('Mathematics 10')
+            ->assertSeeInOrder(['Moral/Values Education', 'Myanmar', 'English', 'Mathematics', 'Science', 'Social Study', 'Computer', 'Physical Education', 'Music', 'SUPW'])
+            ->assertSee('Mathematics 10')->assertSee("not in this grade's curriculum", false)
+            ->assertDontSee('Mathematics 11')
             ->assertSee('Aye Min');
     }
 

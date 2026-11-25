@@ -110,7 +110,7 @@
                                     <td class="py-2.5">{{ $section->homeroomTeacher?->user?->name ?? '—' }}</td>
                                     <td class="py-2.5">{{ $students }} / {{ $section->capacity }}</td>
                                     <td class="py-2.5">
-                                        <span title="Expected = the department's subjects, skipping ones coded for another grade level (e.g. ENG10 for a Grade 9 section)."
+                                        <span title="Expected = the subjects in this grade level's curriculum (set by the Admin). A section without a grade level expects none."
                                               class="font-semibold {{ $cov['expected'] && $cov['assigned'] >= $cov['expected'] ? 'text-success' : 'text-warning' }}">
                                             {{ $cov['assigned'] }} / {{ $cov['expected'] }}
                                         </span>

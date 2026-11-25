@@ -294,15 +294,9 @@ class DatabaseSeeder extends Seeder
             ['status' => 'Active']
         );
 
-        // Subjects for the Teaching Assignment demo.
-        $subjects = [
-            ['code' => 'MATH9', 'name' => 'Mathematics', 'department_id' => $highSchool->id],
-            ['code' => 'ENG9', 'name' => 'English', 'department_id' => $highSchool->id],
-        ];
-        foreach ($subjects as $subject) {
-            Subject::firstOrCreate(['code' => $subject['code']], $subject);
-        }
-        $math9 = Subject::where('code', 'MATH9')->first();
+        // Subjects for the Teaching Assignment demo: the school's curriculum subjects, created by
+        // the 2026_11_26_090300_seed_school_curriculum migration.
+        $math9 = Subject::where('code', 'MATH')->firstOrFail();
 
         // Match on the (section_id, subject_id) unique key only; teacher_id is an attribute so
         // a re-seed updates rather than double-inserts.
@@ -405,7 +399,7 @@ class DatabaseSeeder extends Seeder
         $term1->update(['is_locked' => true, 'results_released' => true]);
 
         // English teaching assignment + a full weighted gradebook (Math + English) for childA in Term 1.
-        $english9 = Subject::where('code', 'ENG9')->first();
+        $english9 = Subject::where('code', 'ENG')->firstOrFail();
         TeachingAssignment::firstOrCreate(['section_id' => $grade9A->id, 'subject_id' => $english9->id], ['teacher_id' => $teacherProfile->id]);
 
         foreach ([$math9->id => 'Mathematics', $english9->id => 'English'] as $subjectId => $label) {
