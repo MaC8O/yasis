@@ -22,3 +22,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# School-internal documents: kept out of the public repository.
+/sdp_doc/YASIS_Sun_Finance_Import.md
+/sdp_doc/*.docx

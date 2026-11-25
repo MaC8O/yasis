@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\DataExportController;
+use App\Http\Controllers\Admin\GradeLevelController;
 use App\Http\Controllers\Admin\GradeScaleController;
 use App\Http\Controllers\Admin\RetentionActionController;
 use App\Http\Controllers\Admin\SystemSettingsController;
@@ -205,6 +206,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/calendar/{calendarEvent}/publish', [AcademicCalendarController::class, 'publish'])->name('calendar.publish');
     Route::post('/calendar/{calendarEvent}/unpublish', [AcademicCalendarController::class, 'unpublish'])->name('calendar.unpublish');
     Route::delete('/calendar/{calendarEvent}', [AcademicCalendarController::class, 'destroy'])->name('calendar.destroy');
+
+    Route::get('/grade-levels', [GradeLevelController::class, 'index'])->name('grade-levels.index');
+    Route::post('/grade-levels', [GradeLevelController::class, 'store'])->name('grade-levels.store');
+    Route::put('/grade-levels/{gradeLevel}', [GradeLevelController::class, 'update'])->name('grade-levels.update');
+    Route::post('/grade-levels/{gradeLevel}/move/{direction}', [GradeLevelController::class, 'move'])->whereIn('direction', ['up', 'down'])->name('grade-levels.move');
+    Route::post('/grade-levels/{gradeLevel}/retire', [GradeLevelController::class, 'retire'])->name('grade-levels.retire');
+    Route::post('/grade-levels/{gradeLevel}/restore', [GradeLevelController::class, 'restore'])->name('grade-levels.restore');
 
     Route::get('/grade-scale', [GradeScaleController::class, 'index'])->name('grade-scale.index');
     Route::post('/grade-scale', [GradeScaleController::class, 'store'])->name('grade-scale.store');

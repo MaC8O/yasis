@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AttendanceRecord;
 use App\Models\Grade;
+use App\Models\GradeLevel;
 use App\Models\PromotionBatch;
 use App\Models\Section;
 use App\Models\Subject;
@@ -26,7 +27,7 @@ class SectionService
     {
         return DB::transaction(function () use ($data, $actor) {
             $section = Section::create($data);
-            $this->audit->log($actor, 'Created section', 'Section', $section->id, ['name' => $section->name]);
+            $this->audit->log($actor, 'Created section', 'Section', $section->id, ['name' => $section->name, 'grade_level' => $section->gradeLevel?->code]);
 
             return $section;
         });
@@ -39,6 +40,15 @@ class SectionService
             $changes = collect($section->getDirty())
                 ->map(fn ($to, $field) => ['from' => $section->getOriginal($field), 'to' => $to])
                 ->all();
+            // Record the level by its code (e.g. "9" → "10"), which is what the rules are keyed by.
+            if (isset($changes['grade_level_id'])) {
+                $codes = GradeLevel::whereIn('id', array_filter($changes['grade_level_id']))->pluck('code', 'id');
+                $changes['grade_level'] = [
+                    'from' => $codes[$changes['grade_level_id']['from']] ?? null,
+                    'to' => $codes[$changes['grade_level_id']['to']] ?? null,
+                ];
+                unset($changes['grade_level_id']);
+            }
             $section->save();
 
             $this->audit->log($actor, 'Updated section', 'Section', $section->id, $changes ? ['changes' => $changes] : null);
@@ -130,15 +140,19 @@ class SectionService
 
     /**
      * Subjects a section is expected to have a teacher for: its department's catalogue, skipping
-     * subjects coded for a different grade (ENG10 is not expected in Grade 9). The catalogue has
-     * no grade field, so this relies on the code naming convention (trailing grade number).
+     * subjects coded for a different grade (ENG10 is not expected in a Grade 9 section). The
+     * section's grade comes from its stored grade level. The subject side still relies on the
+     * code naming convention (trailing grade number) until the curriculum table (phase 2) gives
+     * subjects their grade levels. A KG level, or a section without a level, expects the whole
+     * department catalogue.
      *
      * @return Collection<int, Subject>
      */
     public function expectedSubjects(Section $section, ?Collection $departmentSubjects = null): Collection
     {
         $subjects = $departmentSubjects ?? Subject::where('department_id', $section->department_id)->orderBy('name')->get();
-        $grade = $section->gradeNumber();
+        $code = $section->gradeLevel?->code;
+        $grade = $code !== null && ctype_digit($code) ? (int) $code : null;
 
         return $subjects->filter(function (Subject $subject) use ($grade) {
             if ($grade === null || ! preg_match('/(\d{1,2})$/', $subject->code, $m)) {

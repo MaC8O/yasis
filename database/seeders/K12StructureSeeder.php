@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\AttendanceRecord;
 use App\Models\Department;
 use App\Models\Enrollment;
+use App\Models\GradeLevel;
 use App\Models\GradeScaleBand;
 use App\Models\Guardian;
 use App\Models\ImportBatch;
@@ -129,23 +130,28 @@ class K12StructureSeeder extends Seeder
         }
 
         // ------------------------------------------------------------------
-        // Classes: the full K-12 ladder, one section per grade level.
+        // Classes: the full K-12 ladder, one section per grade level. Nursery has no
+        // grade level: the school's levels start at KG1 (rules file, Q2).
         // ------------------------------------------------------------------
         $gradeLadder = [
-            'Pre-School' => ['Nursery', 'Kindergarten 1', 'Kindergarten 2'],
-            'Elementary' => ['Grade 1-A', 'Grade 2-A', 'Grade 3-A', 'Grade 4-A', 'Grade 5-A'],
-            'Middle School' => ['Grade 6-A', 'Grade 7-A', 'Grade 8-A'],
-            'High School' => ['Grade 9-A', 'Grade 10-A', 'Grade 11-A', 'Grade 12-A'],
+            'Pre-School' => ['Nursery' => null, 'Kindergarten 1' => 'KG1', 'Kindergarten 2' => 'KG2'],
+            'Elementary' => ['Grade 1-A' => '1', 'Grade 2-A' => '2', 'Grade 3-A' => '3', 'Grade 4-A' => '4', 'Grade 5-A' => '5'],
+            'Middle School' => ['Grade 6-A' => '6', 'Grade 7-A' => '7', 'Grade 8-A' => '8'],
+            'High School' => ['Grade 9-A' => '9', 'Grade 10-A' => '10', 'Grade 11-A' => '11', 'Grade 12-A' => '12'],
         ];
+        $levelIds = GradeLevel::pluck('id', 'code');
 
         $sections = [];
         $teacherIdx = 0;
         foreach ($gradeLadder as $deptName => $grades) {
-            foreach ($grades as $grade) {
+            foreach ($grades as $grade => $levelCode) {
                 $section = Section::firstOrCreate(
                     ['academic_year_id' => $year->id, 'name' => $grade],
                     ['department_id' => $departments[$deptName], 'capacity' => 30]
                 );
+                if ($levelCode !== null && ! $section->grade_level_id) {
+                    $section->update(['grade_level_id' => $levelIds[$levelCode]]);
+                }
                 if (! $section->homeroom_teacher_id) {
                     $section->update(['homeroom_teacher_id' => $teachers[$teacherIdx % count($teachers)]->id]);
                 }
@@ -288,7 +294,7 @@ class K12StructureSeeder extends Seeder
         $pendingGuardian = null;
 
         foreach ($gradeLadder as $deptName => $grades) {
-            foreach ($grades as $grade) {
+            foreach (array_keys($grades) as $grade) {
                 $section = $sections[$grade];
                 for ($i = 0; $i < 5; $i++) {
                     $idNumber = 'YAS-2026-'.str_pad($seq, 4, '0', STR_PAD_LEFT);

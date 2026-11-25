@@ -3,6 +3,7 @@
         'id' => $s->id,
         'name' => $s->name,
         'department_id' => $s->department_id,
+        'grade_level_id' => $s->grade_level_id,
         'homeroom_teacher_id' => $s->homeroom_teacher_id,
         'capacity' => $s->capacity,
         'action' => route('registrar.sections.update', $s),
@@ -65,6 +66,14 @@
             </div>
         </x-card>
 
+        @php $unclassified = $sections->whereNull('grade_level_id'); @endphp
+        @if ($unclassified->isNotEmpty())
+            <div role="status" class="rounded-xl border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning">
+                {{ $unclassified->count() === 1 ? 'This section has' : 'These sections have' }} no grade level yet: <span class="font-semibold">{{ $unclassified->pluck('name')->implode(', ') }}</span>.
+                Edit {{ $unclassified->count() === 1 ? 'it' : 'each one' }} to choose a level. Grading, subjects, report cards and fees will depend on it.
+            </div>
+        @endif
+
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <x-stat-tile label="Sections" color="blue">{{ $stats['sections'] }}</x-stat-tile>
             <x-stat-tile label="With homeroom teacher" color="blue">{{ $stats['assignedTeachers'] }}</x-stat-tile>
@@ -80,6 +89,7 @@
                         <thead>
                             <tr class="text-left text-neutral-500 border-b border-neutral-200">
                                 <th class="py-2 font-semibold">Section</th>
+                                <th class="py-2 font-semibold">Grade level</th>
                                 <th class="py-2 font-semibold">Homeroom teacher</th>
                                 <th class="py-2 font-semibold">Students</th>
                                 <th class="py-2 font-semibold">Subjects with a teacher</th>
@@ -94,10 +104,13 @@
                                         <a href="{{ route('registrar.sections.show', $section) }}" class="font-semibold text-brand hover:underline">{{ $section->name }}</a>
                                         @if ($section->isArchived()) <x-badge color="neutral">Archived</x-badge> @endif
                                     </td>
+                                    <td class="py-2.5">
+                                        @if ($section->gradeLevel) {{ $section->gradeLevel->name }} @else <x-badge color="yellow">Not set</x-badge> @endif
+                                    </td>
                                     <td class="py-2.5">{{ $section->homeroomTeacher?->user?->name ?? '—' }}</td>
                                     <td class="py-2.5">{{ $students }} / {{ $section->capacity }}</td>
                                     <td class="py-2.5">
-                                        <span title="Expected = the department's subjects, skipping ones coded for another grade (e.g. ENG10 for Grade 9)."
+                                        <span title="Expected = the department's subjects, skipping ones coded for another grade level (e.g. ENG10 for a Grade 9 section)."
                                               class="font-semibold {{ $cov['expected'] && $cov['assigned'] >= $cov['expected'] ? 'text-success' : 'text-warning' }}">
                                             {{ $cov['assigned'] }} / {{ $cov['expected'] }}
                                         </span>
@@ -121,6 +134,7 @@
                                 @if ($section->isArchived()) <x-badge color="neutral">Archived</x-badge> @endif
                             </div>
                             <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                                <dt class="text-neutral-500">Grade level</dt><dd>@if ($section->gradeLevel) {{ $section->gradeLevel->name }} @else <x-badge color="yellow">Not set</x-badge> @endif</dd>
                                 <dt class="text-neutral-500">Homeroom</dt><dd>{{ $section->homeroomTeacher?->user?->name ?? '—' }}</dd>
                                 <dt class="text-neutral-500">Students</dt><dd>{{ $students }} / {{ $section->capacity }}</dd>
                                 <dt class="text-neutral-500">Subjects</dt><dd>{{ $cov['assigned'] }} / {{ $cov['expected'] }} with a teacher</dd>
@@ -217,6 +231,16 @@
                             @endforeach
                         </select>
                     </div>
+                    <div>
+                        <label for="d-level" class="block text-sm font-semibold mb-1">Grade level</label>
+                        <select id="d-level" name="grade_level_id" x-model="form.grade_level_id" :required="mode === 'create' || form.had_level" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
+                            <option value="" x-text="mode === 'edit' && !form.had_level ? 'Not set' : 'Choose…'"></option>
+                            @foreach ($gradeLevels as $level)
+                                <option value="{{ $level->id }}">{{ $level->name }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-neutral-400">Grading, subjects, report cards and fees follow the grade level, not the department.</p>
+                    </div>
                     <div x-show="mode === 'create'">
                         <label for="d-year" class="block text-sm font-semibold mb-1">Academic year</label>
                         <select id="d-year" name="academic_year_id" x-model="form.academic_year_id" :disabled="mode !== 'create'" class="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm">
@@ -253,14 +277,14 @@
 
     <script>
         function sectionDrawer(sections, reopen, old) {
-            const blank = { id: null, name: '', department_id: '', academic_year_id: '{{ $activeYear?->id }}', homeroom_teacher_id: '', capacity: 35 };
+            const blank = { id: null, name: '', department_id: '', grade_level_id: '', had_level: false, academic_year_id: '{{ $activeYear?->id }}', homeroom_teacher_id: '', capacity: 35 };
             return {
                 open: false, mode: 'create', action: '{{ route('registrar.sections.store') }}', form: { ...blank },
                 init() {
                     if (!reopen) return;
                     if (reopen === 'create') { this.openCreate(); }
                     else if (reopen.startsWith('edit:') && sections[reopen.slice(5)]) { this.openEdit(reopen.slice(5)); }
-                    for (const k of ['name', 'department_id', 'academic_year_id', 'homeroom_teacher_id', 'capacity']) {
+                    for (const k of ['name', 'department_id', 'grade_level_id', 'academic_year_id', 'homeroom_teacher_id', 'capacity']) {
                         if (old[k] !== undefined && old[k] !== null) this.form[k] = String(old[k]);
                     }
                 },
@@ -268,7 +292,7 @@
                 openEdit(id) {
                     const s = sections[id];
                     this.mode = 'edit'; this.action = s.action;
-                    this.form = { ...blank, ...s, department_id: String(s.department_id), homeroom_teacher_id: s.homeroom_teacher_id ? String(s.homeroom_teacher_id) : '' };
+                    this.form = { ...blank, ...s, department_id: String(s.department_id), grade_level_id: s.grade_level_id ? String(s.grade_level_id) : '', had_level: !!s.grade_level_id, homeroom_teacher_id: s.homeroom_teacher_id ? String(s.homeroom_teacher_id) : '' };
                     this.open = true; this.focus();
                 },
                 close() { this.open = false; },

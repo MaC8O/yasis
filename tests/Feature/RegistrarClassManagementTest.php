@@ -9,6 +9,7 @@ use App\Models\AttendanceRecord;
 use App\Models\Department;
 use App\Models\Enrollment;
 use App\Models\Grade;
+use App\Models\GradeLevel;
 use App\Models\PromotionBatch;
 use App\Models\Section;
 use App\Models\StaffProfile;
@@ -50,9 +51,15 @@ class RegistrarClassManagementTest extends TestCase
         return Section::create(array_merge([
             'academic_year_id' => $this->term->academic_year_id,
             'department_id' => $this->department->id,
+            'grade_level_id' => $this->level('9'),
             'name' => $name,
             'capacity' => 35,
         ], $extra));
+    }
+
+    private function level(string $code): int
+    {
+        return GradeLevel::where('code', $code)->value('id');
     }
 
     private function subject(string $code, string $name): Subject
@@ -91,7 +98,7 @@ class RegistrarClassManagementTest extends TestCase
     public function test_registrar_creates_a_section_in_the_active_year_by_default_and_it_is_audited_with_role(): void
     {
         $this->asRegistrar()->post('/registrar/sections', [
-            'name' => 'Grade 10-B', 'department_id' => $this->department->id, 'homeroom_teacher_id' => $this->teacherA->id, 'capacity' => 30,
+            'name' => 'Grade 10-B', 'department_id' => $this->department->id, 'grade_level_id' => $this->level('10'), 'homeroom_teacher_id' => $this->teacherA->id, 'capacity' => 30,
         ])->assertSessionHasNoErrors();
 
         $section = Section::where('name', 'Grade 10-B')->firstOrFail();
@@ -105,7 +112,7 @@ class RegistrarClassManagementTest extends TestCase
         $next = AcademicYear::create(['year_label' => '2099-2100', 'is_active' => false]);
 
         $this->asRegistrar()->post('/registrar/sections', [
-            'name' => 'Grade 9-A', 'department_id' => $this->department->id, 'academic_year_id' => $next->id, 'capacity' => 30,
+            'name' => 'Grade 9-A', 'department_id' => $this->department->id, 'grade_level_id' => $this->level('9'), 'academic_year_id' => $next->id, 'capacity' => 30,
         ])->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('sections', ['name' => 'Grade 9-A', 'academic_year_id' => $next->id]);
@@ -116,7 +123,7 @@ class RegistrarClassManagementTest extends TestCase
         $this->section('Grade 9-A', ['homeroom_teacher_id' => $this->teacherA->id]);
 
         $this->asRegistrar()->post('/registrar/sections', [
-            'name' => 'Grade 9-B', 'department_id' => $this->department->id, 'homeroom_teacher_id' => $this->teacherA->id, 'capacity' => 30,
+            'name' => 'Grade 9-B', 'department_id' => $this->department->id, 'grade_level_id' => $this->level('9'), 'homeroom_teacher_id' => $this->teacherA->id, 'capacity' => 30,
         ])->assertSessionHasNoErrors()
             ->assertSessionHas('warning', fn ($w) => str_contains($w, 'Grade 9-A'));
 
