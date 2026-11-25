@@ -11,7 +11,7 @@ use App\Models\GradeLevel;
 use App\Models\Section;
 use App\Models\StaffProfile;
 use App\Models\Student;
-use App\Models\Subject;
+use App\Models\SubjectOffering;
 use App\Models\TeachingAssignment;
 use App\Services\AuditService;
 use App\Services\SectionService;
@@ -51,10 +51,11 @@ class SectionController extends Controller
         // School order by grade level (KG1, KG2, 1 … 12), sections without a level last.
         $sections = $query->orderByGradeLevel()->get();
 
-        $subjectsByDepartment = Subject::whereIn('department_id', $sections->pluck('department_id')->unique())
-            ->orderBy('name')->get()->groupBy('department_id');
-        $coverage = $sections->mapWithKeys(function ($section) use ($subjectsByDepartment) {
-            $expected = $this->sections->expectedSubjects($section, $subjectsByDepartment->get($section->department_id, collect()));
+        $offeringsByLevel = SubjectOffering::active()->with('subject')
+            ->whereIn('grade_level_id', $sections->pluck('grade_level_id')->filter()->unique())
+            ->ordered()->get()->groupBy('grade_level_id');
+        $coverage = $sections->mapWithKeys(function ($section) use ($offeringsByLevel) {
+            $expected = $this->sections->expectedSubjects($section, $offeringsByLevel);
             $assigned = $section->teachingAssignments->pluck('subject_id');
 
             return [$section->id => ['assigned' => $expected->whereIn('id', $assigned)->count(), 'expected' => $expected->count()]];

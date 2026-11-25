@@ -16,7 +16,8 @@ use App\Models\LeaveType;
 use App\Models\Section;
 use App\Models\StaffProfile;
 use App\Models\Student;
-use App\Models\Subject;
+use App\Models\StudentElective;
+use App\Models\SubjectOffering;
 use App\Models\TeachingAssignment;
 use App\Models\Term;
 use App\Models\User;
@@ -29,10 +30,11 @@ use Illuminate\Support\Str;
  * Seventh-day Adventist institution (est. 1975, Bahan Township, Yangon)
  * offering kindergarten through grade 12, accredited by the Adventist
  * Accrediting Association (AAA). This seeder builds the complete class
- * ladder — Nursery/KG through Grade 12 — a realistic subject catalogue per
- * department (Bible-based curriculum, English medium, Myanmar language),
- * homeroom teachers, teaching assignments, student rosters with guardians,
- * attendance history, and fee records, so every portal opens with real data.
+ * ladder — Nursery/KG through Grade 12 — homeroom teachers, teaching
+ * assignments for each class's grade-level curriculum (the school's subjects,
+ * seeded by migration), Grade 11-12 elective choices, student rosters with
+ * guardians, attendance history, and fee records, so every portal opens with
+ * real data.
  */
 class K12StructureSeeder extends Seeder
 {
@@ -165,105 +167,19 @@ class K12StructureSeeder extends Seeder
         }
 
         // ------------------------------------------------------------------
-        // Subject catalogue — Bible-based Adventist curriculum, English medium,
-        // Myanmar language at every level.
+        // Teaching assignments — each class gets its grade level's curriculum
+        // (the school's subjects, seeded by the 2026_11_26_090300 migration).
+        // Nursery has no grade level, so no curriculum and no assignments.
         // ------------------------------------------------------------------
-        $catalogue = [
-            'Pre-School' => [
-                ['PS-BIB', 'Bible Stories & Values'],
-                ['PS-ENG', 'English Phonics & Reading Readiness'],
-                ['PS-NUM', 'Numeracy'],
-                ['PS-MYA', 'Myanmar Language'],
-                ['PS-ART', 'Arts & Crafts'],
-                ['PS-MUS', 'Music & Movement'],
-                ['PS-PE', 'Play & Motor Skills'],
-            ],
-            'Elementary' => [
-                ['EL-BIB', 'Bible'],
-                ['EL-ENG', 'English Language Arts'],
-                ['EL-MAT', 'Mathematics'],
-                ['EL-SCI', 'Science'],
-                ['EL-SOC', 'Social Studies'],
-                ['EL-MYA', 'Myanmar Language'],
-                ['EL-ICT', 'Computer Basics'],
-                ['EL-PE', 'Physical Education'],
-                ['EL-ART', 'Art'],
-                ['EL-MUS', 'Music'],
-            ],
-            'Middle School' => [
-                ['MS-BIB', 'Bible'],
-                ['MS-ENG', 'English Language Arts'],
-                ['MS-MAT', 'Mathematics (Pre-Algebra)'],
-                ['MS-SCI', 'General Science'],
-                ['MS-SOC', 'Social Studies'],
-                ['MS-GEO', 'Geography'],
-                ['MS-MYA', 'Myanmar Language'],
-                ['MS-ICT', 'ICT'],
-                ['MS-PE', 'Physical Education & Health'],
-                ['MS-ART', 'Art & Music'],
-            ],
-            'High School' => [
-                ['HS-BIB', 'Bible & Religious Studies'],
-                ['ENG9', 'English 9'],
-                ['ENG10', 'English 10'],
-                ['ENG11', 'English 11 (American Literature)'],
-                ['ENG12', 'English 12 (World Literature)'],
-                ['MATH9', 'Mathematics 9 (Algebra I)'],
-                ['MATH10', 'Mathematics 10 (Geometry)'],
-                ['MATH11', 'Mathematics 11 (Algebra II)'],
-                ['MATH12', 'Mathematics 12 (Pre-Calculus)'],
-                ['HS-BIO', 'Biology'],
-                ['HS-CHEM', 'Chemistry'],
-                ['HS-PHY', 'Physics'],
-                ['HS-HIS', 'World History'],
-                ['HS-ECON', 'Economics'],
-                ['HS-MYA', 'Myanmar Language & Literature'],
-                ['HS-ICT', 'Computer Science'],
-                ['HS-PE', 'Physical Education & Health'],
-                ['HS-MUS', 'Choir & Music'],
-            ],
-        ];
-
-        $subjects = [];
-        foreach ($catalogue as $deptName => $items) {
-            foreach ($items as [$code, $name]) {
-                $subject = Subject::firstOrCreate(['code' => $code], ['name' => $name, 'department_id' => $departments[$deptName]]);
-                // Upgrade the placeholder names left by earlier seeds (e.g. MATH9 "Mathematics").
-                if ($subject->name !== $name) {
-                    $subject->update(['name' => $name]);
-                }
-                $subjects[$code] = $subject;
-            }
-        }
-
-        // ------------------------------------------------------------------
-        // Teaching assignments — each class gets its level's subject set;
-        // grade-specific English/Math courses in High School.
-        // ------------------------------------------------------------------
-        $plan = [
-            'Nursery' => ['PS-BIB', 'PS-ENG', 'PS-NUM', 'PS-MYA', 'PS-ART', 'PS-MUS', 'PS-PE'],
-            'Kindergarten 1' => ['PS-BIB', 'PS-ENG', 'PS-NUM', 'PS-MYA', 'PS-ART', 'PS-MUS', 'PS-PE'],
-            'Kindergarten 2' => ['PS-BIB', 'PS-ENG', 'PS-NUM', 'PS-MYA', 'PS-ART', 'PS-MUS', 'PS-PE'],
-            'Grade 1-A' => ['EL-BIB', 'EL-ENG', 'EL-MAT', 'EL-SCI', 'EL-SOC', 'EL-MYA', 'EL-PE', 'EL-ART'],
-            'Grade 2-A' => ['EL-BIB', 'EL-ENG', 'EL-MAT', 'EL-SCI', 'EL-SOC', 'EL-MYA', 'EL-PE', 'EL-MUS'],
-            'Grade 3-A' => ['EL-BIB', 'EL-ENG', 'EL-MAT', 'EL-SCI', 'EL-SOC', 'EL-MYA', 'EL-ICT', 'EL-PE'],
-            'Grade 4-A' => ['EL-BIB', 'EL-ENG', 'EL-MAT', 'EL-SCI', 'EL-SOC', 'EL-MYA', 'EL-ICT', 'EL-PE'],
-            'Grade 5-A' => ['EL-BIB', 'EL-ENG', 'EL-MAT', 'EL-SCI', 'EL-SOC', 'EL-MYA', 'EL-ICT', 'EL-PE'],
-            'Grade 6-A' => ['MS-BIB', 'MS-ENG', 'MS-MAT', 'MS-SCI', 'MS-SOC', 'MS-MYA', 'MS-ICT', 'MS-PE', 'MS-ART'],
-            'Grade 7-A' => ['MS-BIB', 'MS-ENG', 'MS-MAT', 'MS-SCI', 'MS-GEO', 'MS-MYA', 'MS-ICT', 'MS-PE', 'MS-ART'],
-            'Grade 8-A' => ['MS-BIB', 'MS-ENG', 'MS-MAT', 'MS-SCI', 'MS-SOC', 'MS-MYA', 'MS-ICT', 'MS-PE', 'MS-ART'],
-            'Grade 9-A' => ['HS-BIB', 'ENG9', 'MATH9', 'HS-BIO', 'HS-HIS', 'HS-MYA', 'HS-ICT', 'HS-PE'],
-            'Grade 10-A' => ['HS-BIB', 'ENG10', 'MATH10', 'HS-BIO', 'HS-HIS', 'HS-MYA', 'HS-ICT', 'HS-PE'],
-            'Grade 11-A' => ['HS-BIB', 'ENG11', 'MATH11', 'HS-CHEM', 'HS-ECON', 'HS-MYA', 'HS-ICT', 'HS-PE'],
-            'Grade 12-A' => ['HS-BIB', 'ENG12', 'MATH12', 'HS-PHY', 'HS-ECON', 'HS-MYA', 'HS-MUS', 'HS-PE'],
-        ];
-
         $assignIdx = 0;
-        foreach ($plan as $grade => $codes) {
-            $section = $sections[$grade];
-            foreach ($codes as $code) {
+        foreach ($sections as $section) {
+            if (! $section->grade_level_id) {
+                continue;
+            }
+            $curriculum = SubjectOffering::active()->where('grade_level_id', $section->grade_level_id)->ordered()->pluck('subject_id');
+            foreach ($curriculum as $subjectId) {
                 TeachingAssignment::firstOrCreate(
-                    ['section_id' => $section->id, 'subject_id' => $subjects[$code]->id],
+                    ['section_id' => $section->id, 'subject_id' => $subjectId],
                     ['teacher_id' => $teachers[$assignIdx++ % count($teachers)]->id]
                 );
             }
@@ -377,6 +293,32 @@ class K12StructureSeeder extends Seeder
                     AttendanceRecord::firstOrCreate(
                         ['student_id' => $studentId, 'section_id' => $section->id, 'attendance_date' => $date],
                         ['term_id' => $currentTerm->id, 'status' => $status, 'recorded_by' => $recorder]
+                    );
+                }
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Grades 11-12 elective choices: the first four students of each class
+        // with slots choose one subject per slot (science or arts side, mixed for
+        // one student); the fifth is left for the Registrar to set.
+        // ------------------------------------------------------------------
+        foreach ($sections as $section) {
+            if (! $section->grade_level_id) {
+                continue;
+            }
+            $slots = SubjectOffering::active()->where('grade_level_id', $section->grade_level_id)
+                ->whereNotNull('elective_slot')->ordered()->get()->groupBy('elective_slot');
+            if ($slots->isEmpty()) {
+                continue;
+            }
+            $studentIds = Enrollment::where('section_id', $section->id)->where('status', 'Active')->orderBy('student_id')->pluck('student_id');
+            foreach ($studentIds->take(4)->values() as $i => $studentId) {
+                foreach ($slots as $slot => $options) {
+                    $pick = $i === 3 ? ($slot === 'A' ? 0 : 1) : $i % 2; // student 4 mixes sides (Q7 default allows it)
+                    StudentElective::firstOrCreate(
+                        ['student_id' => $studentId, 'academic_year_id' => $section->academic_year_id, 'elective_slot' => $slot],
+                        ['subject_offering_id' => $options[min($pick, $options->count() - 1)]->id]
                     );
                 }
             }

@@ -17,7 +17,7 @@
                             <tr class="border-b border-neutral-100 last:border-0">
                                 <td class="py-2.5 font-mono text-xs">{{ $subject->code }}</td>
                                 <td class="py-2.5">{{ $subject->name }}</td>
-                                <td class="py-2.5 text-neutral-500">{{ $subject->department?->name }}</td>
+                                <td class="py-2.5 text-neutral-500">{{ $subject->department?->name ?? 'School-wide' }}</td>
                                 <td class="py-2.5">{{ $subject->teaching_assignments_count }}</td>
                                 <td class="py-2.5 text-right">
                                     @if ($subject->teaching_assignments_count === 0)

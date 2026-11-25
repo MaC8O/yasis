@@ -48,7 +48,13 @@
         <div x-show="tab === 'assignments'" role="tabpanel">
             <x-card title="Subject teachers" subtitle="Pick a teacher for each subject and save once. Leave a subject on “Unassigned” to clear it. Subjects with grades recorded can change teacher but can't be cleared.">
                 @if ($subjects->isEmpty())
-                    <p class="text-sm text-neutral-400">The {{ $section->department?->name }} subject catalogue is empty — the VP Academic adds subjects.</p>
+                    <p class="text-sm text-neutral-400">
+                        @if ($section->gradeLevel)
+                            {{ $section->gradeLevel->name }} has no subjects in its curriculum yet. The Admin sets the curriculum.
+                        @else
+                            This section has no grade level, so it has no curriculum. Set its grade level on the Sections page.
+                        @endif
+                    </p>
                 @else
                     <form id="bulk-form" method="POST" action="{{ route('registrar.sections.assignments.bulk', $section) }}">
                         @csrf @method('PUT')
@@ -64,7 +70,7 @@
                                         <p class="font-semibold text-sm">{{ $subject->name }}</p>
                                         <p class="text-xs text-neutral-400">
                                             {{ $subject->code }}
-                                            @unless ($expectedIds->contains($subject->id)) · not in this grade's expected list @endunless
+                                            @unless ($expectedIds->contains($subject->id)) · not in this grade's curriculum @endunless
                                             @if ($grades) · {{ $grades }} {{ Str::plural('grade', $grades) }} recorded @endif
                                         </p>
                                     </div>

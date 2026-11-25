@@ -43,7 +43,9 @@ use App\Http\Controllers\Principal\PrincipalApprovalController;
 use App\Http\Controllers\Principal\PrincipalDashboardController;
 use App\Http\Controllers\Principal\PrincipalRegistrationController;
 use App\Http\Controllers\Registrar\AttendanceCorrectionController;
+use App\Http\Controllers\CurriculumController;
 use App\Http\Controllers\Registrar\DocumentRequestController;
+use App\Http\Controllers\Registrar\ElectiveController;
 use App\Http\Controllers\Registrar\GuardianController;
 use App\Http\Controllers\Registrar\PromotionBatchController;
 use App\Http\Controllers\Registrar\RegistrarAnnouncementController;
@@ -207,6 +209,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/calendar/{calendarEvent}/unpublish', [AcademicCalendarController::class, 'unpublish'])->name('calendar.unpublish');
     Route::delete('/calendar/{calendarEvent}', [AcademicCalendarController::class, 'destroy'])->name('calendar.destroy');
 
+    Route::get('/curriculum', [CurriculumController::class, 'index'])->name('curriculum.index');
+    Route::post('/curriculum/levels/{gradeLevel}', [CurriculumController::class, 'store'])->name('curriculum.store');
+    Route::put('/curriculum/rows/{subjectOffering}', [CurriculumController::class, 'update'])->name('curriculum.update');
+    Route::post('/curriculum/rows/{subjectOffering}/move/{direction}', [CurriculumController::class, 'move'])->whereIn('direction', ['up', 'down'])->name('curriculum.move');
+    Route::post('/curriculum/rows/{subjectOffering}/retire', [CurriculumController::class, 'retire'])->name('curriculum.retire');
+    Route::post('/curriculum/rows/{subjectOffering}/restore', [CurriculumController::class, 'restore'])->name('curriculum.restore');
+
     Route::get('/grade-levels', [GradeLevelController::class, 'index'])->name('grade-levels.index');
     Route::post('/grade-levels', [GradeLevelController::class, 'store'])->name('grade-levels.store');
     Route::put('/grade-levels/{gradeLevel}', [GradeLevelController::class, 'update'])->name('grade-levels.update');
@@ -269,6 +278,10 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
     Route::delete('/guardians/{guardian}/links/{student}', [GuardianController::class, 'unlink'])->name('guardians.unlink');
     Route::post('/guardians/{guardian}/links/{student}/primary', [GuardianController::class, 'setPrimary'])->name('guardians.set-primary');
     Route::post('/guardians/{guardian}/resend-invite', [GuardianController::class, 'resendInvite'])->name('guardians.resend-invite');
+
+    Route::get('/electives', [ElectiveController::class, 'index'])->name('electives.index');
+    Route::get('/electives/{section}', [ElectiveController::class, 'show'])->name('electives.show');
+    Route::put('/electives/{section}', [ElectiveController::class, 'update'])->name('electives.update');
 
     Route::get('/sections', [SectionController::class, 'index'])->name('sections.index');
     Route::post('/sections', [SectionController::class, 'store'])->name('sections.store');
@@ -414,6 +427,7 @@ Route::middleware(['auth', 'role:principal'])->prefix('principal')->name('princi
     Route::post('/announcements', [AnnouncementComposerController::class, 'store'])->name('announcements.store');
 
     Route::get('/governance', [GovernanceController::class, 'index'])->name('governance.index');
+    Route::get('/curriculum', [CurriculumController::class, 'index'])->name('curriculum.index');
     Route::put('/governance', [GovernanceController::class, 'update'])->name('governance.update');
 
     Route::get('/registration/create', [PrincipalRegistrationController::class, 'create'])->name('registration.create');

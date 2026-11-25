@@ -37,4 +37,16 @@ class GradeLevel extends Model
     {
         return $this->hasMany(Section::class);
     }
+
+    public function offerings()
+    {
+        return $this->hasMany(SubjectOffering::class);
+    }
+
+    /** The elective slots this level's active curriculum offers, e.g. ['A', 'B', 'C']. */
+    public function electiveSlots(): array
+    {
+        return $this->offerings()->active()->whereNotNull('elective_slot')
+            ->orderBy('elective_slot')->distinct()->pluck('elective_slot')->all();
+    }
 }

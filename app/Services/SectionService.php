@@ -8,6 +8,7 @@ use App\Models\GradeLevel;
 use App\Models\PromotionBatch;
 use App\Models\Section;
 use App\Models\Subject;
+use App\Models\SubjectOffering;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -139,27 +140,23 @@ class SectionService
     }
 
     /**
-     * Subjects a section is expected to have a teacher for: its department's catalogue, skipping
-     * subjects coded for a different grade (ENG10 is not expected in a Grade 9 section). The
-     * section's grade comes from its stored grade level. The subject side still relies on the
-     * code naming convention (trailing grade number) until the curriculum table (phase 2) gives
-     * subjects their grade levels. A KG level, or a section without a level, expects the whole
-     * department catalogue.
+     * Subjects a section is expected to have a teacher for: its grade level's active curriculum,
+     * in report-card order (every elective-slot subject included, since different students take
+     * different ones). A section without a grade level expects nothing until one is set.
      *
+     * @param  Collection<int, Collection<int, SubjectOffering>>|null  $offeringsByLevel  preloaded active offerings keyed by grade_level_id
      * @return Collection<int, Subject>
      */
-    public function expectedSubjects(Section $section, ?Collection $departmentSubjects = null): Collection
+    public function expectedSubjects(Section $section, ?Collection $offeringsByLevel = null): Collection
     {
-        $subjects = $departmentSubjects ?? Subject::where('department_id', $section->department_id)->orderBy('name')->get();
-        $code = $section->gradeLevel?->code;
-        $grade = $code !== null && ctype_digit($code) ? (int) $code : null;
+        if (! $section->grade_level_id) {
+            return collect();
+        }
 
-        return $subjects->filter(function (Subject $subject) use ($grade) {
-            if ($grade === null || ! preg_match('/(\d{1,2})$/', $subject->code, $m)) {
-                return true;
-            }
+        $offerings = $offeringsByLevel
+            ? $offeringsByLevel->get($section->grade_level_id, collect())
+            : SubjectOffering::active()->with('subject')->where('grade_level_id', $section->grade_level_id)->ordered()->get();
 
-            return (int) $m[1] === $grade;
-        })->values();
+        return $offerings->pluck('subject')->filter()->values();
     }
 }

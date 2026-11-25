@@ -185,30 +185,27 @@ class GradeLevelTest extends TestCase
 
     public function test_expected_subjects_follow_the_stored_level_not_the_name(): void
     {
-        // Named "Grade 9-A" but stored as Grade 10: the stored level decides.
+        // Named "Grade 9-A" but stored as Grade 10: the stored level's curriculum (13 subjects,
+        // Biology among them, which Grade 9 doesn't have) decides.
         $section = $this->section('Grade 9-A', '10');
-        foreach (['MATH9' => 'Mathematics 9', 'MATH10' => 'Mathematics 10', 'HS-BIB' => 'Bible'] as $code => $name) {
-            Subject::create(['code' => $code, 'name' => $name, 'department_id' => $this->department->id]);
-        }
 
         $this->actingAs($this->registrar->user)->get("/registrar/sections/{$section->id}")
-            ->assertOk()->assertSee('Mathematics 10')->assertSee('Bible')->assertDontSee('Mathematics 9')
+            ->assertOk()->assertSee('Biology')->assertSee('World Geography')->assertDontSee('Social Study')
             ->assertSee('Grade 10 · High School', false);
-        $this->actingAs($this->registrar->user)->get('/registrar/sections')->assertOk()->assertSee('0 / 2');
+        $this->actingAs($this->registrar->user)->get('/registrar/sections')->assertOk()->assertSee('0 / 13');
     }
 
-    public function test_a_kindergarten_or_unclassified_section_expects_the_whole_department_catalogue(): void
+    public function test_a_kindergarten_section_expects_its_curriculum_and_an_unclassified_one_expects_none(): void
     {
         $kg = $this->section('Kindergarten 1', 'KG1');
         $nursery = $this->section('Nursery', null);
-        foreach (['PS-ENG' => 'Early English', 'PS-NUM' => 'Numbers', 'MATH9' => 'Mathematics 9'] as $code => $name) {
-            Subject::create(['code' => $code, 'name' => $name, 'department_id' => $this->department->id]);
-        }
 
-        foreach ([$kg, $nursery] as $section) {
-            $this->actingAs($this->registrar->user)->get("/registrar/sections/{$section->id}")
-                ->assertOk()->assertSee('Early English')->assertSee('Numbers')->assertSee('Mathematics 9');
-        }
+        $this->actingAs($this->registrar->user)->get("/registrar/sections/{$kg->id}")
+            ->assertOk()->assertSee('MAPE (Music, Art and PE)')->assertSee('Character Building')->assertDontSee('Biology');
+        $this->actingAs($this->registrar->user)->get("/registrar/sections/{$nursery->id}")
+            ->assertOk()->assertSee('This section has no grade level, so it has no curriculum.')->assertDontSee('Mathematics');
+        $this->actingAs($this->registrar->user)->get('/registrar/sections')->assertOk()
+            ->assertSee('0 / 8')->assertSee('0 / 0');
     }
 
     public function test_sections_are_listed_in_grade_level_order_with_unclassified_last(): void
