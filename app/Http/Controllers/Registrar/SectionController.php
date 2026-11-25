@@ -7,6 +7,7 @@ use App\Http\Requests\Registrar\SectionRequest;
 use App\Models\AcademicYear;
 use App\Models\Department;
 use App\Models\Enrollment;
+use App\Models\GradeLevel;
 use App\Models\Section;
 use App\Models\StaffProfile;
 use App\Models\Student;
@@ -33,7 +34,7 @@ class SectionController extends Controller
         $showArchived = $request->boolean('archived');
 
         $query = Section::query()
-            ->with(['department', 'homeroomTeacher.user', 'enrollments', 'teachingAssignments.teacher.user'])
+            ->with(['department', 'gradeLevel', 'homeroomTeacher.user', 'enrollments', 'teachingAssignments.teacher.user'])
             ->where('academic_year_id', $yearId)
             ->when(! $showArchived, fn ($q) => $q->active());
 
@@ -47,8 +48,8 @@ class SectionController extends Controller
                 ->orWhereHas('teachingAssignments.teacher.user', fn ($u) => $u->where('name', 'like', "%{$search}%")));
         }
 
-        // Natural order so grades read 1,2,…,12 rather than the alphabetical 1,10,11,12,2,…
-        $sections = $query->orderByRaw('LENGTH(name), name')->get();
+        // School order by grade level (KG1, KG2, 1 … 12), sections without a level last.
+        $sections = $query->orderByGradeLevel()->get();
 
         $subjectsByDepartment = Subject::whereIn('department_id', $sections->pluck('department_id')->unique())
             ->orderBy('name')->get()->groupBy('department_id');
@@ -59,7 +60,7 @@ class SectionController extends Controller
             return [$section->id => ['assigned' => $expected->whereIn('id', $assigned)->count(), 'expected' => $expected->count()]];
         });
 
-        $activeSections = Section::active()->where('academic_year_id', $activeYear?->id)->orderByRaw('LENGTH(name), name')->with('enrollments')->get();
+        $activeSections = Section::active()->where('academic_year_id', $activeYear?->id)->orderByGradeLevel()->with('enrollments')->get();
 
         // Active students not yet placed in any section of the active year (§7.5 "place students").
         $unplacedStudents = Student::where('enrollment_status', 'Enrolled')
@@ -83,6 +84,7 @@ class SectionController extends Controller
             'activeSections' => $activeSections,
             'unplacedStudents' => $unplacedStudents,
             'departments' => Department::academic()->orderBy('name')->get(),
+            'gradeLevels' => GradeLevel::active()->ordered()->get(),
             'academicYears' => AcademicYear::orderByDesc('year_label')->get(),
             'activeYear' => $activeYear,
             'yearId' => $yearId,
@@ -100,7 +102,7 @@ class SectionController extends Controller
 
     public function show(Section $section, TeachingAssignmentService $assignments)
     {
-        $section->load(['department', 'academicYear', 'homeroomTeacher.user', 'teachingAssignments.teacher.user', 'teachingAssignments.subject']);
+        $section->load(['department', 'gradeLevel', 'academicYear', 'homeroomTeacher.user', 'teachingAssignments.teacher.user', 'teachingAssignments.subject']);
 
         $expected = $this->sections->expectedSubjects($section);
         $current = $section->teachingAssignments->keyBy('subject_id');

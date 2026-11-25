@@ -12,6 +12,7 @@ use App\Models\DocumentRequest;
 use App\Models\Enrollment;
 use App\Models\Grade;
 use App\Models\Guardian;
+use App\Models\GradeLevel;
 use App\Models\GradeScaleBand;
 use App\Models\ImportBatch;
 use App\Models\ImportedFeeRecord;
@@ -271,9 +272,10 @@ class DatabaseSeeder extends Seeder
 
         // Sections for the active year, with the demo Teacher as homeroom for Grade 9-A.
         $teacherProfile = StaffProfile::where('staff_id_number', 'USR-0005')->first();
+        $levelIds = GradeLevel::pluck('id', 'code');
         $sectionDefs = [
-            ['name' => 'Grade 9-A', 'department_id' => $highSchool->id, 'homeroom_teacher_id' => $teacherProfile->id],
-            ['name' => 'Grade 8-B', 'department_id' => $middleSchool->id, 'homeroom_teacher_id' => null],
+            ['name' => 'Grade 9-A', 'department_id' => $highSchool->id, 'grade_level_id' => $levelIds['9'], 'homeroom_teacher_id' => $teacherProfile->id],
+            ['name' => 'Grade 8-B', 'department_id' => $middleSchool->id, 'grade_level_id' => $levelIds['8'], 'homeroom_teacher_id' => null],
         ];
         foreach ($sectionDefs as $def) {
             Section::firstOrCreate(

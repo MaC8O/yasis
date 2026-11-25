@@ -1,4 +1,4 @@
-<x-app-layout :title="$section->name" :subtitle="($section->department?->name ?? 'No department').' · '.($section->academicYear?->year_label ?? '').' · Homeroom: '.($section->homeroomTeacher?->user?->name ?? 'unassigned')" badge="Registrar" role="registrar">
+<x-app-layout :title="$section->name" :subtitle="($section->gradeLevel?->name ?? 'Grade level not set').' · '.($section->department?->name ?? 'No department').' · '.($section->academicYear?->year_label ?? '').' · Homeroom: '.($section->homeroomTeacher?->user?->name ?? 'unassigned')" badge="Registrar" role="registrar">
     <div x-data="{ tab: @js($tab) }" class="space-y-6">
         <div class="flex flex-wrap items-center gap-3">
             <a href="{{ route('registrar.sections.index', ['academic_year' => $section->academic_year_id]) }}" class="inline-flex items-center min-h-[44px] text-sm font-semibold text-neutral-500 hover:underline">← All sections</a>

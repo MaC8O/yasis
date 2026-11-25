@@ -112,6 +112,7 @@ class SectionPlacementTest extends TestCase
         $this->actingAs($registrar->user)->post('/registrar/sections', [
             'name' => 'Grade 9-A',
             'department_id' => $department->id,
+            'grade_level_id' => \App\Models\GradeLevel::where('code', '9')->value('id'),
             'homeroom_teacher_id' => $hr->id,
             'capacity' => 35,
         ])->assertSessionHasErrors('homeroom_teacher_id');
@@ -139,6 +140,7 @@ class SectionPlacementTest extends TestCase
         $this->actingAs($registrar->user)->post('/registrar/sections', [
             'name' => 'Grade 9-A',
             'department_id' => $department->id,
+            'grade_level_id' => \App\Models\GradeLevel::where('code', '9')->value('id'),
             'capacity' => 35,
         ])->assertSessionHasErrors('name');
 

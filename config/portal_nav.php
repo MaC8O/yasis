@@ -11,6 +11,7 @@ return [
             ['label' => 'User Management', 'route' => 'admin.users.index', 'icon' => 'users'],
             ['label' => 'Teacher Class Assignment', 'route' => 'admin.teacher-assignments.index', 'icon' => 'layers'],
             ['label' => 'Academic Year', 'route' => 'admin.academic-year.index', 'icon' => 'calendar'],
+            ['label' => 'Grade Levels', 'route' => 'admin.grade-levels.index', 'icon' => 'layers'],
             ['label' => 'Academic Calendar', 'route' => 'admin.calendar.index', 'icon' => 'calendar'],
             ['label' => 'Grade Scale', 'route' => 'admin.grade-scale.index', 'icon' => 'list'],
             ['label' => 'Audit Logs', 'route' => 'admin.audit-logs.index', 'icon' => 'shield'],

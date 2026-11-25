@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Principal;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\Department;
+use App\Models\GradeLevel;
 use App\Models\GradeScaleBand;
 use App\Models\SystemSetting;
 use App\Services\AuditService;
@@ -23,6 +24,7 @@ class GovernanceController extends Controller
             'terms' => $activeYear?->terms()->orderBy('sequence')->get() ?? collect(),
             'currentTerm' => $currentTerm,
             'gradeScales' => $this->academicGradeScales(),
+            'gradeLevels' => GradeLevel::ordered()->withCount('sections')->get(),
             'settings' => [
                 'promotion_window_open' => SystemSetting::get('promotion_window_open', '1'),
                 'transcript_issuance_enabled' => SystemSetting::get('transcript_issuance_enabled', '0'),

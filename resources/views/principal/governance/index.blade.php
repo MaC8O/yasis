@@ -82,6 +82,23 @@
         </x-card>
     </div>
 
+    <x-card title="Grade levels" subtitle="The school's grade levels in order. Grading, subjects, report cards and fees follow these. Set by the Admin (Grade Levels); shown here read-only.">
+        @if ($gradeLevels->isEmpty())
+            <p class="text-sm text-neutral-400">No grade levels are set up yet.</p>
+        @else
+            <ol class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+                @foreach ($gradeLevels as $level)
+                    <li class="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm {{ $level->isArchived() ? 'opacity-60' : '' }}">
+                        <span><span class="font-semibold">{{ $level->name }}</span> <span class="text-xs text-neutral-400">({{ $level->code }})</span></span>
+                        <span class="text-xs text-neutral-500">
+                            @if ($level->isArchived()) Retired @else {{ $level->sections_count }} {{ Str::plural('section', $level->sections_count) }} @endif
+                        </span>
+                    </li>
+                @endforeach
+            </ol>
+        @endif
+    </x-card>
+
     <x-card title="Grade scale" subtitle="How term scores become letter grades in each academic department. Set by the Admin (Grade Scale); shown here read-only so you can see what report cards will use.">
         @php $fmt = fn ($v) => rtrim(rtrim(number_format((float) $v, 2), '0'), '.'); @endphp
         @if ($gradeScales->isEmpty())
