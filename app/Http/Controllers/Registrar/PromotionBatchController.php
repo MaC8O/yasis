@@ -39,6 +39,7 @@ class PromotionBatchController extends Controller
             'section' => $section->load(['enrollments' => fn ($q) => $q->where('status', '!=', 'Withdrawn')->with('student'), 'department']),
             'targetSections' => Section::where('id', '!=', $section->id)->orderBy('name')->get(),
             'recommendations' => $results->promotionRecommendations($section),
+            'blocker' => $results->promotionBlocker($section),
         ]);
     }
 

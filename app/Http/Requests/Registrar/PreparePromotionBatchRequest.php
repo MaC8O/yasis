@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Registrar;
 
+use App\Exceptions\ActionRefused;
 use App\Models\Student;
+use App\Models\SystemSetting;
 use App\Services\ResultService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -16,9 +18,21 @@ class PreparePromotionBatchRequest extends FormRequest
     /** @var array<int, array{action: ?string, basis: string}>|null */
     private ?array $recommendations = null;
 
+    /**
+     * The route is limited to the Registrar role. A closed promotion window is a 403, as before.
+     * A year whose results aren't frozen yet is refused with the reason, before any validation:
+     * the decisions would be made against provisional results.
+     */
     public function authorize(): bool
     {
-        return true; // the route is limited to the Registrar role
+        if (SystemSetting::get('promotion_window_open', '1') !== '1') {
+            return false;
+        }
+        if ($blocker = app(ResultService::class)->promotionBlocker($this->route('section'))) {
+            throw new ActionRefused($blocker);
+        }
+
+        return true;
     }
 
     protected function prepareForValidation(): void
