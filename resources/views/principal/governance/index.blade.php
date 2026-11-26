@@ -99,44 +99,41 @@
         @endif
     </x-card>
 
-    <x-card title="Grade scale" subtitle="How term scores become letter grades in each academic department. Set by the Admin (Grade Scale); shown here read-only so you can see what report cards will use.">
-        @php $fmt = fn ($v) => rtrim(rtrim(number_format((float) $v, 2), '0'), '.'); @endphp
-        @if ($gradeScales->isEmpty())
-            <p class="text-sm text-neutral-400">No academic departments are set up yet.</p>
+    <x-card title="Grading schemes" subtitle="How each grade level's results become a class of pass. Set by the Admin; shown here read-only.">
+        @if ($gradingSchemes->isEmpty())
+            <p class="text-sm text-neutral-400">No grading schemes are set up yet.</p>
         @else
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                @foreach ($gradeScales as $scale)
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                @foreach ($gradingSchemes as $scheme)
                     <div class="rounded-xl border border-neutral-200 p-4">
-                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-                            <p class="font-semibold text-sm">{{ $scale['department']->name }}</p>
-                            <x-badge :color="$scale['hasGpa'] ? 'blue' : 'neutral'">{{ $scale['hasGpa'] ? 'GPA scale' : 'Descriptive (no GPA)' }}</x-badge>
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <p class="font-semibold text-sm">{{ $scheme->name }}</p>
+                            <x-badge color="blue">{{ $scheme->resultLabel() }}</x-badge>
                         </div>
-                        @if ($scale['bands']->isEmpty())
-                            <p class="text-xs text-warning">No grade bands defined — ask the Admin to set this department's scale.</p>
-                        @else
-                            <table class="w-full text-xs">
-                                <thead>
-                                    <tr class="text-left text-neutral-400 border-b border-neutral-200">
-                                        <th class="py-1 font-semibold">Letter</th>
-                                        <th class="py-1 font-semibold">Score</th>
-                                        <th class="py-1 font-semibold text-right">GPA</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($scale['bands'] as $band)
-                                        <tr class="border-b border-neutral-100 last:border-0">
-                                            <td class="py-1.5 font-semibold">{{ $band['letter'] }}</td>
-                                            <td class="py-1.5 text-neutral-600">{{ $fmt($band['min']) }}–{{ $fmt($band['max']) }}%</td>
-                                            <td class="py-1.5 text-neutral-600 text-right">{{ $band['gpa'] === null ? '—' : number_format((float) $band['gpa'], 1) }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                        <p class="mt-1 text-xs text-neutral-500">{{ $scheme->gradeLevels->isEmpty() ? 'No grade level uses it.' : $scheme->gradeLevels->pluck('name')->implode(', ') }}</p>
+                        @if ($scheme->pending_question || $scheme->flagged_bands_count)
+                            <p class="mt-2 text-xs font-semibold text-warning">Uses defaults that need confirmation from the school.</p>
                         @endif
+                        <table class="mt-3 w-full text-xs">
+                            <thead>
+                                <tr class="text-left text-neutral-400 border-b border-neutral-200">
+                                    <th class="py-1 font-semibold">Class of pass</th>
+                                    <th class="py-1 font-semibold text-right">{{ $scheme->resultLabel() }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($scheme->bands as $band)
+                                    <tr class="border-b border-neutral-100 last:border-0">
+                                        <td class="py-1.5 font-semibold">{{ $band->label }}</td>
+                                        <td class="py-1.5 text-neutral-600 text-right whitespace-nowrap">{{ number_format((float) $band->min, $scheme->result_decimals) }}–{{ number_format((float) $band->max, $scheme->result_decimals) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
                 @endforeach
             </div>
-            <p class="mt-4 text-xs text-neutral-400">Administrative departments (Finance, HR, Canteen, …) have no students, so they have no grade scale.</p>
+            <a href="{{ route('principal.grading-schemes.index') }}" class="mt-4 inline-flex items-center min-h-[44px] text-sm font-semibold text-info hover:underline">See the full schemes: subject marks, letters, points and grade values</a>
         @endif
     </x-card>
 </x-app-layout>

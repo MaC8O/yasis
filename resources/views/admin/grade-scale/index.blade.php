@@ -1,4 +1,9 @@
-<x-app-layout title="Grade Scale" subtitle="Academic grading bands per teaching department — the YASIS standard scale." badge="Admin" role="admin">
+<x-app-layout title="Grade Scale (current, until phase 4)" subtitle="Academic grading bands per teaching department — the YASIS standard scale." badge="Admin" role="admin">
+    <div class="rounded-xl border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning">
+        This department scale still gives the letters teachers, students and guardians see today. It is being replaced by
+        <a href="{{ route('admin.grading-schemes.index') }}" class="font-semibold underline">Grading Schemes</a>, which are set per grade level;
+        the result calculation switches over to them in phase 4, and this page is then retired.
+    </div>
     <x-card title="How the YASIS scale works" subtitle="Applies to teaching departments only.">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-4">

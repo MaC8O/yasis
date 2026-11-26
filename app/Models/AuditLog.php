@@ -76,6 +76,7 @@ class AuditLog extends Model
         'DocumentRequest' => 'Academic Records',
         'Grade' => 'Grades & Assessment',
         'GradeScaleBand' => 'Grades & Assessment',
+        'GradingScheme' => 'Grades & Assessment',
         'GradeChangeRequest' => 'Grades & Assessment',
         'Assessment' => 'Grades & Assessment',
         'AssessmentCategory' => 'Grades & Assessment',
