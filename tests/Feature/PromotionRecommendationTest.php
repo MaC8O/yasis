@@ -45,6 +45,15 @@ class PromotionRecommendationTest extends TestCase
         }
     }
 
+    /** The Principal locks every term, which freezes the year. */
+    private function freezeYear(): void
+    {
+        $principal = $this->makeStaff('principal', 'Principal');
+        foreach ($this->terms as $term) {
+            app(ResultFreezeService::class)->lock($term, $principal->user);
+        }
+    }
+
     private function store(array $actions)
     {
         return $this->actingAs($this->registrar->user)->post("/registrar/promotions/{$this->section->id}", ['actions' => $actions]);
@@ -61,6 +70,7 @@ class PromotionRecommendationTest extends TestCase
 
     public function test_a_decision_that_follows_the_recommendation_needs_no_reason(): void
     {
+        $this->freezeYear();
         $this->store([
             ['student_id' => $this->passing->id, 'action' => 'Promote'],
             ['student_id' => $this->failing->id, 'action' => 'Retain'],
@@ -73,6 +83,7 @@ class PromotionRecommendationTest extends TestCase
 
     public function test_a_different_decision_needs_a_reason_and_the_audit_keeps_both(): void
     {
+        $this->freezeYear();
         $this->store([
             ['student_id' => $this->passing->id, 'action' => 'Promote'],
             ['student_id' => $this->failing->id, 'action' => 'Promote', 'override_reason' => ''],
@@ -95,6 +106,7 @@ class PromotionRecommendationTest extends TestCase
 
     public function test_the_vp_and_principal_see_the_overrides_on_the_batch(): void
     {
+        $this->freezeYear();
         $this->store([
             ['student_id' => $this->passing->id, 'action' => 'Promote'],
             ['student_id' => $this->failing->id, 'action' => 'Promote', 'override_reason' => 'Passed the Math re-sit in June.'],
@@ -108,10 +120,7 @@ class PromotionRecommendationTest extends TestCase
 
     public function test_a_frozen_year_is_not_marked_provisional(): void
     {
-        $principal = $this->makeStaff('principal', 'Principal');
-        foreach ($this->terms as $term) {
-            app(ResultFreezeService::class)->lock($term, $principal->user);
-        }
+        $this->freezeYear();
 
         $this->actingAs($this->registrar->user)->get("/registrar/promotions/{$this->section->id}/create")->assertOk()
             ->assertSee('Average 90')
@@ -122,11 +131,50 @@ class PromotionRecommendationTest extends TestCase
     {
         $late = $this->pupil('Late Joiner', $this->section);
         $this->setMarks($late, $this->section, $this->terms[0], self::KG_EXAMPLE);
+        $this->freezeYear();
 
         $this->actingAs($this->registrar->user)->get("/registrar/promotions/{$this->section->id}/create")->assertOk()
             ->assertSeeInOrder(['Late Joiner', 'No recommendation']);
 
         $this->store([['student_id' => $late->id, 'action' => 'Retain']])->assertSessionHasNoErrors();
         $this->assertNull(PromotionBatchItem::where('student_id', $late->id)->sole()->recommended_action);
+    }
+
+    public function test_a_batch_cannot_be_submitted_until_the_years_results_are_frozen(): void
+    {
+        $page = $this->actingAs($this->registrar->user)->get("/registrar/promotions/{$this->section->id}/create")->assertOk()
+            ->assertSee("Provisional: this batch can't be submitted yet", false)
+            ->assertSee('Not locked yet: First, Second, Third, Final.')
+            ->assertSee('Average 90'); // the provisional recommendations still show
+        $this->assertMatchesRegularExpression('/<button type="submit" disabled aria-describedby="promotion-blocker"[^>]*>Prepare batch</', $page->getContent());
+
+        // The server refuses too, before any other check (here the override has no reason).
+        $refused = $this->store([
+            ['student_id' => $this->passing->id, 'action' => 'Promote'],
+            ['student_id' => $this->failing->id, 'action' => 'Promote'],
+        ]);
+        $refused->assertSessionHasNoErrors()->assertSessionHas('warning');
+        $this->assertStringContainsString("can be submitted once the year's results are frozen", session('warning'));
+        $this->assertSame(0, PromotionBatch::count());
+
+        // Three terms locked: still refused, naming the term left.
+        $principal = $this->makeStaff('principal', 'Principal');
+        foreach (array_slice($this->terms, 0, 3) as $term) {
+            app(ResultFreezeService::class)->lock($term, $principal->user);
+        }
+        $this->store([['student_id' => $this->passing->id, 'action' => 'Promote']])->assertSessionHas('warning');
+        $this->assertStringContainsString('Not locked yet: Final.', session('warning'));
+        $this->assertSame(0, PromotionBatch::count());
+
+        // The last term locked: the year freezes and the batch goes through.
+        app(ResultFreezeService::class)->lock($this->terms[3], $principal->user);
+        $page = $this->actingAs($this->registrar->user)->get("/registrar/promotions/{$this->section->id}/create")->assertOk()
+            ->assertDontSee("can't be submitted yet", false);
+        $this->assertDoesNotMatchRegularExpression('/<button type="submit" disabled/', $page->getContent());
+        $this->store([
+            ['student_id' => $this->passing->id, 'action' => 'Promote'],
+            ['student_id' => $this->failing->id, 'action' => 'Retain'],
+        ])->assertSessionHasNoErrors()->assertRedirect('/registrar/promotions');
+        $this->assertSame(1, PromotionBatch::count());
     }
 }

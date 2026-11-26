@@ -118,9 +118,15 @@ class ResultService
     /** A section's year results: from the year's freeze when every term is locked and frozen, otherwise live. */
     public function sectionYear(Section $section): SectionResults
     {
-        $freeze = ResultFreeze::active()->whereNull('term_id')->where('academic_year_id', $section->academic_year_id)->latest('id')->first();
+        $freeze = $this->yearFreeze($section->academic_year_id);
 
         return $freeze ? $this->stored($freeze, $section) : $this->liveSectionYear($section);
+    }
+
+    /** The year's active freeze: it exists once every term of the year is locked and frozen. */
+    public function yearFreeze(int $academicYearId): ?ResultFreeze
+    {
+        return ResultFreeze::active()->whereNull('term_id')->where('academic_year_id', $academicYearId)->latest('id')->first();
     }
 
     /**
@@ -153,6 +159,25 @@ class ResultService
         }
 
         return $this->calculate($section, $section->academic_year_id, $marks, $rulesFor, true);
+    }
+
+    /**
+     * Why a promotion batch for this section can't be submitted yet, or null when it can. A batch
+     * needs the year's results frozen (every term locked by the Principal), so the decisions are
+     * made against final results, not provisional ones.
+     */
+    public function promotionBlocker(Section $section): ?string
+    {
+        if ($this->yearFreeze($section->academic_year_id)) {
+            return null;
+        }
+
+        $terms = Term::where('academic_year_id', $section->academic_year_id)->orderBy('sequence')->get();
+        $open = $terms->reject(fn (Term $t) => $t->is_locked && ResultFreeze::active()->where('term_id', $t->id)->exists());
+
+        return 'A promotion batch can be submitted once the year\'s results are frozen, when the Principal has locked every term. '
+            .($open->isEmpty() ? 'The year is not frozen yet.' : 'Not locked yet: '.$open->pluck('name')->implode(', ').'.')
+            .' The recommendations below are provisional until then.';
     }
 
     /**

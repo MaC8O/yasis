@@ -7,7 +7,7 @@ Source of truth: [YASIS_Academic_and_Fee_Rules.md](YASIS_Academic_and_Fee_Rules.
 | 1. Grade levels on sections | Merged | `grade-levels`, PR #40 |
 | 2. Curriculum (`subject_offerings`, Grade 11-12 electives) | Merged | `curriculum`, PR #41 |
 | 3. Grading schemes per grade level | Merged | `grading-schemes`, PR #42 |
-| 4a. Calculation service, frozen results, promotion recommendation | PR open, awaiting review | `results-service`, PR #43 |
+| 4a. Calculation service, frozen results, promotion recommendation | Merged; follow-up PR open (a batch needs a frozen year) | `results-service`, PR #43; `promotion-needs-frozen-year`, PR #44 |
 | 4b. Switch the pages to the new results, retire the department grade scale | Not started (wait for the go-ahead) | |
 | 5. KG-9 gradebook template | Not started | |
 | 6. Report cards | Not started | |
@@ -106,7 +106,7 @@ Source of truth: [YASIS_Academic_and_Fee_Rules.md](YASIS_Academic_and_Fee_Rules.
 
 **Band history:** saving a set archives the old rows (`archived_at`) and inserts the new rows with `created_at` at the same moment, so nothing is deleted. `GradingSchemeBand::inForceAt($time)` returns the set in force at a given moment: rows with `created_at` <= T and (`archived_at` null or > T).
 
-## Phase 4a: result calculation and frozen results (done, in review)
+## Phase 4a: result calculation and frozen results (merged)
 
 Phase 4 is split in two (owner, 2026-11-26). 4a adds the calculation, the frozen results and the promotion recommendation, while every page families and teachers see keeps the old calculation. 4b switches the pages over and retires the department grade scale.
 
@@ -144,10 +144,17 @@ Phase 4 is split in two (owner, 2026-11-26). 4a adds the calculation, the frozen
 
 **Decisions (owner, 2026-11-26):**
 - **Relock:** reuse the rules of the earlier freeze by default, plus an explicit "Recalculate with the current rules" option with a written reason, audited with the rules before and after. It lets the school correct a locked term once Q10 is answered.
-  - Built as "the term's previous freeze" rather than literally the first: they are the same unless the Principal recalculated. This way a later unlock and relock doesn't quietly undo a correction.
+  - Built as "the term's previous freeze" rather than literally the first: they are the same unless the Principal recalculated. This way a later unlock and relock doesn't quietly undo a correction. **Approved by the owner (2026-11-26).**
 - The average, point total and GPA are built from the rounded subject marks (Q10).
 - Students are ranked by the printed figure (Q13).
 - There is no overall result, class or position until every counted subject has a mark. Subject marks still show.
+
+**Follow-up (PR #44, owner, 2026-11-26): a promotion batch needs a frozen year.**
+- The batch page still shows the recommendations while the year isn't frozen, marked provisional.
+  - A banner explains why the batch can't be submitted and names the terms not locked yet.
+  - The "Prepare batch" button is disabled and points to that explanation.
+- The server refuses a submit too, before any other check, with the same explanation (`PreparePromotionBatchRequest::authorize()`, `ResultService::promotionBlocker()`). A closed promotion window is still a 403.
+- The year freezes when the Principal has locked every term.
 
 **Deploy (staging) for 4a:**
 1. `php artisan migrate`: 5 migrations, all new tables except three nullable columns on `promotion_batch_items`.

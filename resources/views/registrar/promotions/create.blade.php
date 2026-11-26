@@ -1,4 +1,11 @@
 <x-app-layout title="Prepare Promotion Batch" :subtitle="$section->name.' — '.$section->department->name" badge="Registrar" role="registrar">
+    @if ($blocker)
+        <div id="promotion-blocker" role="note" class="rounded-xl border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning">
+            <p class="font-semibold">Provisional: this batch can't be submitted yet</p>
+            <p class="mt-1">{{ $blocker }}</p>
+        </div>
+    @endif
+
     <form method="POST" action="{{ route('registrar.promotions.store', $section) }}">
         @csrf
         <x-card title="Roster actions" subtitle="Choose Promote / Retain / Graduate for each student. Each decision starts at the calculated recommendation; a different decision needs a reason, which the VP and Principal see.">
@@ -60,11 +67,17 @@
                     </tbody>
                 </table>
             </div>
-            <p class="mt-3 text-xs text-neutral-400">Recommendations come from the year's results (section 9 of the school's rules). “Provisional” means the year is not frozen yet: some terms are still unlocked.</p>
+            <p class="mt-3 text-xs text-neutral-400">Recommendations come from the year's results (section 9 of the school's rules). “Provisional” means the year is not frozen yet: some terms are still unlocked, and the batch can't be submitted until they are.</p>
         </x-card>
 
         <div class="flex gap-3 mt-6">
-            <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Prepare batch</button>
+            @if ($blocker)
+                <button type="submit" disabled aria-describedby="promotion-blocker" title="{{ $blocker }}"
+                        class="bg-neutral-300 text-neutral-600 font-semibold rounded-lg px-6 py-3 text-sm cursor-not-allowed">Prepare batch</button>
+                <span class="text-xs text-neutral-500 self-center">Disabled until every term is locked (see above).</span>
+            @else
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-6 py-3 text-sm hover:bg-brand-dark transition-colors">Prepare batch</button>
+            @endif
             <a href="{{ route('registrar.promotions.index') }}" class="text-sm font-semibold text-neutral-500 self-center">Cancel</a>
         </div>
     </form>

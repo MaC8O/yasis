@@ -6,6 +6,7 @@ use App\Models\Enrollment;
 use App\Models\PromotionBatch;
 use App\Models\Section;
 use App\Models\Student;
+use App\Services\ResultFreezeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Concerns\SeedsCoreData;
 use Tests\TestCase;
@@ -37,6 +38,9 @@ class PromotionTwoKeyApprovalTest extends TestCase
 
         $promoteeEnrollment = Enrollment::create(['student_id' => $promotee->id, 'section_id' => $fromSection->id, 'status' => 'Active']);
         $graduateEnrollment = Enrollment::create(['student_id' => $graduate->id, 'section_id' => $fromSection->id, 'status' => 'Active']);
+
+        // A batch needs the year's results frozen: the Principal locks the (only) term.
+        app(ResultFreezeService::class)->lock($term, $principal->user);
 
         $this->actingAs($registrar->user)->post("/registrar/promotions/{$fromSection->id}", [
             'actions' => [
