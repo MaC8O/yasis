@@ -316,7 +316,7 @@ Scholarship record (the marks table):
 What the summary rows contain:
 
 - G.P.A: for Grades 11-12, the credit-hour GPA. For KG-10 the cards also have a "G.P.A" row; default: show the term's average percentage there for KG-9 and the point total for Grade 10. See Q12.
-- POSITION: the student's rank in their section for that term, by average (KG-9), point total (Grade 10) or GPA (11-12). Default: tied students share a rank and the next rank is skipped (1, 2, 2, 4). See Q13.
+- POSITION: the student's rank in their section for that term, by average (KG-9), point total (Grade 10) or GPA (11-12). Default: tied students share a rank and the next rank is skipped (1, 2, 2, 4). See Q13. Default: students who failed are ranked together with those who passed; see Q20.
 - TOTAL NUMBER IN CLASS: students actively enrolled in the section on the last day of the term.
 - DAYS ABSENT: Absent plus Excused days in the term. See Q8.
 
@@ -472,3 +472,4 @@ The defaults above let the build start, but each of these should be confirmed wi
 - Q17. Is Grade 9 tuition really 2,600,000 Ks (the same as Grades 11 and 12), and not 2,550,000 Ks like Grades 5-8?
 - Q18. Which instalment includes the yearly fee and the refundable deposit, and are the four instalments equal?
 - Q19. Grade 10: what is the result when a subject is below 40 marks? And what is the class of pass when the point total is below 40? For example, a student with D (40-48) in all seven counted subjects passes every subject but has only 35 points.
+- Q20. When ranking students for their position in class, are students who failed ranked together with those who passed, or are they placed after all passing students?

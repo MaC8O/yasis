@@ -7,6 +7,7 @@ use App\Models\GradeLevel;
 use App\Models\GradingScheme;
 use App\Models\ResultFreeze;
 use App\Models\Section;
+use App\Models\Student;
 use App\Models\StudentElective;
 use App\Models\StudentResult;
 use App\Models\Subject;
@@ -15,6 +16,7 @@ use App\Models\Term;
 use App\Services\Results\SchemeRules;
 use App\Services\Results\SectionResults;
 use App\Services\Results\StudentResultData;
+use App\Services\Results\StudentTermReport;
 use App\Services\Results\SubjectResult;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
@@ -100,6 +102,25 @@ class ResultService
         $live = $this->liveSectionTerm($section, $term);
 
         return $term->is_locked ? new SectionResults($live->students, lockedWithoutFreeze: true) : $live;
+    }
+
+    /**
+     * A student's term as the pages show it: the section they were in that school year, and their
+     * result from the term's freeze or calculated live (provisional).
+     */
+    public function studentTerm(Student $student, Term $term): StudentTermReport
+    {
+        $section = Section::whereHas('enrollments', fn ($q) => $q->where('student_id', $student->id)->where('status', '!=', 'Withdrawn'))
+            ->where('academic_year_id', $term->academic_year_id)
+            ->with('gradeLevel')->orderByDesc('id')->first();
+        if (! $section) {
+            return new StudentTermReport($term, null, null, false, false, null);
+        }
+
+        $results = $this->sectionTerm($section, $term);
+
+        return new StudentTermReport($term, $section, $results->for($student), $results->frozen,
+            $results->lockedWithoutFreeze, $results->freeze?->frozen_at);
     }
 
     /**
@@ -241,7 +262,7 @@ class ResultService
             $marks[$studentId] ?? [], $extraSubjects, $blockers, $isYear, $isTopLevel,
         )]);
 
-        $this->rank($students);
+        $this->rank($students, $rules);
 
         return new SectionResults($students);
     }
@@ -402,18 +423,30 @@ class ResultService
         return $hours->isZero() ? null : $sum->dividedBy($hours, self::SCALE, RoundingMode::HALF_UP);
     }
 
-    /** Positions by the printed figure: tied students share a position and the next is skipped (Q13). */
-    private function rank(Collection $students): void
+    /**
+     * Positions by the printed figure: tied students share a position and the next is skipped
+     * (Q13). With the scheme's `failed_last` ranking (Q20), every student who failed comes after
+     * all who passed; by default everyone is ranked together.
+     */
+    private function rank(Collection $students, ?SchemeRules $rules): void
     {
+        $failedLast = $rules?->failedRanking === 'failed_last';
+        $key = fn (StudentResultData $r) => ($failedLast ? ($r->passed ? '1' : '0').'|' : '').$r->value;
         $ranked = $students->filter(fn (StudentResultData $r) => $r->isComplete())
-            ->sort(fn ($a, $b) => BigDecimal::of($b->value)->compareTo($a->value))->values();
+            ->sort(function ($a, $b) use ($failedLast) {
+                if ($failedLast && $a->passed !== $b->passed) {
+                    return $a->passed ? -1 : 1;
+                }
+
+                return BigDecimal::of($b->value)->compareTo($a->value);
+            })->values();
 
         $position = 0;
         $previous = null;
         foreach ($ranked as $i => $result) {
-            if ($previous === null || ! BigDecimal::of($result->value)->isEqualTo($previous)) {
+            if ($previous === null || $key($result) !== $previous) {
                 $position = $i + 1;
-                $previous = $result->value;
+                $previous = $key($result);
             }
             $result->position = $position;
             $result->rankedCount = $ranked->count();

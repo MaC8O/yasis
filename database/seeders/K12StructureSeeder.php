@@ -7,7 +7,6 @@ use App\Models\AttendanceRecord;
 use App\Models\Department;
 use App\Models\Enrollment;
 use App\Models\GradeLevel;
-use App\Models\GradeScaleBand;
 use App\Models\Guardian;
 use App\Models\ImportBatch;
 use App\Models\ImportedFeeRecord;
@@ -43,37 +42,8 @@ class K12StructureSeeder extends Seeder
         $year = AcademicYear::where('is_active', true)->firstOrFail();
         $departments = Department::pluck('id', 'name');
 
-        // ------------------------------------------------------------------
-        // YASIS standard grade scale (§8.4): descriptive (no GPA) for the lower
-        // school; letter grades with GPA points for the secondary school.
-        // ------------------------------------------------------------------
-        $descriptive = [
-            ['letter' => 'E', 'min_score' => 90, 'gpa_point' => null], // Excellent
-            ['letter' => 'G', 'min_score' => 80, 'gpa_point' => null], // Good
-            ['letter' => 'S', 'min_score' => 70, 'gpa_point' => null], // Satisfactory
-            ['letter' => 'P', 'min_score' => 60, 'gpa_point' => null], // Progressing
-            ['letter' => 'N', 'min_score' => 0,  'gpa_point' => null], // Needs support
-        ];
-        $secondary = [
-            ['letter' => 'A',  'min_score' => 90, 'gpa_point' => 4.0],
-            ['letter' => 'B+', 'min_score' => 85, 'gpa_point' => 3.5],
-            ['letter' => 'B',  'min_score' => 80, 'gpa_point' => 3.0],
-            ['letter' => 'C+', 'min_score' => 75, 'gpa_point' => 2.5],
-            ['letter' => 'C',  'min_score' => 70, 'gpa_point' => 2.0],
-            ['letter' => 'D',  'min_score' => 60, 'gpa_point' => 1.0],
-            ['letter' => 'F',  'min_score' => 0,  'gpa_point' => 0.0],
-        ];
-        $scaleByDept = [
-            'Pre-School' => $descriptive, 'Elementary' => $descriptive,
-            'Middle School' => $secondary, 'High School' => $secondary,
-        ];
-        foreach ($scaleByDept as $deptName => $bands) {
-            $deptId = $departments[$deptName];
-            GradeScaleBand::where('department_id', $deptId)->delete();
-            foreach ($bands as $band) {
-                GradeScaleBand::create(array_merge($band, ['department_id' => $deptId]));
-            }
-        }
+        // Grades come from the grading schemes per grade level, seeded by migration; the old
+        // department grade scale is retired (its table is kept for past records).
 
         // ------------------------------------------------------------------
         // Academic calendar: a few representative events for the active year.

@@ -27,12 +27,19 @@ class GradebookFlexibleItemsTest extends TestCase
     use RefreshDatabase, SeedsCoreData;
 
     private StaffProfile $teacher;
+
     private StaffProfile $otherTeacher;
+
     private Section $section;
+
     private Subject $subject;
+
     private Term $term;
+
     private AssessmentCategory $quizzes;
+
     private AssessmentCategory $tests;
+
     /** @var list<Student> */
     private array $students = [];
 
@@ -133,10 +140,8 @@ class GradebookFlexibleItemsTest extends TestCase
         $this->assertCount(2, $log->details['changes']);
 
         // Weighted result is unchanged by item types: 0.4 * 90% + 0.6 * 85% = 87%.
-        $result = app(GradeService::class)->computeStudentResult($a, $this->section, $this->subject, $this->term);
-        $this->assertEquals(87.0, $result['pct']);
-        $this->assertSame('B', $result['letter']);
-        $this->assertEquals(3.0, $result['gpa']);
+        $marks = app(GradeService::class)->sectionMarks($this->section, $this->term);
+        $this->assertSame('87.00', $marks[$a->id][$this->subject->id]);
     }
 
     public function test_a_score_above_the_maximum_is_rejected_and_nothing_in_that_save_is_stored(): void

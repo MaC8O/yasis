@@ -55,7 +55,6 @@
                     ['admin.academic-year.index', 'Academic Year', 'calendar'],
                     ['admin.calendar.index', 'Academic Calendar', 'calendar'],
                     ['admin.grading-schemes.index', 'Grading Schemes', 'scale'],
-                    ['admin.grade-scale.index', 'Grade Scale (current, until phase 4)', 'list'],
                     ['admin.audit-logs.index', 'Audit Logs', 'shield'],
                     ['admin.backup.index', 'Data & Backup', 'database'],
                     ['admin.settings.index', 'System Settings', 'sliders'],

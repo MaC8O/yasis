@@ -30,6 +30,7 @@ final class SchemeRules
         public readonly ?string $pendingQuestion,
         public readonly array $markBands,
         public readonly array $resultBands,
+        public readonly string $failedRanking = 'together',
     ) {}
 
     public static function fromScheme(GradingScheme $scheme): self
@@ -46,7 +47,7 @@ final class SchemeRules
         return new self(
             $scheme->id, $scheme->code, $scheme->name, $scheme->result_basis, (string) $scheme->result_max,
             $scheme->mark_decimals, $scheme->result_decimals, $scheme->rounding_mode, $scheme->subject_fail_rule,
-            $scheme->pending_question, $bands('mark'), $bands('result'),
+            $scheme->pending_question, $bands('mark'), $bands('result'), $scheme->failed_ranking ?? 'together',
         );
     }
 
@@ -58,6 +59,8 @@ final class SchemeRules
             $snapshot->grading_scheme_id, $s['code'], $s['name'], $s['result_basis'], $s['result_max'],
             (int) $s['mark_decimals'], (int) $s['result_decimals'], $s['rounding_mode'], $s['subject_fail_rule'],
             $s['pending_question'], $snapshot->mark_bands, $snapshot->result_bands,
+            // Freezes made before Q20 existed ranked everyone together.
+            $s['failed_ranking'] ?? 'together',
         );
     }
 
@@ -74,6 +77,7 @@ final class SchemeRules
                 'result_decimals' => $this->resultDecimals,
                 'rounding_mode' => $this->roundingMode,
                 'subject_fail_rule' => $this->subjectFailRule,
+                'failed_ranking' => $this->failedRanking,
                 'pending_question' => $this->pendingQuestion,
             ],
             'mark_bands' => $this->markBands,

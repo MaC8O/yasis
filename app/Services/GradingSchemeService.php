@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 class GradingSchemeService
 {
     /** Settings the Admin edits on the scheme itself. Rounding precision and range top go with the band sets. */
-    private const SETTINGS = ['name', 'rounding_mode', 'subject_fail_rule'];
+    private const SETTINGS = ['name', 'rounding_mode', 'subject_fail_rule', 'failed_ranking'];
 
     public function __construct(protected AuditService $audit) {}
 

@@ -73,8 +73,9 @@ class GradingSchemeTest extends TestCase
         $this->assertSame(['KG_9', 'G10', 'G11_12'], GradingScheme::orderBy('id')->pluck('code')->all());
 
         $kg = $this->scheme('KG_9');
-        $this->assertSame(['average', '100.00', 0, 0, 'half_up', 'any_counted', 'Q10'],
-            [$kg->result_basis, (string) $kg->result_max, $kg->mark_decimals, $kg->result_decimals, $kg->rounding_mode, $kg->subject_fail_rule, $kg->pending_question]);
+        // Q20 (how failed students are ranked) was added to every scheme by a later migration.
+        $this->assertSame(['average', '100.00', 0, 0, 'half_up', 'any_counted', 'together', 'Q10,Q20'],
+            [$kg->result_basis, (string) $kg->result_max, $kg->mark_decimals, $kg->result_decimals, $kg->rounding_mode, $kg->subject_fail_rule, $kg->failed_ranking, $kg->pending_question]);
         $this->assertSame([['PASS', '40.00', '100.00', null, false], ['FAIL', '0.00', '39.00', null, true]], $this->bands('KG_9', 'mark'));
         $this->assertSame([
             ['Distinction', '95.00', '100.00', null, false], ['First', '81.00', '94.00', null, false], ['Second', '61.00', '80.00', null, false],
@@ -82,7 +83,7 @@ class GradingSchemeTest extends TestCase
         ], $this->bands('KG_9', 'result'));
 
         $g10 = $this->scheme('G10');
-        $this->assertSame(['point_total', '70.00', 0, 'any_counted', 'Q10,Q19'],
+        $this->assertSame(['point_total', '70.00', 0, 'any_counted', 'Q10,Q19,Q20'],
             [$g10->result_basis, (string) $g10->result_max, $g10->result_decimals, $g10->subject_fail_rule, $g10->pending_question]);
         $this->assertSame([
             ['A', '85.00', '100.00', '10.00', false], ['B', '76.00', '84.00', '9.00', false], ['C+', '67.00', '75.00', '8.00', false],
@@ -98,7 +99,7 @@ class GradingSchemeTest extends TestCase
         $this->assertSame(['Q19', 'Q19'], GradingSchemeBand::active()->whereNotNull('pending_question')->pluck('pending_question')->all());
 
         $gpa = $this->scheme('G11_12');
-        $this->assertSame(['gpa', '4.00', 0, 2, 'any_compulsory', 'Q10'],
+        $this->assertSame(['gpa', '4.00', 0, 2, 'any_compulsory', 'Q10,Q20'],
             [$gpa->result_basis, (string) $gpa->result_max, $gpa->mark_decimals, $gpa->result_decimals, $gpa->subject_fail_rule, $gpa->pending_question]);
         $this->assertSame([
             ['A', '90.00', '100.00', '4.00', false], ['A-', '85.00', '89.00', '3.67', false], ['B+', '80.00', '84.00', '3.33', false],
@@ -286,7 +287,7 @@ class GradingSchemeTest extends TestCase
         $scheme = $this->scheme('KG_9');
 
         $this->asAdmin()->put("/admin/grading-schemes/{$scheme->id}", [
-            'name' => 'KG1 to Grade 9', 'rounding_mode' => 'down', 'subject_fail_rule' => 'any_counted', 'confirmed' => '1',
+            'name' => 'KG1 to Grade 9', 'rounding_mode' => 'down', 'subject_fail_rule' => 'any_counted', 'failed_ranking' => 'failed_last', 'confirmed' => '1',
         ])->assertSessionHasNoErrors()->assertSessionHas('status');
 
         $scheme->refresh();
@@ -294,12 +295,14 @@ class GradingSchemeTest extends TestCase
         $log = AuditLog::where('action', 'Updated grading scheme')->sole();
         $this->assertSame('admin', $log->role);
         $this->assertSame(['from' => 'half_up', 'to' => 'down'], $log->details['changes']['rounding_mode']);
-        $this->assertSame(['from' => 'Q10', 'to' => null], $log->details['changes']['pending_question']);
+        $this->assertSame(['from' => 'Q10,Q20', 'to' => null], $log->details['changes']['pending_question']);
+        $this->assertSame(['from' => 'together', 'to' => 'failed_last'], $log->details['changes']['failed_ranking']);
+        $this->assertSame('failed_last', $scheme->failed_ranking);
 
-        $this->asAdmin()->put("/admin/grading-schemes/{$scheme->id}", ['name' => 'KG1 to Grade 9', 'rounding_mode' => 'down', 'subject_fail_rule' => 'any_counted'])
+        $this->asAdmin()->put("/admin/grading-schemes/{$scheme->id}", ['name' => 'KG1 to Grade 9', 'rounding_mode' => 'down', 'subject_fail_rule' => 'any_counted', 'failed_ranking' => 'failed_last'])
             ->assertSessionHas('warning', 'Nothing was changed.');
-        $this->asAdmin()->put("/admin/grading-schemes/{$scheme->id}", ['name' => 'Grade 10', 'rounding_mode' => 'sideways', 'subject_fail_rule' => 'any_counted'])
-            ->assertSessionHasErrors(['name', 'rounding_mode']);
+        $this->asAdmin()->put("/admin/grading-schemes/{$scheme->id}", ['name' => 'Grade 10', 'rounding_mode' => 'sideways', 'subject_fail_rule' => 'any_counted', 'failed_ranking' => 'alphabetical'])
+            ->assertSessionHasErrors(['name', 'rounding_mode', 'failed_ranking']);
     }
 
     public function test_changing_a_levels_scheme_is_audited_with_before_and_after(): void
@@ -327,7 +330,9 @@ class GradingSchemeTest extends TestCase
             ->assertSee('Grade 10')
             ->assertSee('Point total of the counted subjects')
             ->assertSee('Needs confirmation from the school (Q19)')
-            ->assertSee('Q10, Q19 in the rules file')
+            ->assertSee('Q10, Q19, Q20 in the rules file')
+            ->assertSee('Position in class')
+            ->assertSee('Everyone is ranked together by their result')
             ->assertSee('Edit subject marks bands')
             ->assertSee('Save settings')
             ->assertSeeInOrder(['Kindergarten 1', 'Grade 12']);

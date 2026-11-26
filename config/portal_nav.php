@@ -15,7 +15,6 @@ return [
             ['label' => 'Curriculum', 'route' => 'admin.curriculum.index', 'icon' => 'book'],
             ['label' => 'Grading Schemes', 'route' => 'admin.grading-schemes.index', 'icon' => 'scale'],
             ['label' => 'Academic Calendar', 'route' => 'admin.calendar.index', 'icon' => 'calendar'],
-            ['label' => 'Grade Scale (current, until phase 4)', 'route' => 'admin.grade-scale.index', 'icon' => 'list'],
             ['label' => 'Audit Logs', 'route' => 'admin.audit-logs.index', 'icon' => 'shield'],
             ['label' => 'Behavior', 'route' => 'behavior.index', 'icon' => 'flag'],
             ['label' => 'Lesson Plans', 'route' => 'lesson-plans.index', 'icon' => 'document'],

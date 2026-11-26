@@ -7,7 +7,6 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\DataExportController;
 use App\Http\Controllers\Admin\GradeLevelController;
-use App\Http\Controllers\Admin\GradeScaleController;
 use App\Http\Controllers\Admin\RetentionActionController;
 use App\Http\Controllers\Admin\SystemSettingsController;
 use App\Http\Controllers\Admin\TeacherAssignmentController as AdminTeacherAssignmentController;
@@ -228,12 +227,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::put('/grading-schemes/levels/{gradeLevel}', [GradingSchemeController::class, 'assign'])->name('grading-schemes.assign');
     Route::put('/grading-schemes/{gradingScheme}', [GradingSchemeController::class, 'update'])->name('grading-schemes.update');
     Route::put('/grading-schemes/{gradingScheme}/bands/{kind}', [GradingSchemeController::class, 'updateBands'])->whereIn('kind', ['mark', 'result'])->name('grading-schemes.bands');
-
-    // The department scale still drives the letters shown today; phase 4 retires it.
-    Route::get('/grade-scale', [GradeScaleController::class, 'index'])->name('grade-scale.index');
-    Route::post('/grade-scale', [GradeScaleController::class, 'store'])->name('grade-scale.store');
-    Route::post('/grade-scale/departments/{department}/defaults', [GradeScaleController::class, 'loadDefaults'])->name('grade-scale.defaults');
-    Route::delete('/grade-scale/{gradeScaleBand}', [GradeScaleController::class, 'destroy'])->name('grade-scale.destroy');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
     Route::get('/audit-logs/export', [AuditLogController::class, 'export'])->name('audit-logs.export');

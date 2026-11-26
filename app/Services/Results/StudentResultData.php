@@ -51,6 +51,16 @@ final class StudentResultData
         return $this->status === 'complete';
     }
 
+    /** The result as printed: "90%" for an average, "56" for a point total, "3.04" for a GPA; null without one. */
+    public function display(): ?string
+    {
+        if (! $this->isComplete()) {
+            return null;
+        }
+
+        return $this->basis === 'average' ? "{$this->value}%" : $this->value;
+    }
+
     /** "Average 90 · First", "GPA 3.04 · Second", or the reasons there is no result. */
     public function summary(): string
     {

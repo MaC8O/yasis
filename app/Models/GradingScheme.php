@@ -28,11 +28,17 @@ class GradingScheme extends Model
         'none' => 'A failed subject does not fail the year on its own',
     ];
 
+    /** Q20: where students who failed are placed when ranking for position in class. */
+    public const FAILED_RANKINGS = [
+        'together' => 'Everyone is ranked together by their result',
+        'failed_last' => 'Students who failed are ranked after all who passed',
+    ];
+
     public const BAND_KINDS = ['mark' => 'Subject marks', 'result' => 'Class of pass'];
 
     protected $fillable = [
         'code', 'name', 'result_basis', 'result_max', 'mark_decimals', 'result_decimals',
-        'rounding_mode', 'subject_fail_rule', 'pending_question',
+        'rounding_mode', 'subject_fail_rule', 'failed_ranking', 'pending_question',
     ];
 
     protected function casts(): array

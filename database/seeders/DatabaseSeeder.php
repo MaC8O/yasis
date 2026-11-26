@@ -12,7 +12,6 @@ use App\Models\DocumentRequest;
 use App\Models\Enrollment;
 use App\Models\Grade;
 use App\Models\GradeLevel;
-use App\Models\GradeScaleBand;
 use App\Models\Guardian;
 use App\Models\ImportBatch;
 use App\Models\ImportedFeeRecord;
@@ -73,21 +72,6 @@ class DatabaseSeeder extends Seeder
         ];
         foreach ($hrDepartments as $department) {
             Department::firstOrCreate(['name' => $department['name']], $department);
-        }
-
-        // Placeholder A–F scale per department, flagged pending the school's actual grade-scale documents (§3.6).
-        $bands = [
-            ['letter' => 'A', 'min_score' => 90, 'gpa_point' => 4.00],
-            ['letter' => 'B', 'min_score' => 80, 'gpa_point' => 3.00],
-            ['letter' => 'C', 'min_score' => 70, 'gpa_point' => 2.00],
-            ['letter' => 'D', 'min_score' => 60, 'gpa_point' => 1.00],
-            ['letter' => 'F', 'min_score' => 0, 'gpa_point' => 0.00],
-        ];
-        // Only academic departments have students and grades; administrative ones (Finance, Canteen, …) get no scale.
-        foreach (Department::academic()->get() as $department) {
-            foreach ($bands as $band) {
-                GradeScaleBand::firstOrCreate(array_merge(['department_id' => $department->id], $band));
-            }
         }
 
         $academicYear = AcademicYear::firstOrCreate(

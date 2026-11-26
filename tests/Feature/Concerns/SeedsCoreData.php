@@ -4,7 +4,6 @@ namespace Tests\Feature\Concerns;
 
 use App\Models\AcademicYear;
 use App\Models\Department;
-use App\Models\GradeScaleBand;
 use App\Models\LeaveType;
 use App\Models\StaffProfile;
 use App\Models\Term;
@@ -31,7 +30,7 @@ trait SeedsCoreData
         \App\Support\LessonPlanPermissions::sync();
     }
 
-    protected function makeStaff(string $role, string $roleType, string $email = null, array $overrides = []): StaffProfile
+    protected function makeStaff(string $role, string $roleType, ?string $email = null, array $overrides = []): StaffProfile
     {
         $user = User::create([
             'name' => ucfirst($role).' Test User',
@@ -70,13 +69,7 @@ trait SeedsCoreData
 
     protected function seedDepartment(string $name = 'High School'): Department
     {
-        $department = Department::create(['name' => $name, 'level' => 'Secondary']);
-
-        foreach ([['A', 90, 4.0], ['B', 80, 3.0], ['C', 70, 2.0], ['D', 60, 1.0], ['F', 0, 0.0]] as [$letter, $min, $gpa]) {
-            GradeScaleBand::create(['department_id' => $department->id, 'letter' => $letter, 'min_score' => $min, 'gpa_point' => $gpa]);
-        }
-
-        return $department;
+        return Department::create(['name' => $name, 'level' => 'Secondary']);
     }
 
     protected function seedLeaveTypes(): void

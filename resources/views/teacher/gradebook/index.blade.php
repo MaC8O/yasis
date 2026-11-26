@@ -214,8 +214,7 @@
                 'weight' => (float) $c->weight_pct,
                 'assessments' => $c->assessments->map(fn ($a) => ['id' => $a->id, 'max' => (float) $a->max_score])->values(),
             ])->values(),
-            'students' => $roster->map(fn ($s) => ['id' => $s->id, 'dept' => $s->department_id])->values(),
-            'bands' => $bandsByDept,
+            'preview' => $preview,
         ];
         $initialScores = [];
         foreach ($gridCategories as $gc) {
@@ -230,8 +229,9 @@
     @endphp
 
     <script>
-        // Mirrors App\Services\GradeService exactly: category % = mean of (score/max*100) over graded
-        // items; final = weighted mean of category %s, counting only categories that have a score.
+        // Mirrors App\Services\GradeService::sectionMarks(): category % = mean of (score/max*100) over
+        // graded items; mark = weighted mean of category %s, counting only categories that have a score.
+        // The letter is a preview with ResultService's rounding and the section's scheme bands.
         window.gradebookGrid = function (init) {
             return {
                 meta: init.meta,
@@ -258,12 +258,22 @@
                     }
                     return wu > 0 ? ws / wu : null;
                 },
-                letterFor(sid) {
+                // The mark as printed: two decimals, then the scheme's decimals and rounding mode.
+                printed(sid) {
                     const p = this.finalPct(sid);
-                    if (p === null) return '';
-                    const st = this.meta.students.find(s => s.id === sid);
-                    const bands = (st && this.meta.bands[st.dept]) || [];
-                    for (const b of bands) { if (p >= b.min) return b.letter; }
+                    const s = this.meta.preview;
+                    if (p === null || !s) return null;
+                    const two = Math.round(p * 100 + 1e-9) / 100;
+                    const f = Math.pow(10, s.decimals);
+                    return (s.mode === 'down' ? Math.floor(two * f + 1e-9) : Math.round(two * f + 1e-9)) / f;
+                },
+                letterFor(sid) {
+                    const m = this.printed(sid);
+                    const s = this.meta.preview;
+                    if (m === null) return '';
+                    for (const b of s.bands) {
+                        if (m >= b.min && m <= b.max) return s.passFail ? (b.fail ? 'FAIL' : 'PASS') : b.label;
+                    }
                     return '';
                 },
                 fmt(p) { return p === null ? '—' : (Math.round(p * 100) / 100) + '%'; },
@@ -293,7 +303,10 @@
                                         <span class="text-xs font-normal text-neutral-400">· {{ rtrim(rtrim(number_format($category->weight_pct, 2), '0'), '.') }}%</span>
                                     </th>
                                 @endforeach
-                                <th rowspan="2" class="py-2 px-3 text-right font-semibold border-b border-l border-neutral-200 align-bottom bg-success-soft/50">Result</th>
+                                <th rowspan="2" class="py-2 px-3 text-right font-semibold border-b border-l border-neutral-200 align-bottom bg-success-soft/50">
+                                    Result
+                                    <span class="block text-xs font-normal {{ $frozenRows !== null ? 'text-success' : 'text-warning' }}">{{ $frozenRows !== null ? 'Final (frozen '.$frozenAt?->format('j M').')' : 'Provisional' }}</span>
+                                </th>
                             </tr>
                             <tr class="text-neutral-400 text-xs">
                                 @foreach ($gridCategories as $category)
@@ -323,9 +336,15 @@
                                         <td class="py-1.5 px-2 border-b border-l border-neutral-100 text-center font-medium text-neutral-600 bg-neutral-50/50"
                                             x-text="fmt(catPct(meta.categories[{{ $ci }}], {{ $student->id }}))"></td>
                                     @endforeach
-                                    <td class="py-1.5 px-3 border-b border-l border-neutral-100 text-right font-bold bg-success-soft/50 whitespace-nowrap">
-                                        <span x-text="fmt(finalPct({{ $student->id }}))"></span>
-                                        <span class="text-neutral-400 font-medium" x-text="letterFor({{ $student->id }}) ? '(' + letterFor({{ $student->id }}) + ')' : ''"></span>
+                                    <td class="py-1.5 px-3 border-b border-l border-neutral-100 text-right font-bold bg-success-soft/50 whitespace-nowrap" data-result="{{ $student->id }}">
+                                        @if ($frozenRows !== null)
+                                            @php $frozen = $frozenRows[$student->id] ?? null; @endphp
+                                            <span>{{ $frozen?->roundedMark ?? '—' }}</span>
+                                            @if ($frozen?->bandLabel) <span class="text-neutral-400 font-medium">({{ $frozen->bandLabel }})</span> @endif
+                                        @else
+                                            <span x-text="printed({{ $student->id }}) !== null ? printed({{ $student->id }}) : fmt(finalPct({{ $student->id }}))" :title="'Exact: ' + fmt(finalPct({{ $student->id }}))"></span>
+                                            <span class="text-neutral-400 font-medium" x-text="letterFor({{ $student->id }}) ? '(' + letterFor({{ $student->id }}) + ')' : ''"></span>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty

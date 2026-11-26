@@ -274,6 +274,47 @@ class ResultServiceTest extends TestCase
         $this->assertNull($all->for(\App\Models\Student::where('name', 'Withdrawn')->sole()));
     }
 
+    // --- Q20: where failed students are ranked ---------------------------------------------------
+
+    /** Passing 70, passing 60, and a higher average (86) that fails on Mathematics. */
+    private function rankingSection(): array
+    {
+        $section = $this->levelSection('Grade 2-A', '2');
+        $codes = ['MORAL', 'MYAN', 'ENG', 'MATH', 'SCI', 'MAPE'];
+        $seventy = $this->pupil('Passes 70', $section);
+        $this->setMarks($seventy, $section, $this->term(), array_fill_keys($codes, 70));
+        $sixty = $this->pupil('Passes 60', $section);
+        $this->setMarks($sixty, $section, $this->term(), array_fill_keys($codes, 60));
+        $failed = $this->pupil('Fails Maths', $section);
+        $this->setMarks($failed, $section, $this->term(), array_merge(array_fill_keys($codes, 99), ['MATH' => 20]));
+        $failedToo = $this->pupil('Fails Maths Too', $section);
+        $this->setMarks($failedToo, $section, $this->term(), array_merge(array_fill_keys($codes, 99), ['MATH' => 20]));
+
+        return [$section, $seventy, $sixty, $failed, $failedToo];
+    }
+
+    public function test_by_default_failed_students_are_ranked_together_with_passing_ones(): void
+    {
+        [$section, $seventy, $sixty, $failed, $failedToo] = $this->rankingSection();
+
+        $all = $this->results->sectionTerm($section, $this->term());
+
+        $this->assertSame(['86', false], [$all->for($failed)->value, $all->for($failed)->passed]);
+        $this->assertSame([1, 1, 3, 4], [$all->for($failed)->position, $all->for($failedToo)->position, $all->for($seventy)->position, $all->for($sixty)->position]);
+    }
+
+    public function test_with_failed_last_every_failed_student_comes_after_all_who_passed(): void
+    {
+        [$section, $seventy, $sixty, $failed, $failedToo] = $this->rankingSection();
+        GradingScheme::where('code', 'KG_9')->update(['failed_ranking' => 'failed_last']);
+
+        $all = $this->results->sectionTerm($section, $this->term());
+
+        // Passing students first; the two failed students tie for the next place.
+        $this->assertSame([1, 2, 3, 3], [$all->for($seventy)->position, $all->for($sixty)->position, $all->for($failed)->position, $all->for($failedToo)->position]);
+        $this->assertSame(4, $all->for($seventy)->rankedCount);
+    }
+
     // --- The year and the promotion recommendation -----------------------------------------------
 
     public function test_a_subjects_year_mark_is_the_average_of_its_four_rounded_term_marks(): void
