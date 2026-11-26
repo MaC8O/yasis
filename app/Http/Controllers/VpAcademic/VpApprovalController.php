@@ -14,7 +14,7 @@ class VpApprovalController extends Controller
     public function index()
     {
         return view('vp_academic.approvals.index', [
-            'promotionBatches' => PromotionBatch::where('status', 'Pending')->with(['fromSection.department', 'preparedBy.user', 'items'])->get(),
+            'promotionBatches' => PromotionBatch::where('status', 'Pending')->with(['fromSection.department', 'preparedBy.user', 'items.student'])->get(),
             'transcripts' => DocumentRequest::where('type', 'Transcript')->where('status', 'Pending Approval')->with(['student', 'preparedBy.user'])->get(),
             'gradeChanges' => GradeChangeRequest::where('status', 'Pending')
                 ->with(['assessment.category.section', 'assessment.category.subject', 'student', 'term', 'requestedBy.user'])

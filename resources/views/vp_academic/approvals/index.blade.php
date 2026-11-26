@@ -6,6 +6,7 @@
                     <div>
                         <p class="font-semibold text-sm">{{ $batch->fromSection->name }} — {{ $batch->items->count() }} students</p>
                         <p class="text-xs text-neutral-500">Prepared by {{ $batch->preparedBy->user->name ?? '—' }}</p>
+                        @include('promotions.partials.overrides', ['batch' => $batch])
                     </div>
                     <div class="flex gap-3">
                         <form method="POST" action="{{ route('vp_academic.approvals.promotions.approve', $batch) }}">
