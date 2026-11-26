@@ -27,4 +27,9 @@ class Term extends Model
     {
         return $this->hasMany(AssessmentCategory::class);
     }
+
+    public function resultFreezes()
+    {
+        return $this->hasMany(ResultFreeze::class);
+    }
 }

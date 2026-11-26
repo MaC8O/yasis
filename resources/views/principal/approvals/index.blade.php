@@ -15,6 +15,7 @@
                         <p class="text-xs text-neutral-500">
                             VP: {{ $batch->vpApprovedBy->user->name ?? '—' }} &check; {{ $batch->vp_approved_at?->format('d M') }}
                         </p>
+                        @include('promotions.partials.overrides', ['batch' => $batch])
                     </div>
                     <div class="flex gap-3">
                         <form method="POST" action="{{ route('principal.approvals.promotions.approve', $batch) }}">

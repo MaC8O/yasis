@@ -19,6 +19,27 @@
                     </span>
                     <input type="checkbox" name="grade_lock" value="1" @checked($currentTerm?->is_locked) class="w-5 h-5">
                 </label>
+                @if ($currentTerm?->is_locked && $activeFreeze)
+                    <p class="-mt-2 text-xs text-neutral-500">Results frozen {{ $activeFreeze->frozen_at->format('j M Y, H:i') }}: report cards and past-term views read these stored results. Unlocking lifts the freeze (it is kept) and the term is calculated live again.</p>
+                @elseif ($currentTerm?->is_locked)
+                    <p class="-mt-2 text-xs text-warning">Locked before frozen results existed: run the freeze-locked-terms command so this term's results are stored.</p>
+                @elseif ($previousFreeze)
+                    <fieldset class="-mt-1 rounded-xl border border-neutral-200 bg-neutral-50 p-3 space-y-2" x-data="{ rules: '{{ old('relock_rules', 'previous_freeze') }}' }">
+                        <legend class="px-1 text-xs font-semibold text-neutral-600">{{ $currentTerm->name }} was locked before. When you lock it again:</legend>
+                        <label class="flex items-start gap-2 text-sm min-h-[44px]">
+                            <input type="radio" name="relock_rules" value="previous_freeze" x-model="rules" class="mt-1">
+                            <span>Use the rules the term was locked with <span class="block text-xs text-neutral-500">The marks are recalculated from today's grades; bands and rounding stay as they were at {{ $previousFreeze->frozen_at->format('j M Y') }}.</span></span>
+                        </label>
+                        <label class="flex items-start gap-2 text-sm min-h-[44px]">
+                            <input type="radio" name="relock_rules" value="current" x-model="rules" class="mt-1">
+                            <span>Recalculate with the current rules <span class="block text-xs text-neutral-500">For example after the school answers Q10. The audit log keeps the rules before and after.</span></span>
+                        </label>
+                        <div x-show="rules === 'current'" x-cloak>
+                            <label for="relock-reason" class="block text-xs font-semibold mb-1">Why (required)</label>
+                            <textarea id="relock-reason" name="relock_reason" rows="2" maxlength="1000" class="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">{{ old('relock_reason') }}</textarea>
+                        </div>
+                    </fieldset>
+                @endif
 
                 <label class="flex items-center justify-between">
                     <span>

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PromotionBatchItem extends Model
 {
-    protected $fillable = ['promotion_batch_id', 'student_id', 'action', 'to_section_id'];
+    protected $fillable = ['promotion_batch_id', 'student_id', 'action', 'to_section_id', 'recommended_action', 'recommendation_basis', 'override_reason'];
 
     public function batch()
     {

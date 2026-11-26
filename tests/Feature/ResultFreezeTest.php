@@ -24,7 +24,7 @@ use Tests\TestCase;
 /**
  * Frozen results: locking a term calculates its results once and stores them with the scheme
  * settings and bands used, so later edits to bands or settings can't change a past term. Unlocking
- * lifts the freeze (kept as history); relocking reuses the first freeze's rules unless the Principal
+ * lifts the freeze (kept as history); relocking reuses the previous freeze's rules unless the Principal
  * chooses to recalculate with the current rules and says why. A grade change applied to a locked
  * term re-freezes that section with the freeze's own rules.
  */
@@ -115,7 +115,7 @@ class ResultFreezeTest extends TestCase
         $this->assertSame(2, $log->details['students']);
     }
 
-    public function test_unlocking_lifts_the_freeze_and_relocking_reuses_the_first_freezes_rules(): void
+    public function test_unlocking_lifts_the_freeze_and_relocking_reuses_the_previous_freezes_rules(): void
     {
         $first = $this->freezes()->lock($this->terms[0], $this->principal->user);
         $this->raiseFirstClass();
@@ -129,7 +129,7 @@ class ResultFreezeTest extends TestCase
         $this->assertSame('Second', $this->stored($this->first)->classLabel);
 
         $again = $this->freezes()->lock($this->terms[0], $this->principal->user);
-        $this->assertSame('first_freeze', $again->rules);
+        $this->assertSame('previous_freeze', $again->rules);
         $this->assertSame('First', $this->stored($this->first)->classLabel);
         $this->assertEquals(
             $first->schemes()->orderBy('grading_scheme_id')->get()->map->only(['grading_scheme_id', 'settings', 'mark_bands', 'result_bands'])->all(),
@@ -174,7 +174,7 @@ class ResultFreezeTest extends TestCase
 
         $this->actingAs($this->principal->user)->get('/principal/governance')->assertOk()
             ->assertSee('Recalculate with the current rules')
-            ->assertSee('Use the rules from the first lock');
+            ->assertSee('Use the rules the term was locked with');
     }
 
     public function test_a_grade_change_applied_to_a_locked_term_refreezes_the_section_with_the_freezes_rules(): void
@@ -182,7 +182,7 @@ class ResultFreezeTest extends TestCase
         $freeze = $this->freezes()->lock($this->terms[0], $this->principal->user);
         $this->raiseFirstClass(); // must not reach the locked term
 
-        $vp = $this->makeStaff('vp_academic', 'VP Academic');
+        $vp = $this->makeStaff('vp_academic', 'VP_Academic');
         $teacher = $this->makeStaff('teacher', 'Teacher');
         $mathId = Subject::where('code', 'MATH')->whereNull('department_id')->value('id');
         $assessment = Assessment::whereHas('category', fn ($q) => $q->where('section_id', $this->section->id)->where('subject_id', $mathId)->where('term_id', $this->terms[0]->id))->sole();

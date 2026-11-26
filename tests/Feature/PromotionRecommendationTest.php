@@ -54,7 +54,7 @@ class PromotionRecommendationTest extends TestCase
     {
         $this->actingAs($this->registrar->user)->get("/registrar/promotions/{$this->section->id}/create")->assertOk()
             ->assertSee('Recommendation')
-            ->assertSeeInOrder(['Failing Pupil', 'Retain', 'Average 85', 'Fail', 'provisional'])
+            ->assertSeeInOrder(['Failing Pupil', 'Retain', 'Average 80', 'Fail', 'provisional'])
             ->assertSeeInOrder(['Passing Pupil', 'Promote', 'Average 90', 'First', 'provisional'])
             ->assertSee('<option value="Retain" selected>', false);
     }
@@ -99,7 +99,7 @@ class PromotionRecommendationTest extends TestCase
             ['student_id' => $this->passing->id, 'action' => 'Promote'],
             ['student_id' => $this->failing->id, 'action' => 'Promote', 'override_reason' => 'Passed the Math re-sit in June.'],
         ]);
-        $vp = $this->makeStaff('vp_academic', 'VP Academic');
+        $vp = $this->makeStaff('vp_academic', 'VP_Academic');
 
         $this->actingAs($vp->user)->get('/vp_academic/approvals')->assertOk()
             ->assertSee('1 decision differs from the recommendation')

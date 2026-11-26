@@ -11,9 +11,9 @@ use App\Models\Department;
 use App\Models\DocumentRequest;
 use App\Models\Enrollment;
 use App\Models\Grade;
-use App\Models\Guardian;
 use App\Models\GradeLevel;
 use App\Models\GradeScaleBand;
+use App\Models\Guardian;
 use App\Models\ImportBatch;
 use App\Models\ImportedFeeRecord;
 use App\Models\LeaveBalance;
@@ -453,5 +453,9 @@ class DatabaseSeeder extends Seeder
         // Full K-12 ladder (Nursery → Grade 12), subject catalogue, homeroom
         // teachers, rosters, attendance history, and fee spread.
         $this->call(K12StructureSeeder::class);
+
+        // Term 1 was locked above, before its gradebook existed: freeze its results now that every
+        // mark is in, as the Principal (results:freeze-locked-terms does the same on a deploy).
+        app(\App\Services\ResultFreezeService::class)->freezeLockedTerms(User::where('email', 'principal@yasis.edu')->firstOrFail());
     }
 }

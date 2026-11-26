@@ -9,7 +9,9 @@ use App\Models\Grade;
 use App\Models\GradeChangeRequest;
 use App\Models\PromotionBatch;
 use App\Services\AuditService;
+use App\Services\ResultFreezeService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PrincipalApprovalController extends Controller
 {
@@ -24,27 +26,33 @@ class PrincipalApprovalController extends Controller
         ]);
     }
 
-    public function approveGradeChange(Request $request, GradeChangeRequest $gradeChangeRequest, AuditService $audit)
+    public function approveGradeChange(Request $request, GradeChangeRequest $gradeChangeRequest, AuditService $audit, ResultFreezeService $freezes)
     {
         abort_unless($gradeChangeRequest->status === 'VP_Approved', 403);
 
         $principal = $request->user()->staffProfile;
 
-        // Second key: apply the change. The mark stays attributed to the requesting
-        // teacher; the approval chain lives on the request row and in the audit log.
-        Grade::updateOrCreate(
-            ['assessment_id' => $gradeChangeRequest->assessment_id, 'student_id' => $gradeChangeRequest->student_id],
-            ['score' => $gradeChangeRequest->new_score, 'entered_by' => $gradeChangeRequest->requested_by]
-        );
+        DB::transaction(function () use ($request, $gradeChangeRequest, $principal, $audit, $freezes) {
+            // Second key: apply the change. The mark stays attributed to the requesting
+            // teacher; the approval chain lives on the request row and in the audit log.
+            Grade::updateOrCreate(
+                ['assessment_id' => $gradeChangeRequest->assessment_id, 'student_id' => $gradeChangeRequest->student_id],
+                ['score' => $gradeChangeRequest->new_score, 'entered_by' => $gradeChangeRequest->requested_by]
+            );
 
-        $gradeChangeRequest->update([
-            'status' => 'Applied',
-            'principal_approved_by' => $principal->id,
-            'principal_approved_at' => now(),
-            'applied_at' => now(),
-        ]);
+            $gradeChangeRequest->update([
+                'status' => 'Applied',
+                'principal_approved_by' => $principal->id,
+                'principal_approved_at' => now(),
+                'applied_at' => now(),
+            ]);
 
-        $audit->log($request->user(), 'Principal co-approved and applied grade change', 'GradeChangeRequest', $gradeChangeRequest->id);
+            $audit->log($request->user(), 'Principal co-approved and applied grade change', 'GradeChangeRequest', $gradeChangeRequest->id);
+
+            // A locked term's stored results are re-frozen for that section, with the freeze's own rules.
+            $category = $gradeChangeRequest->assessment->category;
+            $freezes->refreezeSection($category->section, $category->term, $request->user(), "Grade change #{$gradeChangeRequest->id} applied");
+        });
 
         return back()->with('status', 'Grade change approved and applied.');
     }

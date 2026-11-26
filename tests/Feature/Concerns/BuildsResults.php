@@ -30,6 +30,9 @@ trait BuildsResults
     /** @var list<Term> */
     protected array $terms = [];
 
+    /** The teacher every fixture mark is entered by. */
+    protected ?int $markTeacherId = null;
+
     /** The Grade 12 statement in the rules file, section 6. */
     protected const G12_EXAMPLE = [
         'MORAL' => 77, 'MYAN' => 66, 'ENG' => 87, 'MATH' => 67, 'COMP' => 95, 'MUSIC' => 86, 'PE' => 92,
@@ -96,7 +99,8 @@ trait BuildsResults
 
             return;
         }
-        Grade::updateOrCreate(['assessment_id' => $assessment->id, 'student_id' => $student->id], ['score' => (string) $score]);
+        $this->markTeacherId ??= $this->makeStaff('teacher', 'Teacher', 'marks-teacher@test.local')->id;
+        Grade::updateOrCreate(['assessment_id' => $assessment->id, 'student_id' => $student->id], ['score' => (string) $score, 'entered_by' => $this->markTeacherId]);
     }
 
     /** @param  array<string, int|float|string|null>  $marks  subject code => score */
