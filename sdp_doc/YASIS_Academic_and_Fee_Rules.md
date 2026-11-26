@@ -213,7 +213,7 @@ Subject grade scale:
 | 58-66 | C | 7 |
 | 49-57 | C- | 6 |
 | 40-48 | D | 5 |
-| below 40 | Fail | 0 (default; not in the document) |
+| below 40 | Fail | 0 (default; not in the document, see Q19) |
 
 Class of pass by total points:
 
@@ -223,8 +223,11 @@ Class of pass by total points:
 | 56-65 | First |
 | 46-55 | Second |
 | 40-45 | Third |
+| below 40 | Fail (default; not in the document, see Q19) |
 
 The maximum of 70 means seven subjects at 10 points each count towards the total, but the Grade 10 report card has 13 subjects. Which seven count is Q6. Until the school answers, build the calculation so the counted subjects come from `counts_in_result`, and seed it with a clear placeholder that the Admin must confirm.
+
+Default while Q19 is open: a counted subject below 40 fails the year, as in KG-9.
 
 Default for promotion to Grade 11: the system records the school's eligibility decision and the external result entered by the Registrar. The system does not calculate a DHSC pass itself. See Q11.
 
@@ -468,3 +471,4 @@ The defaults above let the build start, but each of these should be confirmed wi
 - Q16. The exam eligibility rule says both "more than 10% absence" and "a minimum of 80% attendance". Which threshold applies?
 - Q17. Is Grade 9 tuition really 2,600,000 Ks (the same as Grades 11 and 12), and not 2,550,000 Ks like Grades 5-8?
 - Q18. Which instalment includes the yearly fee and the refundable deposit, and are the four instalments equal?
+- Q19. Grade 10: what is the result when a subject is below 40 marks? And what is the class of pass when the point total is below 40? For example, a student with D (40-48) in all seven counted subjects passes every subject but has only 35 points.

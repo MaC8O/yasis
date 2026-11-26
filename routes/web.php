@@ -44,6 +44,7 @@ use App\Http\Controllers\Principal\PrincipalDashboardController;
 use App\Http\Controllers\Principal\PrincipalRegistrationController;
 use App\Http\Controllers\Registrar\AttendanceCorrectionController;
 use App\Http\Controllers\CurriculumController;
+use App\Http\Controllers\GradingSchemeController;
 use App\Http\Controllers\Registrar\DocumentRequestController;
 use App\Http\Controllers\Registrar\ElectiveController;
 use App\Http\Controllers\Registrar\GuardianController;
@@ -223,6 +224,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/grade-levels/{gradeLevel}/retire', [GradeLevelController::class, 'retire'])->name('grade-levels.retire');
     Route::post('/grade-levels/{gradeLevel}/restore', [GradeLevelController::class, 'restore'])->name('grade-levels.restore');
 
+    Route::get('/grading-schemes', [GradingSchemeController::class, 'index'])->name('grading-schemes.index');
+    Route::put('/grading-schemes/levels/{gradeLevel}', [GradingSchemeController::class, 'assign'])->name('grading-schemes.assign');
+    Route::put('/grading-schemes/{gradingScheme}', [GradingSchemeController::class, 'update'])->name('grading-schemes.update');
+    Route::put('/grading-schemes/{gradingScheme}/bands/{kind}', [GradingSchemeController::class, 'updateBands'])->whereIn('kind', ['mark', 'result'])->name('grading-schemes.bands');
+
+    // The department scale still drives the letters shown today; phase 4 retires it.
     Route::get('/grade-scale', [GradeScaleController::class, 'index'])->name('grade-scale.index');
     Route::post('/grade-scale', [GradeScaleController::class, 'store'])->name('grade-scale.store');
     Route::post('/grade-scale/departments/{department}/defaults', [GradeScaleController::class, 'loadDefaults'])->name('grade-scale.defaults');
@@ -428,6 +435,7 @@ Route::middleware(['auth', 'role:principal'])->prefix('principal')->name('princi
 
     Route::get('/governance', [GovernanceController::class, 'index'])->name('governance.index');
     Route::get('/curriculum', [CurriculumController::class, 'index'])->name('curriculum.index');
+    Route::get('/grading-schemes', [GradingSchemeController::class, 'index'])->name('grading-schemes.index');
     Route::put('/governance', [GovernanceController::class, 'update'])->name('governance.update');
 
     Route::get('/registration/create', [PrincipalRegistrationController::class, 'create'])->name('registration.create');

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class GradeLevel extends Model
 {
-    protected $fillable = ['code', 'name', 'sort_order', 'archived_at'];
+    protected $fillable = ['code', 'name', 'sort_order', 'grading_scheme_id', 'archived_at'];
 
     protected function casts(): array
     {
@@ -36,6 +36,11 @@ class GradeLevel extends Model
     public function sections()
     {
         return $this->hasMany(Section::class);
+    }
+
+    public function gradingScheme()
+    {
+        return $this->belongsTo(GradingScheme::class);
     }
 
     public function offerings()
