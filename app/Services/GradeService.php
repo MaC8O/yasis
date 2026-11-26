@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\AssessmentCategory;
-use App\Models\GradeScaleBand;
 use App\Models\Section;
 use App\Models\Student;
 use App\Models\Subject;
@@ -17,58 +16,39 @@ class GradeService
     private const SCALE = 10;
 
     /**
-     * Weighted result = sum(category average % * category weight) / sum(weight of categories with at least one grade).
-     * Categories with no scores yet are excluded from the denominator rather than counted as zero, so a
-     * partially-graded gradebook doesn't unfairly tank the running total.
+     * One student's gradebook categories per subject for a term, for the breakdown on the grade
+     * pages: each category's name, weight and average percentage (the mean of its graded items),
+     * or null when nothing in it is graded yet.
+     *
+     * @return array<int, list<array{name: string, weight: string, avg: ?string}>> subject id => categories
      */
-    public function computeStudentResult(Student $student, Section $section, Subject $subject, Term $term): array
+    public function categoryBreakdown(Section $section, Term $term, Student $student): array
     {
-        $categories = AssessmentCategory::where('section_id', $section->id)
-            ->where('subject_id', $subject->id)
-            ->where('term_id', $term->id)
-            ->with('assessments.grades')
-            ->get();
-
-        $weightedSum = 0;
-        $weightUsed = 0;
         $breakdown = [];
+        $categories = AssessmentCategory::where('section_id', $section->id)->where('term_id', $term->id)
+            ->with(['assessments.grades' => fn ($q) => $q->where('student_id', $student->id)])->orderBy('id')->get();
 
         foreach ($categories as $category) {
-            $scores = [];
+            $percentages = [];
             foreach ($category->assessments as $assessment) {
-                $grade = $assessment->grades->firstWhere('student_id', $student->id);
-                if ($grade && $assessment->max_score > 0) {
-                    $scores[] = (float) $grade->score / (float) $assessment->max_score * 100;
+                $grade = $assessment->grades->first();
+                $max = BigDecimal::of((string) $assessment->max_score);
+                if ($grade && $max->isGreaterThan(0)) {
+                    $percentages[] = BigDecimal::of((string) $grade->score)->multipliedBy(100)->dividedBy($max, self::SCALE, RoundingMode::HALF_UP);
                 }
             }
+            $average = $percentages === [] ? null : (string) array_reduce($percentages, fn (BigDecimal $sum, BigDecimal $p) => $sum->plus($p), BigDecimal::zero())
+                ->dividedBy(count($percentages), 0, RoundingMode::HALF_UP);
 
-            $categoryAvg = count($scores) ? array_sum($scores) / count($scores) : null;
-            $breakdown[$category->id] = [
-                'name' => $category->name,
-                'weight' => $category->weight_pct,
-                'avg' => $categoryAvg,
-            ];
-
-            if ($categoryAvg !== null) {
-                $weightedSum += $categoryAvg * (float) $category->weight_pct;
-                $weightUsed += (float) $category->weight_pct;
-            }
+            $breakdown[$category->subject_id][] = ['name' => $category->name, 'weight' => (string) $category->weight_pct, 'avg' => $average];
         }
 
-        $pct = $weightUsed > 0 ? round($weightedSum / $weightUsed, 2) : null;
-        $band = $pct !== null ? $this->bandFor($student, $pct) : null;
-
-        return [
-            'pct' => $pct,
-            'letter' => $band?->letter,
-            'gpa' => $band?->gpa_point,
-            'breakdown' => $breakdown,
-        ];
+        return $breakdown;
     }
 
     /**
-     * Every student's subject marks in a section for a term, with the same formula as
-     * computeStudentResult() but in exact decimals: a category is the mean of its graded items'
+     * Every student's subject marks in a section for a term, in exact decimals: a category is the
+     * mean of its graded items'
      * percentages, and the mark is the weighted mean of the categories that have a grade. A subject
      * with no graded item has no mark. Marks are rounded to two decimals, half up.
      *
@@ -123,13 +103,5 @@ class GradeService
             ->where('subject_id', $subject->id)
             ->where('term_id', $term->id)
             ->sum('weight_pct');
-    }
-
-    protected function bandFor(Student $student, float $pct): ?GradeScaleBand
-    {
-        return GradeScaleBand::where('department_id', $student->department_id)
-            ->where('min_score', '<=', $pct)
-            ->orderByDesc('min_score')
-            ->first();
     }
 }

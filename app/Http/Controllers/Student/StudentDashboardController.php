@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\Announcement;
 use App\Models\TeachingAssignment;
-use App\Services\GradeService;
+use App\Services\ResultService;
 use Illuminate\Http\Request;
 
 class StudentDashboardController extends Controller
 {
-    public function index(Request $request, GradeService $gradeService)
+    public function index(Request $request, ResultService $results)
     {
         $student = $request->user()->student;
         abort_unless($student, 403, 'No student record linked to this account.');
@@ -25,11 +25,9 @@ class StudentDashboardController extends Controller
         $currentTerm = $activeYear?->terms()->where('start_date', '<=', today())->where('end_date', '>=', today())->first();
 
         $assignments = TeachingAssignment::whereIn('section_id', $student->enrollments()->pluck('section_id'))->with('subject')->get();
-        $snapshot = $assignments->map(fn ($a) => (object) [
-            'subject' => $a->subject->name,
-            'result' => $currentTerm ? $gradeService->computeStudentResult($student, $a->section, $a->subject, $currentTerm) : ['pct' => null, 'letter' => null, 'gpa' => null],
-        ]);
-        $gpas = $snapshot->pluck('result.gpa')->filter();
+        // The same figures as the grades page and the report card.
+        $report = $currentTerm ? $results->studentTerm($student, $currentTerm) : null;
+        $snapshot = collect($report?->subjects() ?? [])->filter(fn ($s) => $s->mark !== null)->values();
 
         $departmentId = $student->department_id;
         $sectionIds = $student->enrollments()->where('status', 'Active')->pluck('section_id');
@@ -41,7 +39,7 @@ class StudentDashboardController extends Controller
         return view('student.dashboard', [
             'student' => $student,
             'attendanceRate' => $attendanceRate,
-            'termGpa' => $gpas->isNotEmpty() ? round($gpas->avg(), 2) : null,
+            'report' => $report,
             'classesCount' => $assignments->count(),
             'snapshot' => $snapshot->take(3),
             'notices' => $notices,
@@ -52,13 +50,11 @@ class StudentDashboardController extends Controller
                 ['label' => 'Excused', 'value' => $attendance->where('status', 'Excused')->count(), 'color' => '#2E5AAC'],
                 ['label' => 'Absent', 'value' => $attendance->where('status', 'Absent')->count(), 'color' => '#B0392B'],
             ],
-            'subjectResults' => $snapshot
-                ->filter(fn ($row) => ($row->result['pct'] ?? null) !== null)
-                ->map(fn ($row) => [
-                    'label' => $row->subject,
-                    'value' => $row->result['pct'],
-                    'display' => $row->result['pct'].'%'.(($row->result['letter'] ?? null) ? ' ('.$row->result['letter'].')' : ''),
-                ])->values(),
+            'subjectResults' => $snapshot->map(fn ($s) => [
+                'label' => $s->label,
+                'value' => (float) $s->roundedMark,
+                'display' => $s->roundedMark.(($text = $report->bandText($s)) ? " ({$text})" : ''),
+            ])->values(),
         ]);
     }
 }

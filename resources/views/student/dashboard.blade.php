@@ -1,27 +1,27 @@
 <x-app-layout title="Student Dashboard" subtitle="Quick overview of your academic progress, schedule, attendance, and notices." :badge="$student->name" role="student">
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <x-stat-tile label="Term GPA" :href="route('student.grades.index')" color="blue">{{ $termGpa ?? '—' }}</x-stat-tile>
+        <x-stat-tile :label="'Term '.(($report?->resultLabel() ?? 'Result') === 'GPA' ? 'GPA' : mb_strtolower($report?->resultLabel() ?? 'result'))" :href="route('student.grades.index')" color="blue">{{ $report?->resultDisplay() ?? '—' }}</x-stat-tile>
         <x-stat-tile label="Attendance rate" :href="route('student.attendance.index')" color="green">{{ $attendanceRate !== null ? $attendanceRate.'%' : '—' }}</x-stat-tile>
         <x-stat-tile label="My classes" :href="route('student.schedule.index')" color="blue">{{ $classesCount }}</x-stat-tile>
         <x-stat-tile label="New notices" :href="route('student.notices.index')">{{ $notices->count() }}</x-stat-tile>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <x-card title="Grade snapshot" subtitle="Current term weighted scores by subject.">
+        <x-card title="Grade snapshot" :subtitle="$report ? $report->statusNote() : 'No term is in progress today.'">
             <table class="rt w-full text-sm">
                 <thead>
                     <tr class="text-left text-neutral-500 border-b border-neutral-200">
                         <th class="py-2 font-semibold">Subject</th>
-                        <th class="py-2 font-semibold">Score</th>
+                        <th class="py-2 font-semibold">Mark</th>
                         <th class="py-2 font-semibold">Letter</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($snapshot as $row)
                         <tr class="border-b border-neutral-100 last:border-0">
-                            <td data-label="Subject" class="py-2.5">{{ $row->subject }}</td>
-                            <td data-label="Score" class="py-2.5">{{ $row->result['pct'] !== null ? $row->result['pct'].'%' : '—' }}</td>
-                            <td data-label="Letter" class="py-2.5">{{ $row->result['letter'] ?? '—' }}</td>
+                            <td data-label="Subject" class="py-2.5">{{ $row->label }}</td>
+                            <td data-label="Mark" class="py-2.5">{{ $row->roundedMark ?? '—' }}</td>
+                            <td data-label="Letter" class="py-2.5">{{ $report->bandText($row) ?? '—' }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="3" class="py-4 text-neutral-400">No grades recorded yet.</td></tr>

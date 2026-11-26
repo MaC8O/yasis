@@ -9,15 +9,16 @@ use App\Models\Assessment;
 use App\Models\AssessmentCategory;
 use App\Models\Grade;
 use App\Models\GradeChangeRequest;
-use App\Models\GradeScaleBand;
+use App\Models\GradingScheme;
 use App\Models\ReportCardComment;
 use App\Models\Section;
 use App\Models\StaffProfile;
 use App\Models\Student;
 use App\Models\Subject;
+use App\Models\SubjectOffering;
 use App\Models\Term;
 use App\Services\AuditService;
-use App\Services\GradeService;
+use App\Services\ResultService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -58,7 +59,7 @@ class TeacherGradebookController extends Controller
         }
     }
 
-    public function index(Request $request, GradeService $gradeService)
+    public function index(Request $request, ResultService $resultService)
     {
         $teacher = $request->user()->staffProfile;
         $assignments = $this->assignments($teacher);
@@ -85,9 +86,11 @@ class TeacherGradebookController extends Controller
 
         $roster = $section->enrollments()->with('student')->where('status', 'Active')->get()->pluck('student');
 
-        $results = $roster->mapWithKeys(fn ($student) => [
-            $student->id => $gradeService->computeStudentResult($student, $section, $subject, $term),
-        ]);
+        // A locked term shows its frozen figures; an unlocked one is previewed live in the grid (provisional).
+        $sectionResults = $term ? $resultService->sectionTerm($section, $term) : null;
+        $frozenRows = $sectionResults?->frozen
+            ? $roster->mapWithKeys(fn ($student) => [$student->id => $sectionResults->for($student)?->subject($subject->code)])
+            : null;
 
         $isHomeroom = $teacher->homeroomSections->contains('id', $section->id);
         $comments = $isHomeroom
@@ -100,13 +103,14 @@ class TeacherGradebookController extends Controller
             ->with(['assessment', 'student'])
             ->latest()->get();
 
-        // Grade bands for the roster's department(s), so the grid can show the live letter grade
-        // client-side (as scores are typed) using the same thresholds GradeService applies on save.
-        $bandsByDept = GradeScaleBand::whereIn('department_id', $roster->pluck('department_id')->unique()->filter())
-            ->orderByDesc('min_score')
-            ->get()
-            ->groupBy('department_id')
-            ->map(fn ($bands) => $bands->map(fn ($b) => ['min' => (float) $b->min_score, 'letter' => $b->letter])->values());
+        // The section's grading scheme, so the grid can preview the letter as scores are typed, with the
+        // same rounding and bands ResultService uses. A subject outside the curriculum has no letter.
+        $section->loadMissing('gradeLevel');
+        $offering = $section->gradeLevel
+            ? SubjectOffering::where('grade_level_id', $section->grade_level_id)->where('subject_id', $subject->id)->active()->first()
+            : null;
+        $scheme = $section->gradeLevel?->grading_scheme_id ? GradingScheme::find($section->gradeLevel->grading_scheme_id) : null;
+        $previewRules = $scheme && $offering ? $resultService->rules($scheme) : null;
 
         return view('teacher.gradebook.index', [
             'changeRequests' => $changeRequests,
@@ -117,11 +121,17 @@ class TeacherGradebookController extends Controller
             'term' => $term,
             'categories' => $categories,
             'roster' => $roster,
-            'results' => $results,
+            'frozenRows' => $frozenRows,
+            'frozenAt' => $sectionResults?->freeze?->frozen_at,
             'totalWeight' => (float) $categories->sum('weight_pct'),
             'isHomeroom' => $isHomeroom,
             'comments' => $comments,
-            'bandsByDept' => $bandsByDept,
+            'preview' => $previewRules ? [
+                'bands' => collect($previewRules->markBands)->map(fn ($b) => ['label' => $b['label'], 'min' => (float) $b['min'], 'max' => (float) $b['max'], 'fail' => $b['is_fail']])->values(),
+                'decimals' => $previewRules->markDecimals,
+                'mode' => $previewRules->roundingMode,
+                'passFail' => $offering->grading_mode === 'pass_fail',
+            ] : null,
         ]);
     }
 

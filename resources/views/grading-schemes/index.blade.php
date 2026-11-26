@@ -18,8 +18,7 @@
     :badge="$readOnly ? 'Principal' : 'Admin'" :role="$portal">
 
     <div class="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
-        These schemes are stored for the result calculation that comes next (phase 4). Until then, the grades teachers, students and guardians see still use the department grade scale.
-        @unless ($readOnly) It is set on <a href="{{ route('admin.grade-scale.index') }}" class="font-semibold text-info underline">Grade Scale (current, until phase 4)</a>. @endunless
+        These schemes give every grade shown to teachers, students and guardians. A locked term keeps the rules it was locked with, so editing a scheme changes only unlocked terms.
     </div>
 
     <x-card title="Scheme">
@@ -66,6 +65,10 @@
                     <dt class="text-neutral-500">Failing a subject</dt>
                     <dd class="font-semibold">{{ GradingScheme::FAIL_RULES[$scheme->subject_fail_rule] }}</dd>
                 </div>
+                <div>
+                    <dt class="text-neutral-500">Position in class</dt>
+                    <dd class="font-semibold">{{ GradingScheme::FAILED_RANKINGS[$scheme->failed_ranking] }}</dd>
+                </div>
             </dl>
             @if ($scheme->pending_question)
                 <p class="mt-3"><span class="rounded-full bg-tint-yellow text-tint-yellow-ink px-2.5 py-1 text-xs font-semibold">Settings need confirmation from the school ({{ implode(', ', $scheme->pendingQuestions()) }})</span></p>
@@ -77,7 +80,7 @@
                     <form x-show="editing" x-cloak method="POST" action="{{ route('admin.grading-schemes.update', $scheme) }}" class="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
                         @csrf @method('PUT')
                         <input type="hidden" name="_set" value="settings">
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label for="scheme-name" class="block text-sm font-semibold mb-1">Name</label>
                                 <input id="scheme-name" type="text" name="name" maxlength="60" required value="{{ old('_set') === 'settings' ? old('name') : $scheme->name }}"
@@ -96,6 +99,14 @@
                                 <select id="scheme-fail" name="subject_fail_rule" class="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm">
                                     @foreach (GradingScheme::FAIL_RULES as $rule => $label)
                                         <option value="{{ $rule }}" @selected((old('_set') === 'settings' ? old('subject_fail_rule') : $scheme->subject_fail_rule) === $rule)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label for="scheme-ranking" class="block text-sm font-semibold mb-1">Position in class</label>
+                                <select id="scheme-ranking" name="failed_ranking" class="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm">
+                                    @foreach (GradingScheme::FAILED_RANKINGS as $ranking => $label)
+                                        <option value="{{ $ranking }}" @selected((old('_set') === 'settings' ? old('failed_ranking') : $scheme->failed_ranking) === $ranking)>{{ $label }}</option>
                                     @endforeach
                                 </select>
                             </div>

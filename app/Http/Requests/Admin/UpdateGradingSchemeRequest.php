@@ -6,7 +6,7 @@ use App\Models\GradingScheme;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/** A grading scheme's own settings: name, rounding mode and whether one failed subject fails the year. */
+/** A grading scheme's own settings: name, rounding mode, whether one failed subject fails the year, and how failed students are ranked. */
 class UpdateGradingSchemeRequest extends FormRequest
 {
     public function authorize(): bool
@@ -28,6 +28,7 @@ class UpdateGradingSchemeRequest extends FormRequest
             'name' => ['required', 'string', 'max:60', Rule::unique('grading_schemes', 'name')->ignore($this->route('gradingScheme'))],
             'rounding_mode' => ['required', Rule::in(array_keys(GradingScheme::ROUNDING_MODES))],
             'subject_fail_rule' => ['required', Rule::in(array_keys(GradingScheme::FAIL_RULES))],
+            'failed_ranking' => ['required', Rule::in(array_keys(GradingScheme::FAILED_RANKINGS))],
             'confirmed' => ['boolean'],
         ];
     }

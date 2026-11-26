@@ -6,15 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Guardian\Concerns\ResolvesChild;
 use App\Models\AcademicYear;
 use App\Services\FeeSummaryService;
+use App\Services\ResultService;
 use App\Support\FeeVisibility;
-use App\Services\GradeService;
 use Illuminate\Http\Request;
 
 class GuardianDashboardController extends Controller
 {
     use ResolvesChild;
 
-    public function index(Request $request, GradeService $gradeService, FeeSummaryService $feeService)
+    public function index(Request $request, ResultService $results, FeeSummaryService $feeService)
     {
         $children = $this->guardianChildren($request);
         $child = $this->selectedChild($request);
@@ -27,12 +27,9 @@ class GuardianDashboardController extends Controller
         $activeYear = AcademicYear::where('is_active', true)->first();
         $currentTerm = $activeYear?->terms()->where('start_date', '<=', today())->where('end_date', '>=', today())->first();
 
-        $assignments = \App\Models\TeachingAssignment::whereIn('section_id', $child->enrollments()->pluck('section_id'))->with('subject')->get();
-        $snapshot = $assignments->map(fn ($a) => (object) [
-            'subject' => $a->subject->name,
-            'result' => $currentTerm ? $gradeService->computeStudentResult($child, $a->section, $a->subject, $currentTerm) : ['pct' => null, 'letter' => null, 'gpa' => null],
-        ]);
-        $gpas = $snapshot->pluck('result.gpa')->filter();
+        // The same figures as the grades page and the report card.
+        $report = $currentTerm ? $results->studentTerm($child, $currentTerm) : null;
+        $snapshot = collect($report?->subjects() ?? [])->filter(fn ($s) => $s->mark !== null)->values();
 
         $feeSummary = $feeService->studentSummaries(FeeVisibility::FAMILY)->firstWhere('student.id', $child->id);
 
@@ -40,7 +37,7 @@ class GuardianDashboardController extends Controller
             'children' => $children,
             'child' => $child,
             'attendanceRate' => $attendanceRate,
-            'latestGpa' => $gpas->isNotEmpty() ? round($gpas->avg(), 2) : null,
+            'report' => $report,
             'feeStatus' => $feeSummary?->status ?? 'No records',
             'snapshot' => $snapshot->take(6),
             'attendanceSegments' => [

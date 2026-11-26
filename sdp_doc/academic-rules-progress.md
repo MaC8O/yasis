@@ -7,8 +7,8 @@ Source of truth: [YASIS_Academic_and_Fee_Rules.md](YASIS_Academic_and_Fee_Rules.
 | 1. Grade levels on sections | Merged | `grade-levels`, PR #40 |
 | 2. Curriculum (`subject_offerings`, Grade 11-12 electives) | Merged | `curriculum`, PR #41 |
 | 3. Grading schemes per grade level | Merged | `grading-schemes`, PR #42 |
-| 4a. Calculation service, frozen results, promotion recommendation | Merged; follow-up PR open (a batch needs a frozen year) | `results-service`, PR #43; `promotion-needs-frozen-year`, PR #44 |
-| 4b. Switch the pages to the new results, retire the department grade scale | Not started (wait for the go-ahead) | |
+| 4a. Calculation service, frozen results, promotion recommendation | Merged (with the follow-up: a batch needs a frozen year) | `results-service`, PR #43; `promotion-needs-frozen-year`, PR #44 |
+| 4b. Switch the pages to the new results, retire the department grade scale, Q20 ranking setting | PR open, awaiting review | `results-pages`, PR #45 |
 | 5. KG-9 gradebook template | Not started | |
 | 6. Report cards | Not started | |
 | 7. Statement of Marks | Not started | |
@@ -163,6 +163,32 @@ Phase 4 is split in two (owner, 2026-11-26). 4a adds the calculation, the frozen
 
 No asset build is needed beyond the usual: the new classes are on the Registrar and Principal pages.
 
+## Phase 4b: pages switched to the new results (done, in review)
+
+**Built:**
+- **Every page that shows grades reads `ResultService`:**
+  - the teacher gradebook and its live preview
+  - the student and guardian dashboards and grade pages
+  - the report-card PDF
+- **`ResultService::studentTerm()`:** gives a `StudentTermReport`, which every family page and the PDF read. So the student, the guardian and the report card show the same numbers for the same student and term; a test compares all three.
+- **Final and Provisional:** a locked term shows its frozen figures, marked "Final". An unlocked term is calculated live and marked "Provisional".
+- **Labels (Q12):** the result is labelled Term average (shown as a percentage), Term point total or Term GPA. The dashboard tiles say "Term …" for the student and "Latest …" for the guardian.
+- **Subjects:** each shows its mark as printed and its letter: "B · 3.00" for 11-12, "A · 10 points" for Grade 10, PASS or FAIL for KG-9 and pass/fail subjects. Electives the student doesn't take aren't listed. A subject taught outside the curriculum shows its mark with no letter.
+- **Grade 10:** each subject shows its mark and letter with points. The blocked reason (Q6, Q19) replaces the point total and class.
+- **Gradebook:**
+  - The live column previews the printed mark and the letter with the section's scheme: its bands, decimals and rounding mode.
+  - A locked term shows the frozen mark and letter, labelled "Final (frozen …)".
+- **Retired:** the Admin Grade Scale page with its hard-delete code (fixing the known bug), its routes, nav item and dashboard tile; `GradeService::computeStudentResult()` and `bandFor()`; and the 4a `results:compare` command, which depended on them.
+  - The seeders and the test helper no longer write department bands.
+  - The `grade_scale_bands` table, its rows and the `GradeScaleBand` model are kept for past records.
+- **Q20 (new):** each grading scheme has a "Position in class" setting:
+  - `together` (the default, today's behaviour) ranks everyone by their result.
+  - `failed_last` ranks every student who failed after all who passed.
+  - It is flagged Q20 on every scheme, copied into each freeze (older freezes read as `together`), and editable on Grading Schemes.
+  - Migration `2026_11_28_090000_add_failed_ranking_to_grading_schemes` adds the column and the flag, and widens `pending_question` to 20 characters for "Q10,Q19,Q20".
+
+**Out of scope:** the Principal and VP dashboards average raw `Grade` scores without any scale. They are unchanged.
+
 ## Defaults applied so far
 
 | Rule | Default | Question (rules file) | Where it lives |
@@ -185,9 +211,10 @@ No asset build is needed beyond the usual: the new classes are on the Registrar 
 | Grade 10 result | No point total, class or position while any Grade 10 curriculum row is flagged Q6 or the scheme or its bands are flagged Q19. The page says why. | Q6, Q19 | `ResultService::BLOCKING_QUESTIONS` |
 | Pass/Fail subjects | PASS when the rounded mark reaches the scheme's pass mark (the lowest band that is not a fail band). | not asked | `ResultService::subject()` |
 | Grade 10 promotion | No automatic recommendation; the DHSC result decides. | Q11 | `ResultService::promotionRecommendations()` |
+| Failed students' position | Ranked together with those who passed (a Grade 12 student who failed Mathematics can be 2nd). The Admin can switch a scheme to rank failed students after all who passed. | Q20 (new) | `grading_schemes.failed_ranking`, flagged Q20 |
 
 ## Open questions waiting on the school
-All of Q1 to Q19 in the rules file are still open, as are the Treasurer questions T1 to T11. A KG1/KG2 decision has been recorded under Q2 while the school's answer is pending.
+All of Q1 to Q20 in the rules file are still open, as are the Treasurer questions T1 to T11. A KG1/KG2 decision has been recorded under Q2 while the school's answer is pending.
 
 ### Question numbers: letter to the school vs rules file
 The letter sent to the school left out Q2 (Nursery), so from Q2 onwards each letter number is one less than the rules file's number. **The rules file's numbers are the ones used in the code, the data (`pending_question`) and this file.**
@@ -213,6 +240,7 @@ The letter sent to the school left out Q2 (Nursery), so from Q2 onwards each let
 | Q16 | Q17 |
 | Q17 | Q18 |
 | — (not sent yet) | Q19 (added 2026-11-26) |
+| — (not sent yet) | Q20 (added 2026-11-26) |
 | T1 to T11 | T1 to T11 (same numbers) |
 
 ## Notes for the next session
@@ -231,15 +259,5 @@ The letter sent to the school left out Q2 (Nursery), so from Q2 onwards each let
   - Grade 10 is refused while Q6 (or Q19) is flagged.
   - SUPW's Q5 default is applied explicitly.
   - Rounding uses the scheme's mode and decimals, with no floats.
-- **What reads the old department grade scale (`grade_scale_bands`), for phase 4b to switch over and retire** (untouched in 4a):
-  1. `GradeService::bandFor()` via `computeStudentResult()` (the `letter` and `gpa` of a subject result). It is used by the teacher gradebook (`TeacherGradebookController`), the student dashboard, grades page and report-card PDF, and the guardian dashboard, grades page and report-card PDF. The "Term GPA" and "Latest GPA" tiles average the bands' `gpa_point`.
-  2. `TeacherGradebookController` sends `bandsByDept` to the gradebook's JavaScript (`teacher/gradebook/index.blade.php`), which shows the letter live as scores are typed.
-  3. The Admin page `GradeScaleController` (4 routes, a nav item and a dashboard tile).
-  4. Seeders: `DatabaseSeeder` and `K12StructureSeeder`; the test helper `SeedsCoreData::seedDepartment()`; `PrincipalGradeScaleTest`.
-  5. `Department::gradeScaleBands()`, the `GradeScaleBand` model and its entry in `AuditLog::ENTITY_CATEGORY`.
-- **Known bug, for phase 4b to deal with when it retires the page:** `GradeScaleController` hard-deletes bands, against the no-hard-delete rule: `destroy()` deletes a band, and `loadDefaults()` deletes a department's bands before re-creating them. It isn't fixed in phase 3 because the page is being retired.
-- **Phase 4b checklist (owner's list, 2026-11-26):**
-  - Switch `GradeService::computeStudentResult()` and its callers to `ResultService`: the teacher gradebook and its live preview (`bandsByDept`), the student and guardian dashboards and grade pages, their Term GPA and Latest GPA tiles, and the report-card PDF.
-  - Retire the Admin Grade Scale page and its hard-delete code. Keep the `grade_scale_bands` table and its rows.
-  - The pages whose numbers change are listed in the phase 4 plan (PR #43 description).
+- **The old department grade scale is retired (4b):** everything that read it now reads `ResultService`, and its hard-deleting Admin page is gone. Only the `grade_scale_bands` table, its rows, the `GradeScaleBand` model, `Department::gradeScaleBands()` and its `AuditLog` category remain, for past records.
 - **Out of phase:** the Principal and VP dashboards average raw `Grade` scores without any scale; they read neither the old nor the new results.

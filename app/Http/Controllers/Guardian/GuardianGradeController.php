@@ -6,28 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Guardian\Concerns\ResolvesChild;
 use App\Models\AcademicYear;
 use App\Models\ReportCardComment;
-use App\Models\TeachingAssignment;
+use App\Models\Term;
 use App\Services\GradeService;
+use App\Services\ResultService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
+/**
+ * A guardian's read-only view of a linked child's grades and report cards, from ResultService (the
+ * same figures the student and the report card show): frozen for a locked term, provisional otherwise.
+ */
 class GuardianGradeController extends Controller
 {
     use ResolvesChild;
 
-    protected function buildBreakdown($child, $term, GradeService $gradeService)
-    {
-        $assignments = TeachingAssignment::whereIn('section_id', $child->enrollments()->pluck('section_id'))
-            ->with('subject')->get();
-
-        return $assignments->map(function ($a) use ($child, $term, $gradeService) {
-            $result = $term ? $gradeService->computeStudentResult($child, $a->section, $a->subject, $term) : ['pct' => null, 'letter' => null, 'gpa' => null, 'breakdown' => []];
-
-            return (object) ['subject' => $a->subject->name, 'result' => $result];
-        });
-    }
-
-    public function index(Request $request, GradeService $gradeService)
+    public function index(Request $request, ResultService $results, GradeService $grades)
     {
         $children = $this->guardianChildren($request);
         $child = $this->selectedChild($request);
@@ -35,35 +28,31 @@ class GuardianGradeController extends Controller
         $activeYear = AcademicYear::where('is_active', true)->first();
         $terms = $activeYear?->terms()->orderBy('sequence')->get() ?? collect();
         $term = $terms->firstWhere('id', $request->integer('term')) ?? $terms->where('start_date', '<=', today())->where('end_date', '>=', today())->first() ?? $terms->last();
-
-        $subjects = $this->buildBreakdown($child, $term, $gradeService);
-        $validResults = $subjects->pluck('result.pct')->filter();
-        $validGpas = $subjects->pluck('result.gpa')->filter();
+        $report = $term ? $results->studentTerm($child, $term) : null;
 
         return view('guardian.grades.index', [
             'children' => $children,
             'child' => $child,
             'terms' => $terms,
             'term' => $term,
-            'subjects' => $subjects,
-            'overallScore' => $validResults->isNotEmpty() ? round($validResults->avg(), 1) : null,
-            'termGpa' => $validGpas->isNotEmpty() ? round($validGpas->avg(), 2) : null,
+            'report' => $report,
+            'breakdown' => $report?->section ? $grades->categoryBreakdown($report->section, $term, $child) : [],
             'comment' => $term ? ReportCardComment::where('student_id', $child->id)->where('term_id', $term->id)->first() : null,
             'releasedTerms' => $terms->where('results_released', true),
         ]);
     }
 
-    public function reportCard(Request $request, GradeService $gradeService)
+    public function reportCard(Request $request, ResultService $results)
     {
         $child = $this->selectedChild($request);
-        $term = \App\Models\Term::findOrFail($request->integer('term'));
+        $term = Term::findOrFail($request->integer('term'));
 
         abort_unless($term->results_released, 403, 'This term\'s results have not been released yet.');
 
-        $subjects = $this->buildBreakdown($child, $term, $gradeService);
+        $report = $results->studentTerm($child, $term);
         $comment = ReportCardComment::where('student_id', $child->id)->where('term_id', $term->id)->first();
 
-        $pdf = Pdf::loadView('guardian.grades.report-card-pdf', compact('child', 'term', 'subjects', 'comment'));
+        $pdf = Pdf::loadView('guardian.grades.report-card-pdf', compact('child', 'term', 'report', 'comment'));
 
         return $pdf->stream("report-card-{$child->student_id_number}-{$term->name}.pdf");
     }
