@@ -422,5 +422,13 @@ class DatabaseSeeder extends Seeder
 
         // Last school year, complete and frozen, so a Statement of Marks can be generated for each layout.
         $this->call(PastYearResultsSeeder::class);
+
+        // §10: the school's 2026-2027 fee sheet. A deploy loads it unpublished for the Treasurer to
+        // check; the demo data publishes it so the guardian Fees page shows it after a reset.
+        if ($scheduleId = \App\Support\FeeSheet2026::load()) {
+            \App\Models\FeeSchedule::whereKey($scheduleId)->update([
+                'published_at' => now(), 'published_by' => User::where('email', 'treasurer@yasis.edu')->value('id'),
+            ]);
+        }
     }
 }

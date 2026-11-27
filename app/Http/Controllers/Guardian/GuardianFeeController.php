@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Guardian;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Guardian\Concerns\ResolvesChild;
 use App\Services\AuditService;
+use App\Services\FeeScheduleService;
 use App\Services\FeeSummaryService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class GuardianFeeController extends Controller
         );
     }
 
-    public function index(Request $request, FeeSummaryService $service)
+    public function index(Request $request, FeeSummaryService $service, FeeScheduleService $schedules)
     {
         $children = $this->guardianChildren($request);
         $child = $this->selectedChild($request);
@@ -39,6 +40,7 @@ class GuardianFeeController extends Controller
             'paid' => $lines->sum('payment'),
             'balance' => $balance,
             'status' => $lines->isEmpty() ? 'No records' : $service->accountStatus($totalBilled, $balance),
+            'feeCard' => $schedules->familyCard($child),
         ]);
     }
 

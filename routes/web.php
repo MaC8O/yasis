@@ -44,6 +44,7 @@ use App\Http\Controllers\Principal\PrincipalRegistrationController;
 use App\Http\Controllers\Registrar\AttendanceCorrectionController;
 use App\Http\Controllers\CurriculumController;
 use App\Http\Controllers\GradingSchemeController;
+use App\Http\Controllers\FeeScheduleController;
 use App\Http\Controllers\GradebookTemplateController;
 use App\Http\Controllers\ReportCardController;
 use App\Http\Controllers\ReportRulesController;
@@ -270,6 +271,7 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
     // §2.2 fees.view_readonly: read-only fee visibility, same rules as the Principal/VP.
     Route::get('/fees', [FeeVisibilityController::class, 'index'])->name('fees.index');
     Route::get('/fees/{student}', [FeeVisibilityController::class, 'show'])->name('fees.show');
+    Route::get('/fee-schedule', [FeeScheduleController::class, 'index'])->name('fee-schedule.index');
 
     Route::get('/students', [StudentController::class, 'index'])->name('students.index');
     Route::get('/students/create', [StudentController::class, 'create'])->name('students.create');
@@ -393,6 +395,13 @@ Route::middleware(['auth', 'role:treasurer'])->prefix('treasurer')->name('treasu
     Route::put('/info/visibility-rules/policy', [FinanceInfoController::class, 'updatePolicy'])->name('info.visibility-policy');
     Route::post('/info/visibility-rules/batches/{importBatch}/confirm', [FinanceInfoController::class, 'confirmRestricted'])->name('info.confirm-restricted');
 
+    // §10 fee schedule: the Treasurer edits and publishes it; reference data only.
+    Route::get('/fee-schedule', [FeeScheduleController::class, 'index'])->name('fee-schedule.index');
+    Route::put('/fee-schedule/{feeSchedule}', [FeeScheduleController::class, 'update'])->name('fee-schedule.update');
+    Route::post('/fee-schedule/start/{academicYear}', [FeeScheduleController::class, 'start'])->name('fee-schedule.start');
+    Route::post('/fee-schedule/{feeSchedule}/publish', [FeeScheduleController::class, 'publish'])->name('fee-schedule.publish');
+    Route::post('/fee-schedule/{feeSchedule}/unpublish', [FeeScheduleController::class, 'unpublish'])->name('fee-schedule.unpublish');
+
     Route::get('/import', [FeeImportController::class, 'index'])->name('import.index');
     Route::post('/import', [FeeImportController::class, 'store'])->name('import.store');
 
@@ -467,6 +476,7 @@ Route::middleware(['auth', 'role:principal'])->prefix('principal')->name('princi
 
     Route::get('/fees', [FeeVisibilityController::class, 'index'])->name('fees.index');
     Route::get('/fees/{student}', [FeeVisibilityController::class, 'show'])->name('fees.show');
+    Route::get('/fee-schedule', [FeeScheduleController::class, 'index'])->name('fee-schedule.index');
 });
 
 // --- VP ACADEMIC ---
@@ -494,6 +504,7 @@ Route::middleware(['auth', 'role:vp_academic'])->prefix('vp_academic')->name('vp
 
     Route::get('/fees', [FeeVisibilityController::class, 'index'])->name('fees.index');
     Route::get('/fees/{student}', [FeeVisibilityController::class, 'show'])->name('fees.show');
+    Route::get('/fee-schedule', [FeeScheduleController::class, 'index'])->name('fee-schedule.index');
 });
 
 // --- GUARDIAN ---
