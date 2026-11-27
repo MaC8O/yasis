@@ -81,20 +81,27 @@ class FamilyResultsTest extends TestCase
     }
 
     /** Each subject row of the report-card PDF as [label, mark, letter]. */
-    private function pdfSubjects(string $html): array
+    /**
+     * The report card's scholarship record (the booklet PDF's last table): each subject row as
+     * [label, cell in the given term's column]. The Grade 11-12 card has an HRS column first.
+     */
+    private function pdfSubjects(string $html, int $termColumn = 1, bool $hours = true): array
     {
         $xpath = $this->xpath($html);
+        $table = $xpath->query('//table[contains(@class, "grid")]')->item($xpath->query('//table[contains(@class, "grid")]')->length - 1);
         $rows = [];
-        foreach ($xpath->query('//tbody/tr[not(contains(@class, "summary"))]') as $tr) {
+        foreach ($xpath->query('./tbody/tr[not(contains(@class, "sum"))]', $table) as $tr) {
             $cells = $xpath->query('./td', $tr);
-            $rows[] = [
-                trim(preg_replace('/\s*\(.*\)\s*$/', '', trim($cells->item(0)->firstChild->textContent))),
-                trim($cells->item(1)->textContent),
-                trim($cells->item(2)->textContent),
-            ];
+            $rows[] = [trim($cells->item(0)->textContent), trim($cells->item($termColumn + ($hours ? 1 : 0))->textContent)];
         }
 
         return $rows;
+    }
+
+    /** The page's [label, mark, letter] rows as the card prints them: the mark, or PASS/FAIL for a pass/fail subject. */
+    private function asCardCells(array $pageRows): array
+    {
+        return array_map(fn ($r) => [$r[0], in_array($r[2], ['PASS', 'FAIL'], true) ? $r[2] : $r[1]], $pageRows);
     }
 
     private function xpath(string $html): DOMXPath
@@ -113,6 +120,7 @@ class FamilyResultsTest extends TestCase
             $html = view($view, $data)->render();
 
             $pdf = \Mockery::mock(\Barryvdh\DomPDF\PDF::class);
+            $pdf->shouldReceive('setPaper')->with('a4', 'landscape')->andReturnSelf();
             $pdf->shouldReceive('stream')->andReturn(response('%PDF', 200, ['Content-Type' => 'application/pdf']));
 
             return $pdf;
@@ -137,15 +145,18 @@ class FamilyResultsTest extends TestCase
         $this->assertCount(11, $expected);
 
         $this->assertSame($expected, $this->pageSubjects($guardianPage));
-        $this->assertSame($expected, $this->pdfSubjects($pdf));
-        $this->assertSame($expected, $this->pdfSubjects($studentPdf));
+        // The report card lists every subject of the grade (options not taken show "-") with the same figures.
+        $taken = fn ($rows) => array_values(array_filter($rows, fn ($r) => $r[1] !== '-'));
+        $this->assertSame($this->asCardCells($expected), $taken($this->pdfSubjects($pdf)));
+        $this->assertSame($this->asCardCells($expected), $taken($this->pdfSubjects($studentPdf)));
+        $this->assertContains(['WORLD HISTORY', '-'], $this->pdfSubjects($pdf));
 
         foreach ([$studentPage, $guardianPage] as $page) {
             $this->assertStringContainsString('Term GPA', $page);
             $this->assertMatchesRegularExpression('/Term GPA.*?3\.04/s', $page);
             $this->assertMatchesRegularExpression('/Class of pass.*?Second/s', $page);
         }
-        $this->assertMatchesRegularExpression('/G\.P\.A<\/td>\s*<td>3\.04<\/td>\s*<td>Class: Second/', $pdf);
+        $this->assertMatchesRegularExpression('/<td>G\.P\.A<\/td>\s*<td><\/td>\s*<td class="c">3\.04<\/td>/', $pdf);
 
         // The dashboards show the same figure under the same label.
         $this->actingAs($this->studentUser)->get('/student/dashboard')->assertOk()->assertSeeInOrder(['Term GPA', '3.04']);
@@ -157,7 +168,7 @@ class FamilyResultsTest extends TestCase
         $term = $this->terms[0];
         $this->actingAs($this->studentUser)->get("/student/grades?term={$term->id}")->assertOk()
             ->assertSee('Provisional')->assertSee('is not locked yet');
-        $this->assertStringContainsString('Provisional', $this->reportCardHtml($this->studentUser, "/student/grades/report-card?term={$term->id}"));
+        $this->assertStringContainsString('PROVISIONAL', $this->reportCardHtml($this->studentUser, "/student/grades/report-card?term={$term->id}"));
 
         $principal = $this->makeStaff('principal', 'Principal');
         app(ResultFreezeService::class)->lock($term, $principal->user);
@@ -170,8 +181,8 @@ class FamilyResultsTest extends TestCase
             ->assertSee('Final')->assertSee('is locked')->assertDontSee('is not locked yet');
         $this->assertContains(['MYANMAR', '66', 'C+ · 2.33'], $this->pageSubjects($page->getContent()));
         $pdf = $this->reportCardHtml($this->guardianUser, "/guardian/grades/report-card?term={$term->id}&child={$this->student->id}");
-        $this->assertStringContainsString('Final', $pdf);
-        $this->assertContains(['MYANMAR', '66', 'C+ · 2.33'], $this->pdfSubjects($pdf));
+        $this->assertStringNotContainsString('PROVISIONAL', $pdf);
+        $this->assertContains(['MYANMAR', '66'], $this->pdfSubjects($pdf));
     }
 
     public function test_grade_10_shows_each_subjects_mark_and_letter_with_the_reason_there_is_no_point_total(): void

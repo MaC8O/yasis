@@ -56,6 +56,19 @@ class AttendanceScoreService
         return ['school_days' => $schoolDays, 'students' => $students];
     }
 
+    /**
+     * "Days absent" on the report card (§7.1): Absent plus Excused days by default, or Absent only,
+     * by the report rule (Q8).
+     */
+    public static function daysAbsent(?array $row): int
+    {
+        if (! $row) {
+            return 0;
+        }
+
+        return $row['absent'] + (\App\Models\ReportRule::value('days_absent_counts', 'absent_and_excused') === 'absent_only' ? 0 : $row['excused']);
+    }
+
     /** "18 of 20 days (2 excused not counted)" for a student, or a note that nothing is recorded. */
     public static function describe(?array $row): string
     {

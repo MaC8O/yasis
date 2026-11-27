@@ -45,6 +45,8 @@ use App\Http\Controllers\Registrar\AttendanceCorrectionController;
 use App\Http\Controllers\CurriculumController;
 use App\Http\Controllers\GradingSchemeController;
 use App\Http\Controllers\GradebookTemplateController;
+use App\Http\Controllers\ReportCardController;
+use App\Http\Controllers\ReportRulesController;
 use App\Http\Controllers\Registrar\DocumentRequestController;
 use App\Http\Controllers\Registrar\ElectiveController;
 use App\Http\Controllers\Registrar\GuardianController;
@@ -158,6 +160,17 @@ Route::middleware(['auth', 'role:vp_academic|principal|admin|registrar|teacher']
 // --- LESSON PLANS --- staff documents: Teacher, VP, Principal, Admin only (students and guardians
 // are refused by the role check). Each write needs its permission; LessonPlanAccess decides every
 // plan and file on every request, and LessonPlanService checks again.
+// Report cards (§7.1): homeroom teachers for their own classes (ratings, confirmation), the Registrar,
+// VP and Principal for every class. The attendance check (§8) is for the VP and Principal.
+Route::middleware(['auth', 'role:teacher|registrar|vp_academic|principal'])->prefix('report-cards')->name('report-cards.')->group(function () {
+    Route::get('/', [ReportCardController::class, 'index'])->name('index');
+    Route::get('/attendance', [ReportCardController::class, 'attendance'])->middleware('role:vp_academic|principal')->name('attendance');
+    Route::put('/{section}/{term}/personality', [ReportCardController::class, 'savePersonality'])->middleware('role:teacher')->name('personality');
+    Route::post('/{section}/{term}/confirm', [ReportCardController::class, 'confirm'])->middleware('role:teacher')->name('confirm');
+    Route::get('/{section}/{term}/{student}', [ReportCardController::class, 'show'])->name('show');
+    Route::get('/{section}/{term}/{student}/pdf', [ReportCardController::class, 'pdf'])->name('pdf');
+});
+
 Route::middleware(['auth', 'role:teacher|vp_academic|principal|admin'])->prefix('lesson-plans')->name('lesson-plans.')->group(function () {
     Route::get('/', [LessonPlanController::class, 'index'])->name('index');
     Route::get('/review-queue', [LessonPlanController::class, 'queue'])->middleware('permission:lesson_plans.view_all')->name('queue');
@@ -231,6 +244,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     Route::get('/gradebook-template', [GradebookTemplateController::class, 'index'])->name('gradebook-template.index');
     Route::put('/gradebook-template', [GradebookTemplateController::class, 'update'])->name('gradebook-template.update');
+
+    Route::get('/report-rules', [ReportRulesController::class, 'index'])->name('report-rules.index');
+    Route::put('/report-rules', [ReportRulesController::class, 'update'])->name('report-rules.update');
 
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
     Route::get('/audit-logs/export', [AuditLogController::class, 'export'])->name('audit-logs.export');
@@ -437,6 +453,7 @@ Route::middleware(['auth', 'role:principal'])->prefix('principal')->name('princi
     Route::get('/curriculum', [CurriculumController::class, 'index'])->name('curriculum.index');
     Route::get('/grading-schemes', [GradingSchemeController::class, 'index'])->name('grading-schemes.index');
     Route::get('/gradebook-template', [GradebookTemplateController::class, 'index'])->name('gradebook-template.index');
+    Route::get('/report-rules', [ReportRulesController::class, 'index'])->name('report-rules.index');
     Route::put('/governance', [GovernanceController::class, 'update'])->name('governance.update');
 
     Route::get('/registration/create', [PrincipalRegistrationController::class, 'create'])->name('registration.create');
@@ -481,6 +498,8 @@ Route::middleware(['auth', 'role:guardian'])->prefix('guardian')->name('guardian
 
     Route::get('/grades', [GuardianGradeController::class, 'index'])->name('grades.index');
     Route::get('/grades/report-card', [GuardianGradeController::class, 'reportCard'])->name('grades.report-card');
+    Route::get('/report-cards/{term}', [GuardianGradeController::class, 'showReportCard'])->name('report-cards.show');
+    Route::post('/report-cards/{term}/acknowledge', [GuardianGradeController::class, 'acknowledge'])->name('report-cards.acknowledge');
 
     Route::get('/fees', [GuardianFeeController::class, 'index'])->name('fees.index');
     Route::get('/fees/statement', [GuardianFeeController::class, 'statement'])->name('fees.statement');
@@ -500,6 +519,7 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
 
     Route::get('/grades', [StudentGradeController::class, 'index'])->name('grades.index');
     Route::get('/grades/report-card', [StudentGradeController::class, 'reportCard'])->name('grades.report-card');
+    Route::get('/report-cards/{term}', [StudentGradeController::class, 'showReportCard'])->name('report-cards.show');
 
     Route::get('/schedule', [StudentScheduleController::class, 'index'])->name('schedule.index');
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance.index');

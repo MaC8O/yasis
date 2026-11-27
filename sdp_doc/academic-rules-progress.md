@@ -9,8 +9,8 @@ Source of truth: [YASIS_Academic_and_Fee_Rules.md](YASIS_Academic_and_Fee_Rules.
 | 3. Grading schemes per grade level | Merged | `grading-schemes`, PR #42 |
 | 4a. Calculation service, frozen results, promotion recommendation | Merged (with the follow-up: a batch needs a frozen year) | `results-service`, PR #43; `promotion-needs-frozen-year`, PR #44 |
 | 4b. Switch the pages to the new results, retire the department grade scale, Q20 ranking setting | Merged, deployed to staging (fresh reset 2026-11-27) | `results-pages`, PR #45 |
-| 5. KG1 to Grade 10 gradebook template and calculated attendance | PR open, awaiting review | `gradebook-template`, PR #46 |
-| 6. Report cards | Not started | |
+| 5. KG1 to Grade 10 gradebook template and calculated attendance | Merged (with the follow-up: archive instead of delete) | `gradebook-template`, PR #46; `archive-gradebook-items`, PR #47 |
+| 6. Report cards | PR open, awaiting review | `report-cards`, PR #48 |
 | 7. Statement of Marks | Not started | |
 | 8. Fee schedule (reference data only) | Not started | |
 
@@ -189,7 +189,7 @@ No asset build is needed beyond the usual: the new classes are on the Registrar 
 
 **Out of scope:** the Principal and VP dashboards average raw `Grade` scores without any scale. They are unchanged.
 
-## Phase 5: fixed gradebook template and calculated attendance (done, in review)
+## Phase 5: fixed gradebook template and calculated attendance (merged)
 
 **Built:**
 - **`gradebook_template_categories`:** the school's five categories, all editable by the Admin (name and weight, which must total 100) and read-only for the Principal:
@@ -255,6 +255,58 @@ Frozen terms and Grades 11-12 don't change.
 
 A fresh reset with the seeder is the alternative, as last time.
 
+## Phase 6: report cards (done, in review)
+
+**Built:**
+- **Four cards, chosen by `grade_levels.report_card_layout`:** KG1-4 blue, 5-9 green, Grade 10 yellow, 11-12 yellow. They replace the single report card from 4b.
+  - **On screen:** one responsive column. Staff open it from Report Cards, students and guardians from Grades.
+  - **PDF:** the school's booklet, A4 landscape, two columns per page, two pages, for double-sided printing and folding. Page 1: personality record and class placement | cover. Page 2: acknowledgements | scholarship record.
+- **Figures from `ResultService` (`ReportCardService`):** frozen for a locked term, live and marked "Provisional" for an open one.
+  - Subjects in curriculum order, with HRS for 11-12, "-" for an option not taken, and PASS/FAIL for a pass/fail subject.
+  - First, Second, Third and Final columns. **Final is Term 4's own result** (owner, option B).
+  - The G.P.A, Position, Total number in class and Days absent rows. The footnote is printed word for word.
+- **Total number in class:** the frozen roster for a locked term, the current roster for an open term.
+- **Days absent** is frozen with the term (`student_results.days_absent`, `attendance_pct`), so later attendance edits don't change a locked card.
+- **Personality record (`personality_ratings`):**
+  - The homeroom teacher rates five traits A, B or C per student per term.
+  - Editable until the term is locked, and audited.
+  - The card shows the latest rated term.
+- **Acknowledgements (`report_acknowledgements`):** the name and date print where each signature goes.
+  - **Class teacher:** "Confirm reports" works only once the Principal has locked the term. Before that the button is disabled with the reason, and the server refuses it.
+  - **Principal:** turning on "Release term results" is the Principal's sign-off: one row per term, printed on every card. Turning it off withdraws the row (kept, with `withdrawn_at`). Releasing with unconfirmed cards shows a warning listing the classes, and doesn't block.
+  - **Guardian:** "I acknowledge this report", on released terms only, once per student and term.
+- **Class placement:** on the Final report only, from the applied promotion batch's Promote item (grade, school year, first day of that year's first term).
+- **Attendance eligibility (section 8):** `report_rules.min_attendance_pct` (default 80). Students below it are flagged on the homeroom teacher's Report Cards page, on the VP and Principal dashboards, and on the Attendance Check list. Nobody is blocked.
+- **Report Card Rules page (`report_rules`):** edited by the Admin and read-only for the Principal, with a "Confirmed by the school" tick to clear each flag. Changes are audited with before and after values.
+  - Minimum attendance (Q16)
+  - What Days absent counts (Q8)
+  - Which term's personality ratings print (Q14)
+- **Seeder:** Term 1 of Grade 9-A, 10-A and 12-A has personality ratings, the class teacher's confirmation, the Principal's sign-off and the first guardian's acknowledgement, so those cards print complete.
+
+**Access:**
+- **Teacher:** own homeroom classes only; rates and confirms.
+- **Registrar, VP and Principal:** every class, read-only.
+- **Attendance Check:** VP and Principal.
+- **Students and guardians:** released terms only.
+
+**Tests:** `ReportCardTest` (13) and the updated `FamilyResultsTest`. The full suite passes (548).
+
+**Checked in the browser (fresh seed, 1280 px and 390 px):**
+- **Homeroom teacher:** ratings, confirm disabled on an open term, the locked term read-only.
+- **Guardian:** acknowledge, then the name prints.
+- **Student:** same card, no acknowledge button.
+- **Registrar:** read-only.
+- **VP:** dashboard flag and list.
+- **Principal:** release warning, read-only rules.
+- **Admin:** rules edit.
+- **PDF:** A4 landscape, 2 pages.
+
+**Deploy (staging), when asked:**
+1. `php artisan migrate` (5 migrations; the layouts and the three rules are filled in by the migrations).
+2. An asset build.
+
+Terms that are already locked have no frozen days absent: their cards fall back to the live count until a re-freeze. A fresh reset with the seeder avoids this.
+
 ## Defaults applied so far
 
 | Rule | Default | Question (rules file) | Where it lives |
@@ -282,6 +334,12 @@ A fresh reset with the seeder is the alternative, as last time.
 | Where the fixed template applies | KG1 to Grade 10. Grades 11 and 12 keep free category weighting. | Q9 | `grading_schemes.uses_gradebook_template`, G10 and G11_12 flagged Q9 |
 | School days in the term | The dates with an attendance record for the section in that term. | Q8 | `AttendanceScoreService` |
 | Empty categories | Left out of the weighting while the term is open. At lock, an empty Examinations category means no final mark for that subject (incomplete). | not asked (owner, 2026-11-27) | `ResultService::liveSectionTerm(final: true)` |
+| Report card "Final" column | Term 4's own result (subject marks, G.P.A row, position), like the other three columns. The year result is not on the report card; it goes on the Statement of Marks (phase 7). This replaces the earlier assumption that the Final column held the year result. | Q3 | `ReportCardService` (no rule row) |
+| Report card "G.P.A" row | Labelled per scheme on the card: "G.P.A (AVERAGE %)" for KG1-9, "G.P.A (POINT TOTAL)" for Grade 10, "G.P.A" for 11-12. | Q12 | `ReportCardService::build()` |
+| Report card position | The ranked position from the results, so ties share a position (1, 2, 2, 4). | Q13 | `ResultService::rank()` |
+| Days absent | Absent plus Excused days in the term. The Admin can switch it to Absent only. | Q8 | `report_rules.days_absent_counts`, flagged Q8 |
+| Personality record | Rated every term; the card prints the latest rated term. The Admin can switch it to the report's own term. | Q14 | `report_rules.personality_shown`, flagged Q14 |
+| Minimum attendance | 80% to sit the examinations, checked on the section's daily attendance (attended over counted days, Excused left out). Flagged, never blocked. | Q16 | `report_rules.min_attendance_pct`, flagged Q16 |
 
 ## Open questions waiting on the school
 All of Q1 to Q20 in the rules file are still open, as are the Treasurer questions T1 to T11. A KG1/KG2 decision has been recorded under Q2 while the school's answer is pending.
@@ -331,4 +389,5 @@ The letter sent to the school left out Q2 (Nursery), so from Q2 onwards each let
   - Rounding uses the scheme's mode and decimals, with no floats.
 - **The old department grade scale is retired (4b):** everything that read it now reads `ResultService`, and its hard-deleting Admin page is gone. Only the `grade_scale_bands` table, its rows, the `GradeScaleBand` model, `Department::gradeScaleBands()` and its `AuditLog` category remain, for past records.
 - **Out of phase:** the Principal and VP dashboards average raw `Grade` scores without any scale; they read neither the old nor the new results.
+- **Phase 6 and the report card:** the year result is not on the report card (Q3, option B). Phase 7's Statement of Marks is where `ResultService::sectionYear()` is printed.
 - **Fixed after phase 5 (PR #47):** removing a gradebook item or a teacher's own category (Grades 11-12) now archives it (`archived_at`) instead of deleting its grades. Archived items and categories count in no mark, keep their grades, and can be restored by the teacher while the term is open; both actions are audited. Locked terms stay read-only. Template categories still can't be archived.

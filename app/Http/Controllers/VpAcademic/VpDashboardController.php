@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\DocumentRequest;
 use App\Models\Grade;
 use App\Models\PromotionBatch;
+use App\Services\ReportCardActionsService;
 
 class VpDashboardController extends Controller
 {
@@ -26,6 +27,7 @@ class VpDashboardController extends Controller
             });
 
         return view('vp_academic.dashboard', [
+            'attendanceFlags' => app(ReportCardActionsService::class)->flagSummary(),
             'departmentPerformance' => $departmentPerformance,
             'pendingPromotions' => PromotionBatch::where('status', 'Pending')->count(),
             'pendingTranscripts' => DocumentRequest::where('type', 'Transcript')->where('status', 'Pending Approval')->count(),

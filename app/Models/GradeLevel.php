@@ -10,7 +10,15 @@ use Illuminate\Database\Eloquent\Model;
  */
 class GradeLevel extends Model
 {
-    protected $fillable = ['code', 'name', 'sort_order', 'grading_scheme_id', 'archived_at'];
+    /** The school's four report cards (§7.1): layout => [title, accent colour]. */
+    public const REPORT_CARD_LAYOUTS = [
+        'kg4' => ['KG to Grade 4', 'blue'],
+        'g5_9' => ['Grades 5 to 9', 'green'],
+        'g10' => ['Grade 10', 'yellow'],
+        'g11_12' => ['Grades 11 and 12', 'yellow'],
+    ];
+
+    protected $fillable = ['code', 'name', 'sort_order', 'grading_scheme_id', 'report_card_layout', 'archived_at'];
 
     protected function casts(): array
     {

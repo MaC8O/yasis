@@ -13,7 +13,7 @@ class StudentResult extends Model
     protected $fillable = [
         'result_freeze_id', 'student_id', 'section_id', 'grade_level_id', 'grading_scheme_id', 'result_basis',
         'status', 'status_reason', 'result_value', 'result_unrounded', 'class_label', 'passed', 'position',
-        'ranked_count', 'recommendation', 'superseded_at', 'superseded_reason',
+        'ranked_count', 'days_absent', 'attendance_pct', 'recommendation', 'superseded_at', 'superseded_reason',
     ];
 
     protected function casts(): array

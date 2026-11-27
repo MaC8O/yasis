@@ -72,6 +72,17 @@
                     </span>
                     <input type="checkbox" name="results_released" value="1" @checked($currentTerm?->results_released) class="w-5 h-5">
                 </label>
+                @if ($unconfirmedSections)
+                    <div class="-mt-1 rounded-xl border border-warning-line bg-warning-soft p-3 text-sm text-warning" data-unconfirmed-sections>
+                        <p class="font-semibold">{{ count($unconfirmedSections) }} {{ count($unconfirmedSections) === 1 ? 'class has' : 'classes have' }} report cards the class teacher hasn't confirmed</p>
+                        <p class="mt-0.5 text-xs">You can still release; the unconfirmed cards print without the class teacher's name. Releasing records your sign-off on every card.</p>
+                        <ul class="mt-2 max-h-40 overflow-y-auto list-disc pl-5 text-xs">
+                            @foreach ($unconfirmedSections as $row)
+                                <li>{{ $row['section'] }}: {{ $row['unconfirmed'] }} of {{ $row['total'] }} unconfirmed</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
 
                 <label class="flex items-center justify-between">
                     <span>
