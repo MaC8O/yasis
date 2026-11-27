@@ -15,7 +15,23 @@ class Assessment extends Model
         'quiz' => 'Quiz',
     ];
 
-    protected $fillable = ['category_id', 'name', 'type', 'max_score'];
+    protected $fillable = ['category_id', 'name', 'type', 'max_score', 'archived_at'];
+
+    protected function casts(): array
+    {
+        return ['archived_at' => 'datetime'];
+    }
+
+    /** Items in use. An archived item keeps its grades but counts in no mark; it can be restored in an open term. */
+    public function scopeActive($query)
+    {
+        return $query->whereNull('archived_at');
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
 
     protected static function booted(): void
     {

@@ -223,8 +223,8 @@ class GradebookTemplateService
         foreach ($sections as $section) {
             $subjects = SubjectOffering::with('subject')->where('grade_level_id', $section->grade_level_id)->active()->ordered()->get();
             $counts = AssessmentCategory::where('section_id', $section->id)->where('term_id', $term->id)->active()
-                ->whereNotNull('template_key')->withCount('assessments')->get()
-                ->groupBy('subject_id')->map(fn ($cats) => $cats->pluck('assessments_count', 'template_key'));
+                ->whereNotNull('template_key')->withCount('activeAssessments')->get()
+                ->groupBy('subject_id')->map(fn ($cats) => $cats->pluck('active_assessments_count', 'template_key'));
 
             foreach ($subjects as $offering) {
                 $have = $counts->get($offering->subject_id, collect());

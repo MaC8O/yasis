@@ -177,7 +177,15 @@
                 <p class="text-sm font-semibold">Archived categories <span class="font-normal text-neutral-500">(kept with their marks, not counted)</span></p>
                 @foreach ($archivedCategories as $archived)
                     <div class="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm">
-                        <p class="font-medium">{{ $archived->name }}</p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <p class="font-medium">{{ $archived->name }} <span class="text-xs font-normal text-neutral-500">· {{ rtrim(rtrim(number_format($archived->weight_pct, 2), '0'), '.') }}% weight</span></p>
+                            @if (! $usesTemplate && ! $term?->is_locked)
+                                <form method="POST" action="{{ route('teacher.gradebook.categories.restore', $archived) }}">
+                                    @csrf
+                                    <button type="submit" class="min-h-[36px] text-xs font-semibold text-brand hover:underline">Restore category</button>
+                                </form>
+                            @endif
+                        </div>
                         @foreach ($archived->assessments as $item)
                             <div class="mt-1 flex flex-wrap items-center gap-2">
                                 <span>{{ $item->name }}</span>
@@ -185,6 +193,25 @@
                                 @include('teacher.gradebook.partials.move-item', ['item' => $item, 'from' => $archived])
                             </div>
                         @endforeach
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+        @php $looseArchived = $archivedItems->filter(fn ($i) => ! $i->category->isArchived()); @endphp
+        @if ($looseArchived->isNotEmpty())
+            <div class="mt-4 border-t border-neutral-100 pt-4" data-archived-items>
+                <p class="text-sm font-semibold">Archived items <span class="font-normal text-neutral-500">(kept with their scores, not counted)</span></p>
+                @foreach ($looseArchived as $item)
+                    <div class="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm">
+                        <span class="font-medium">{{ $item->name }}</span>
+                        <span class="text-xs text-neutral-500">{{ $item->category->name }} · out of {{ rtrim(rtrim(number_format($item->max_score, 2), '0'), '.') }} · {{ $item->grades_count }} {{ Str::plural('score', $item->grades_count) }}</span>
+                        @unless ($term?->is_locked)
+                            <form method="POST" action="{{ route('teacher.gradebook.assessments.restore', $item) }}">
+                                @csrf
+                                <button type="submit" class="min-h-[36px] text-xs font-semibold text-brand hover:underline">Restore</button>
+                            </form>
+                        @endunless
                     </div>
                 @endforeach
             </div>

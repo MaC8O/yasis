@@ -90,12 +90,17 @@ class TeacherGradebookController extends Controller
         $allCategories = AssessmentCategory::where('section_id', $section->id)
             ->where('subject_id', $subject->id)
             ->where('term_id', $term?->id)
-            ->with('assessments.grades')
+            ->with(['assessments' => fn ($q) => $q->whereNull('archived_at')->with('grades')])
             ->get();
+        $archivedItems = Assessment::whereIn('category_id', $allCategories->pluck('id'))->whereNotNull('archived_at')
+            ->with('category')->withCount('grades')->orderBy('archived_at')->get();
         $order = $templates->template()->pluck('sort_order', 'key');
         $categories = $allCategories->whereNull('archived_at')
             ->sortBy(fn ($c) => [$c->template_key ? $order[$c->template_key] ?? 99 : 99, $c->id])->values();
-        $archivedCategories = $allCategories->whereNotNull('archived_at')->filter(fn ($c) => $c->assessments->isNotEmpty())->values();
+        // Archived categories: a teacher's own ones (restorable) and those emptied or set aside when a gradebook
+        // moved onto the template (shown only while they still hold items).
+        $archivedCategories = $allCategories->whereNotNull('archived_at')
+            ->filter(fn ($c) => $c->assessments->isNotEmpty() || ! $usesTemplate)->values();
 
         $roster = $section->enrollments()->with('student')->where('status', 'Active')->get()->pluck('student');
 
@@ -145,6 +150,7 @@ class TeacherGradebookController extends Controller
             'term' => $term,
             'categories' => $categories,
             'archivedCategories' => $archivedCategories,
+            'archivedItems' => $archivedItems,
             'usesTemplate' => $usesTemplate,
             'attendance' => $attendance,
             'missingAttendance' => $missingAttendance,
@@ -195,16 +201,46 @@ class TeacherGradebookController extends Controller
     {
         $this->assertTeaches($request, $assessmentCategory->section_id, $assessmentCategory->subject_id);
         $this->assertTermUnlocked($assessmentCategory->term);
-        if ($assessmentCategory->isTemplate() || $assessmentCategory->isArchived()) {
-            throw new ActionRefused("“{$assessmentCategory->name}” is one of the school's fixed categories and can't be deleted.");
+        if ($assessmentCategory->isArchived()) {
+            throw new ActionRefused("“{$assessmentCategory->name}” is already archived.");
+        }
+        if ($assessmentCategory->isTemplate()) {
+            throw new ActionRefused("“{$assessmentCategory->name}” is one of the school's fixed categories and can't be archived.");
         }
         $this->refuseFixedCategories($assessmentCategory->section, $templates);
 
-        $id = $assessmentCategory->id;
-        $assessmentCategory->delete();
-        $audit->log($request->user(), 'Removed assessment category', 'AssessmentCategory', $id);
+        // Archived, never deleted: its items and their grades are kept but no longer count.
+        $assessmentCategory->update(['archived_at' => now()]);
+        $audit->log($request->user(), 'Archived assessment category', 'AssessmentCategory', $assessmentCategory->id, [
+            'name' => $assessmentCategory->name,
+            'items' => $assessmentCategory->assessments()->count(),
+            'grades' => \App\Models\Grade::whereIn('assessment_id', $assessmentCategory->assessments()->pluck('id'))->count(),
+        ]);
 
-        return back()->with('status', 'Category removed.');
+        return back()->with('status', "Category “{$assessmentCategory->name}” archived. Its items and scores are kept but no longer count; you can restore it while the term is open.");
+    }
+
+    /** Bring back a teacher's own category archived in an open term (Grades 11-12). */
+    public function restoreCategory(Request $request, AssessmentCategory $assessmentCategory, AuditService $audit, GradebookTemplateService $templates)
+    {
+        $this->assertTeaches($request, $assessmentCategory->section_id, $assessmentCategory->subject_id);
+        $this->assertTermUnlocked($assessmentCategory->term);
+        if (! $assessmentCategory->isArchived()) {
+            throw new ActionRefused("“{$assessmentCategory->name}” is not archived.");
+        }
+        if ($assessmentCategory->isTemplate() || $templates->appliesTo($assessmentCategory->section)) {
+            throw new ActionRefused("{$assessmentCategory->section->name} uses the school's fixed categories, so “{$assessmentCategory->name}” can't be restored. Move its items into a current category instead.");
+        }
+        $total = (float) AssessmentCategory::where('section_id', $assessmentCategory->section_id)->where('subject_id', $assessmentCategory->subject_id)
+            ->where('term_id', $assessmentCategory->term_id)->active()->sum('weight_pct');
+        if ($total + (float) $assessmentCategory->weight_pct > 100) {
+            throw new ActionRefused("Restoring “{$assessmentCategory->name}” would take the weights above 100% (currently {$total}%). Lower another category's weight first.");
+        }
+
+        $assessmentCategory->update(['archived_at' => null]);
+        $audit->log($request->user(), 'Restored assessment category', 'AssessmentCategory', $assessmentCategory->id, ['name' => $assessmentCategory->name]);
+
+        return back()->with('status', "Category “{$assessmentCategory->name}” restored; its items count again.");
     }
 
     public function storeAssessment(Request $request, AuditService $audit)
@@ -236,6 +272,7 @@ class TeacherGradebookController extends Controller
     {
         $category = $this->assertTeachesAssessment($request, $assessment);
         $this->assertTermUnlocked($category->term);
+        $this->refuseArchived($assessment);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -266,13 +303,38 @@ class TeacherGradebookController extends Controller
         $category = $this->assertTeachesAssessment($request, $assessment);
         $this->assertTermUnlocked($category->term);
 
-        $id = $assessment->id;
-        $name = $assessment->name;
-        $assessment->delete(); // grades cascade via the foreign key
+        // Archived, never deleted: its grades are kept but count in no mark.
+        $assessment->update(['archived_at' => now()]);
+        $audit->log($request->user(), 'Archived assessment', 'Assessment', $assessment->id, [
+            'name' => $assessment->name, 'category' => $category->name, 'grades' => $assessment->grades()->count(),
+        ]);
 
-        $audit->log($request->user(), 'Deleted assessment', 'Assessment', $id);
+        return back()->with('status', "Item “{$assessment->name}” archived. Its scores are kept but no longer count; you can restore it while the term is open.");
+    }
 
-        return back()->with('status', "Item \"{$name}\" and its scores were deleted.");
+    public function restoreAssessment(Request $request, Assessment $assessment, AuditService $audit)
+    {
+        $category = $this->assertTeachesAssessment($request, $assessment);
+        $this->assertTermUnlocked($category->term);
+        if (! $assessment->isArchived()) {
+            throw new ActionRefused("“{$assessment->name}” is not archived.");
+        }
+        if ($category->isArchived()) {
+            throw new ActionRefused("“{$assessment->name}” is in the archived category “{$category->name}”. Restore the category, or move the item into a current one.");
+        }
+
+        $assessment->update(['archived_at' => null]);
+        $audit->log($request->user(), 'Restored assessment', 'Assessment', $assessment->id, ['name' => $assessment->name, 'category' => $category->name]);
+
+        return back()->with('status', "Item “{$assessment->name}” restored; its scores count again.");
+    }
+
+    /** An archived item takes no new scores or edits until it is restored. */
+    protected function refuseArchived(Assessment $assessment): void
+    {
+        if ($assessment->isArchived()) {
+            throw new ActionRefused("“{$assessment->name}” is archived. Restore it before changing it or entering scores.");
+        }
     }
 
     /**
@@ -283,6 +345,7 @@ class TeacherGradebookController extends Controller
     {
         $from = $this->assertTeachesAssessment($request, $assessment);
         $this->assertTermUnlocked($from->term);
+        $this->refuseArchived($assessment);
         $data = $request->validate(['category_id' => ['required', 'integer']]);
 
         $to = AssessmentCategory::where('id', $data['category_id'])->where('section_id', $from->section_id)
@@ -363,6 +426,7 @@ class TeacherGradebookController extends Controller
     {
         $category = $this->assertTeachesAssessment($request, $assessment);
         $this->assertTermUnlocked($category->term);
+        $this->refuseArchived($assessment);
 
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv,txt', 'max:10240'],
@@ -480,6 +544,7 @@ class TeacherGradebookController extends Controller
             $assessment = $assessments->get((int) $assessmentId);
             abort_if(! $assessment || $assessment->category->section_id !== $sectionId || $assessment->category->subject_id !== $subjectId,
                 403, 'That item does not belong to your class and subject.');
+            $this->refuseArchived($assessment);
 
             foreach ((array) $studentScores as $studentId => $score) {
                 if ($score === null || $score === '') {
@@ -567,6 +632,7 @@ class TeacherGradebookController extends Controller
     {
         $category = $this->assertTeachesAssessment($request, $assessment);
         $this->assertTermUnlocked($category->term);
+        $this->refuseArchived($assessment);
 
         $data = $request->validate([
             'scores' => ['array'],

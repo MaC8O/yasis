@@ -341,6 +341,8 @@ Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')
     Route::patch('/gradebook/assessments/{assessment}', [TeacherGradebookController::class, 'updateAssessment'])->name('gradebook.assessments.update');
     Route::delete('/gradebook/assessments/{assessment}', [TeacherGradebookController::class, 'destroyAssessment'])->name('gradebook.assessments.destroy');
     Route::patch('/gradebook/assessments/{assessment}/move', [TeacherGradebookController::class, 'moveAssessment'])->name('gradebook.assessments.move');
+    Route::post('/gradebook/assessments/{assessment}/restore', [TeacherGradebookController::class, 'restoreAssessment'])->name('gradebook.assessments.restore');
+    Route::post('/gradebook/categories/{assessmentCategory}/restore', [TeacherGradebookController::class, 'restoreCategory'])->name('gradebook.categories.restore');
     Route::get('/gradebook/assessments/{assessment}/scores', [TeacherGradebookController::class, 'itemScores'])->name('gradebook.assessments.scores');
     Route::put('/gradebook/assessments/{assessment}/scores', [TeacherGradebookController::class, 'saveItemScores'])->name('gradebook.assessments.scores.save');
     Route::get('/gradebook/assessments/{assessment}/scores-template', [TeacherGradebookController::class, 'scoresTemplate'])->name('gradebook.assessments.scores-template');

@@ -40,9 +40,9 @@
                 </button>
                 @if ($editable && ! $category->isTemplate())
                     <form method="POST" action="{{ route('teacher.gradebook.categories.destroy', $category) }}"
-                          data-confirm="Delete the “{{ $category->name }}” category and all its items and scores?" onsubmit="return confirm(this.dataset.confirm)">
+                          data-confirm="Archive the “{{ $category->name }}” category? Its items and scores are kept but stop counting; you can restore it while the term is open." onsubmit="return confirm(this.dataset.confirm)">
                         @csrf @method('DELETE')
-                        <button type="submit" class="min-h-[44px] text-xs font-semibold text-danger hover:underline">Delete category</button>
+                        <button type="submit" class="min-h-[44px] text-xs font-semibold text-danger hover:underline">Archive category</button>
                     </form>
                 @endif
             </div>
@@ -67,9 +67,9 @@
                                 <button type="button" @click="edit = true" class="min-h-[36px] text-xs font-semibold text-neutral-500 hover:underline">Edit</button>
                                 @include('teacher.gradebook.partials.move-item', ['item' => $assessment, 'from' => $category])
                                 <form method="POST" action="{{ route('teacher.gradebook.assessments.destroy', $assessment) }}"
-                                      data-confirm="Delete “{{ $assessment->name }}” and its {{ $scored }} {{ Str::plural('score', $scored) }}?" onsubmit="return confirm(this.dataset.confirm)">
+                                      data-confirm="Archive “{{ $assessment->name }}”? Its {{ $scored }} {{ Str::plural('score', $scored) }} are kept but stop counting; you can restore it while the term is open." onsubmit="return confirm(this.dataset.confirm)">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="min-h-[36px] text-xs font-semibold text-danger hover:underline">Delete</button>
+                                    <button type="submit" class="min-h-[36px] text-xs font-semibold text-danger hover:underline">Archive</button>
                                 </form>
                             @endif
                         </div>
