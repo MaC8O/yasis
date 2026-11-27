@@ -55,8 +55,15 @@ class AssessmentCategory extends Model
         return $this->belongsTo(Term::class);
     }
 
+    /** Every item, archived ones included. */
     public function assessments()
     {
         return $this->hasMany(Assessment::class, 'category_id');
+    }
+
+    /** The items that count (not archived). */
+    public function activeAssessments()
+    {
+        return $this->hasMany(Assessment::class, 'category_id')->whereNull('archived_at');
     }
 }

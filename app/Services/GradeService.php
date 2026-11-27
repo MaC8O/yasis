@@ -21,7 +21,7 @@ use Illuminate\Support\Collection;
  * The subject mark is the weighted mean of the categories that have a score; a category with
  * nothing graded is left out while the term is open. A subject has no mark until at least one of
  * its items is graded (attendance alone, being the same for every subject, doesn't make a mark).
- * Archived categories never count.
+ * Archived categories and archived items never count.
  */
 class GradeService
 {
@@ -96,9 +96,9 @@ class GradeService
     public function subjectsWithoutExaminations(Section $section, Term $term): array
     {
         return AssessmentCategory::where('section_id', $section->id)->where('term_id', $term->id)
-            ->active()->whereNotNull('template_key')->withCount('assessments')->get()
+            ->active()->whereNotNull('template_key')->withCount('activeAssessments')->get()
             ->groupBy('subject_id')
-            ->filter(fn (Collection $categories) => ($categories->firstWhere('template_key', GradebookTemplateCategory::EXAMINATIONS)?->assessments_count ?? 0) === 0)
+            ->filter(fn (Collection $categories) => ($categories->firstWhere('template_key', GradebookTemplateCategory::EXAMINATIONS)?->active_assessments_count ?? 0) === 0)
             ->keys()->map(fn ($id) => (int) $id)->values()->all();
     }
 
@@ -119,7 +119,7 @@ class GradeService
     private function scores(Section $section, Term $term): array
     {
         $categories = AssessmentCategory::where('section_id', $section->id)->where('term_id', $term->id)
-            ->active()->with('assessments.grades')->orderBy('id')->get();
+            ->active()->with('activeAssessments.grades')->orderBy('id')->get();
         $attendance = null;
 
         $scores = [];
@@ -140,7 +140,7 @@ class GradeService
                 }
             } else {
                 $earned = $possible = $percentages = [];
-                foreach ($category->assessments as $assessment) {
+                foreach ($category->activeAssessments as $assessment) {
                     $max = BigDecimal::of((string) $assessment->max_score);
                     if ($max->isLessThanOrEqualTo(0)) {
                         continue;

@@ -68,7 +68,7 @@ class GradebookAssessmentCrudTest extends TestCase
         $this->assertDatabaseHas('assessments', ['id' => $assessment->id, 'max_score' => 100]);
     }
 
-    public function test_teacher_can_delete_an_item_and_its_scores_cascade(): void
+    public function test_removing_an_item_archives_it_and_keeps_its_scores(): void
     {
         ['teacher' => $teacher, 'student' => $student, 'assessment' => $assessment] = $this->makeGradebook();
 
@@ -78,8 +78,9 @@ class GradebookAssessmentCrudTest extends TestCase
             ->delete("/teacher/gradebook/assessments/{$assessment->id}")
             ->assertSessionHasNoErrors();
 
-        $this->assertDatabaseMissing('assessments', ['id' => $assessment->id]);
-        $this->assertDatabaseMissing('grades', ['assessment_id' => $assessment->id]);
+        // Archived, never deleted (GradebookArchiveTest covers marks and restoring).
+        $this->assertNotNull($assessment->fresh()->archived_at);
+        $this->assertDatabaseHas('grades', ['assessment_id' => $assessment->id, 'student_id' => $student->id]);
     }
 
     public function test_locked_term_blocks_edit_and_delete(): void
