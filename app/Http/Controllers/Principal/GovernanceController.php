@@ -11,12 +11,13 @@ use App\Models\ResultFreeze;
 use App\Models\SystemSetting;
 use App\Models\Term;
 use App\Services\AuditService;
+use App\Services\GradebookTemplateService;
 use App\Services\ResultFreezeService;
 use Illuminate\Support\Facades\DB;
 
 class GovernanceController extends Controller
 {
-    public function index(ResultFreezeService $freezes)
+    public function index(ResultFreezeService $freezes, GradebookTemplateService $templates)
     {
         $activeYear = AcademicYear::where('is_active', true)->first();
         $currentTerm = $this->currentTerm();
@@ -27,6 +28,7 @@ class GovernanceController extends Controller
             'currentTerm' => $currentTerm,
             'activeFreeze' => $currentTerm ? ResultFreeze::active()->where('term_id', $currentTerm->id)->latest('id')->first() : null,
             'previousFreeze' => $currentTerm && ! $currentTerm->is_locked ? $freezes->previousFreeze($currentTerm) : null,
+            'emptyCategories' => $currentTerm && ! $currentTerm->is_locked ? $templates->emptyItemCategories($currentTerm) : [],
             'gradingSchemes' => GradingScheme::with([
                 'gradeLevels' => fn ($q) => $q->ordered(),
                 'bands' => fn ($q) => $q->active()->where('kind', 'result')->orderByDesc('min'),
@@ -66,6 +68,12 @@ class GovernanceController extends Controller
     }
 
     private function currentTerm(): ?Term
+    {
+        return self::currentTermFor();
+    }
+
+    /** The term the Principal's grade lock applies to: the one running today, else the year's last. */
+    public static function currentTermFor(): ?Term
     {
         $activeYear = AcademicYear::where('is_active', true)->first();
 

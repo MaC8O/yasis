@@ -48,6 +48,18 @@
         <input type="hidden" name="attendance_date" value="{{ $date->toDateString() }}">
         <input type="hidden" name="term_id" value="{{ $term?->id }}">
 
+        @if ($missingAttendance->isNotEmpty())
+            <div class="rounded-xl border border-warning-line bg-warning-soft px-5 py-3 text-sm text-warning" data-missing-attendance>
+                <p class="font-semibold">Attendance records missing in {{ $term?->name }}</p>
+                <p class="mt-0.5">These students have school days with no record for them. Only recorded days count towards the gradebook's Attendance category.</p>
+                <ul class="mt-1 list-disc pl-5">
+                    @foreach ($missingAttendance as $row)
+                        <li>{{ $row['name'] }}: {{ $row['missing'] }} {{ Str::plural('day', $row['missing']) }} with no record</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <x-card title="Attendance sheet: {{ $section->name }}" subtitle="Mark present, absent, tardy, add remarks, and save.">
             <table class="w-full text-sm">
                 <thead>

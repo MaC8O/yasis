@@ -127,11 +127,23 @@ class ResultService
      * Calculate a section's term results now. $rulesFor maps a scheme id to the rules to use (a
      * freeze's copy); by default each scheme's current rules.
      */
-    public function liveSectionTerm(Section $section, Term $term, ?callable $rulesFor = null): SectionResults
+    public function liveSectionTerm(Section $section, Term $term, ?callable $rulesFor = null, bool $final = false): SectionResults
     {
         $marks = $this->grades->sectionMarks($section, $term);
 
-        return $this->calculate($section, $term->academic_year_id, $marks, $rulesFor, false);
+        // Locking a term (final): a subject on the gradebook template with an empty Examinations
+        // category has no final mark, so a student counting it has no overall result (phase 5).
+        $noExam = [];
+        if ($final) {
+            $noExam = $this->grades->subjectsWithoutExaminations($section, $term);
+            foreach ($marks as $studentId => $subjects) {
+                foreach ($noExam as $subjectId) {
+                    unset($marks[$studentId][$subjectId]);
+                }
+            }
+        }
+
+        return $this->calculate($section, $term->academic_year_id, $marks, $rulesFor, false, $noExam);
     }
 
     // --- The year ----------------------------------------------------------------------------------
@@ -233,7 +245,8 @@ class ResultService
     /**
      * @param  array<int, array<int, string>>  $marks  student id => subject id => mark (two decimals)
      */
-    private function calculate(Section $section, int $yearId, array $marks, ?callable $rulesFor, bool $isYear): SectionResults
+    /** @param  list<int>  $noExam  subjects with no final mark because their Examinations category is empty */
+    private function calculate(Section $section, int $yearId, array $marks, ?callable $rulesFor, bool $isYear, array $noExam = []): SectionResults
     {
         $section->loadMissing('gradeLevel');
         $level = $section->gradeLevel;
@@ -259,7 +272,7 @@ class ResultService
 
         $students = $roster->mapWithKeys(fn ($studentId) => [$studentId => $this->student(
             $studentId, $section, $level, $rules, $offerings, $slots, $choices->get($studentId, collect()),
-            $marks[$studentId] ?? [], $extraSubjects, $blockers, $isYear, $isTopLevel,
+            $marks[$studentId] ?? [], $extraSubjects, $blockers, $isYear, $isTopLevel, $noExam,
         )]);
 
         $this->rank($students, $rules);
@@ -292,7 +305,7 @@ class ResultService
     private function student(
         int $studentId, Section $section, ?GradeLevel $level, ?SchemeRules $rules, Collection $offerings,
         Collection $slots, Collection $choices, array $marks, Collection $extraSubjects, array $blockers,
-        bool $isYear, bool $isTopLevel,
+        bool $isYear, bool $isTopLevel, array $noExam = [],
     ): StudentResultData {
         $subjects = [];
         foreach ($offerings as $o) {
@@ -324,6 +337,12 @@ class ResultService
             }
         }
         $unmarked = array_filter($subjects, fn (SubjectResult $s) => $s->counted && $s->mark === null);
+        $withoutExam = array_filter($unmarked, fn (SubjectResult $s) => in_array($s->subjectId, $noExam, true));
+        $unmarked = array_diff_key($unmarked, $withoutExam);
+        if ($withoutExam) {
+            $missing[] = 'No examination was set in '.implode(', ', array_map(fn ($s) => $s->label, $withoutExam)).' this term, so '
+                .(count($withoutExam) === 1 ? 'it has' : 'they have').' no final mark.';
+        }
         if ($unmarked) {
             $missing[] = ($isYear ? 'Not every term has a mark yet in ' : 'No mark yet in ').implode(', ', array_map(fn ($s) => $s->label, $unmarked)).'.';
         }

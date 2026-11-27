@@ -44,6 +44,7 @@ use App\Http\Controllers\Principal\PrincipalRegistrationController;
 use App\Http\Controllers\Registrar\AttendanceCorrectionController;
 use App\Http\Controllers\CurriculumController;
 use App\Http\Controllers\GradingSchemeController;
+use App\Http\Controllers\GradebookTemplateController;
 use App\Http\Controllers\Registrar\DocumentRequestController;
 use App\Http\Controllers\Registrar\ElectiveController;
 use App\Http\Controllers\Registrar\GuardianController;
@@ -228,6 +229,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::put('/grading-schemes/{gradingScheme}', [GradingSchemeController::class, 'update'])->name('grading-schemes.update');
     Route::put('/grading-schemes/{gradingScheme}/bands/{kind}', [GradingSchemeController::class, 'updateBands'])->whereIn('kind', ['mark', 'result'])->name('grading-schemes.bands');
 
+    Route::get('/gradebook-template', [GradebookTemplateController::class, 'index'])->name('gradebook-template.index');
+    Route::put('/gradebook-template', [GradebookTemplateController::class, 'update'])->name('gradebook-template.update');
+
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
     Route::get('/audit-logs/export', [AuditLogController::class, 'export'])->name('audit-logs.export');
     Route::get('/audit-logs/verify', [AuditLogController::class, 'verify'])->name('audit-logs.verify');
@@ -336,6 +340,7 @@ Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')
     Route::post('/gradebook/assessments', [TeacherGradebookController::class, 'storeAssessment'])->name('gradebook.assessments.store');
     Route::patch('/gradebook/assessments/{assessment}', [TeacherGradebookController::class, 'updateAssessment'])->name('gradebook.assessments.update');
     Route::delete('/gradebook/assessments/{assessment}', [TeacherGradebookController::class, 'destroyAssessment'])->name('gradebook.assessments.destroy');
+    Route::patch('/gradebook/assessments/{assessment}/move', [TeacherGradebookController::class, 'moveAssessment'])->name('gradebook.assessments.move');
     Route::get('/gradebook/assessments/{assessment}/scores', [TeacherGradebookController::class, 'itemScores'])->name('gradebook.assessments.scores');
     Route::put('/gradebook/assessments/{assessment}/scores', [TeacherGradebookController::class, 'saveItemScores'])->name('gradebook.assessments.scores.save');
     Route::get('/gradebook/assessments/{assessment}/scores-template', [TeacherGradebookController::class, 'scoresTemplate'])->name('gradebook.assessments.scores-template');
@@ -429,6 +434,7 @@ Route::middleware(['auth', 'role:principal'])->prefix('principal')->name('princi
     Route::get('/governance', [GovernanceController::class, 'index'])->name('governance.index');
     Route::get('/curriculum', [CurriculumController::class, 'index'])->name('curriculum.index');
     Route::get('/grading-schemes', [GradingSchemeController::class, 'index'])->name('grading-schemes.index');
+    Route::get('/gradebook-template', [GradebookTemplateController::class, 'index'])->name('gradebook-template.index');
     Route::put('/governance', [GovernanceController::class, 'update'])->name('governance.update');
 
     Route::get('/registration/create', [PrincipalRegistrationController::class, 'create'])->name('registration.create');

@@ -5,8 +5,6 @@ namespace Database\Seeders;
 use App\Models\AbsenceNotice;
 use App\Models\AcademicYear;
 use App\Models\Announcement;
-use App\Models\Assessment;
-use App\Models\AssessmentCategory;
 use App\Models\Department;
 use App\Models\DocumentRequest;
 use App\Models\Enrollment;
@@ -382,34 +380,11 @@ class DatabaseSeeder extends Seeder
         $term1 = Term::where('academic_year_id', $academicYear->id)->where('sequence', 1)->first();
         $term1->update(['is_locked' => true, 'results_released' => true]);
 
-        // English teaching assignment + a full weighted gradebook (Math + English) for childA in Term 1.
+        // English teaching assignment for Grade 9-A.
         $english9 = Subject::where('code', 'ENG')->firstOrFail();
         TeachingAssignment::firstOrCreate(['section_id' => $grade9A->id, 'subject_id' => $english9->id], ['teacher_id' => $teacherProfile->id]);
 
-        foreach ([$math9->id => 'Mathematics', $english9->id => 'English'] as $subjectId => $label) {
-            $quiz = AssessmentCategory::firstOrCreate(
-                ['section_id' => $grade9A->id, 'subject_id' => $subjectId, 'term_id' => $term1->id, 'name' => 'Quiz'],
-                ['weight_pct' => 40]
-            );
-            $test = AssessmentCategory::firstOrCreate(
-                ['section_id' => $grade9A->id, 'subject_id' => $subjectId, 'term_id' => $term1->id, 'name' => 'Test'],
-                ['weight_pct' => 60]
-            );
-
-            $quiz1 = Assessment::firstOrCreate(['category_id' => $quiz->id, 'name' => 'Quiz 1'], ['max_score' => 100]);
-            $test1 = Assessment::firstOrCreate(['category_id' => $test->id, 'name' => 'Term Test'], ['max_score' => 100]);
-
-            foreach ([$childA->id => 90, $childC->id => 78] as $studentId => $score) {
-                Grade::firstOrCreate(
-                    ['assessment_id' => $quiz1->id, 'student_id' => $studentId],
-                    ['score' => $score, 'entered_by' => $teacherProfile->id]
-                );
-                Grade::firstOrCreate(
-                    ['assessment_id' => $test1->id, 'student_id' => $studentId],
-                    ['score' => $score - 5, 'entered_by' => $teacherProfile->id]
-                );
-            }
-        }
+        // Term 1's full gradebooks and attendance (Grade 9-A, 10-A and 12-A) come from Term1ResultsSeeder below.
 
         // A homeroom report-card comment for childA, Term 1.
         \App\Models\ReportCardComment::firstOrCreate(
@@ -437,6 +412,9 @@ class DatabaseSeeder extends Seeder
         // Full K-12 ladder (Nursery → Grade 12), subject catalogue, homeroom
         // teachers, rosters, attendance history, and fee spread.
         $this->call(K12StructureSeeder::class);
+
+        // Complete Term 1 marks and attendance for one section per grading scheme, so results show.
+        $this->call(Term1ResultsSeeder::class);
 
         // Term 1 was locked above, before its gradebook existed: freeze its results now that every
         // mark is in, as the Principal (results:freeze-locked-terms does the same on a deploy).

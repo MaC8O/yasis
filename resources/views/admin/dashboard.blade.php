@@ -55,6 +55,7 @@
                     ['admin.academic-year.index', 'Academic Year', 'calendar'],
                     ['admin.calendar.index', 'Academic Calendar', 'calendar'],
                     ['admin.grading-schemes.index', 'Grading Schemes', 'scale'],
+                    ['admin.gradebook-template.index', 'Gradebook Template', 'list'],
                     ['admin.audit-logs.index', 'Audit Logs', 'shield'],
                     ['admin.backup.index', 'Data & Backup', 'database'],
                     ['admin.settings.index', 'System Settings', 'sliders'],

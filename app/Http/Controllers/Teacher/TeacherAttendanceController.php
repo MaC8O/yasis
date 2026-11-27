@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers\Teacher;
 
+use App\Http\Controllers\Controller;
 use App\Mail\AbsenceAlertMail;
 use App\Models\AbsenceNotice;
 use App\Models\AcademicYear;
 use App\Models\AttendanceRecord;
 use App\Models\Section;
+use App\Services\AttendanceScoreService;
 use App\Services\AuditService;
 use App\Services\NotificationService;
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -23,7 +24,7 @@ class TeacherAttendanceController extends Controller
         return $taught->concat($homerooms)->unique('id')->sortBy('name')->values();
     }
 
-    public function index(Request $request)
+    public function index(Request $request, AttendanceScoreService $attendanceScores)
     {
         $teacher = $request->user()->staffProfile;
         $sections = $this->accessibleSections($teacher);
@@ -69,6 +70,12 @@ class TeacherAttendanceController extends Controller
             'pendingAcknowledgement' => $pendingAcknowledgement,
             'counts' => $counts,
             'term' => $term,
+            // Students with section school days this term that have no record for them (only their own
+            // recorded days count towards the gradebook's Attendance category).
+            'missingAttendance' => $term ? collect($attendanceScores->forSectionTerm($section, $term)['students'])
+                ->filter(fn ($row) => $row['missing'] > 0)
+                ->map(fn ($row, $studentId) => ['name' => $roster->firstWhere('id', $studentId)?->name, 'missing' => $row['missing']])
+                ->filter(fn ($row) => $row['name'] !== null)->values() : collect(),
         ]);
     }
 

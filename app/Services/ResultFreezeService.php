@@ -84,7 +84,7 @@ class ResultFreezeService
             }
 
             $this->supersede($freeze, $section, $reason);
-            $count = $this->store($freeze, $this->results->liveSectionTerm($section, $term, $this->snapshotResolver($freeze)));
+            $count = $this->store($freeze, $this->results->liveSectionTerm($section, $term, $this->snapshotResolver($freeze), final: true));
 
             $year = ResultFreeze::active()->whereNull('term_id')->where('academic_year_id', $term->academic_year_id)->lockForUpdate()->first();
             if ($year) {
@@ -151,7 +151,7 @@ class ResultFreezeService
         $sections = Section::where('academic_year_id', $term->academic_year_id)->orderBy('id')->get();
         $students = 0;
         foreach ($sections as $section) {
-            $students += $this->store($freeze, $this->results->liveSectionTerm($section, $term, $resolver));
+            $students += $this->store($freeze, $this->results->liveSectionTerm($section, $term, $resolver, final: true));
         }
 
         $details = [
