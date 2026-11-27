@@ -18,7 +18,13 @@ class GradeLevel extends Model
         'g11_12' => ['Grades 11 and 12', 'yellow'],
     ];
 
-    protected $fillable = ['code', 'name', 'sort_order', 'grading_scheme_id', 'report_card_layout', 'archived_at'];
+    /** §7.2: the Statement of Marks layouts. A level without one (Grade 10, Q11) gets no statement. */
+    public const STATEMENT_LAYOUTS = [
+        'kg9' => 'KG1 to Grade 9',
+        'g11_12' => 'Grades 11 and 12',
+    ];
+
+    protected $fillable = ['code', 'name', 'sort_order', 'grading_scheme_id', 'report_card_layout', 'statement_layout', 'archived_at'];
 
     protected function casts(): array
     {

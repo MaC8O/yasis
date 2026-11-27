@@ -28,7 +28,7 @@ class ReportRulesController extends Controller
     {
         $data = $request->validated();
 
-        $service->update(array_map('strval', $data['values']), $data['confirmed'] ?? [], $request->user());
+        $service->update(array_map(fn ($v) => trim((string) $v), $data['values']), $data['confirmed'] ?? [], $request->user());
 
         return back()->with('status', 'Report card rules saved.');
     }

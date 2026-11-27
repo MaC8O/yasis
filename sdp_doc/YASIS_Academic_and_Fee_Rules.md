@@ -358,7 +358,9 @@ Body:
 
 Footer for KG-9, verbatim: "These examinations are conducted by YAS, Myanmar Union of Seventh-day Adventists operated by the Seventh-day Adventists. This mark list is awarded upon completing all subjects mentioned with a minimum of 40% marks in each subject. Classes are awarded on the following basis: 40-60% aggregate: "Third Class," 61-80% "Second Class," 81-94 % "First," and 95 and above "Distinction.""
 
-Footer for Grade 11-12: the explanation of how the GPA is calculated, and the conversion table from the sample.
+Footer for Grade 11-12: the explanation of how the GPA is calculated, and the conversion table from the sample. The system generates the table from the Grade 11-12 grading scheme's bands (letter, grade value, and points for 3 and 2 hours, D+ included) and prints the class-of-pass GPA ranges under it, because the sample's table placed D in Third and left out D+. The Note paragraph is printed word for word.
+
+Subjects: KG-9 lists every counted subject, so the listed scores make up the accumulative score (PE in Grades 5-9 included; see Q21). Labels are the curriculum's report labels.
 
 Required: add `StatementOfMarks` as a document type in the existing document request flow (Registrar prepares, Principal issues). It is generated from the year's final results. No Grade 10 statement was provided; see Q11.
 
@@ -473,3 +475,4 @@ The defaults above let the build start, but each of these should be confirmed wi
 - Q18. Which instalment includes the yearly fee and the refundable deposit, and are the four instalments equal?
 - Q19. Grade 10: what is the result when a subject is below 40 marks? And what is the class of pass when the point total is below 40? For example, a student with D (40-48) in all seven counted subjects passes every subject but has only 35 points.
 - Q20. When ranking students for their position in class, are students who failed ranked together with those who passed, or are they placed after all passing students?
+- Q21. The Grade 5-9 sample statement leaves out PE, but PE counts in the average. Should PE appear on the statement?

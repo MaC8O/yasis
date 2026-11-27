@@ -60,7 +60,7 @@
                 <label class="flex items-center justify-between">
                     <span>
                         <span class="block font-semibold text-sm">Transcript & certificate issuance</span>
-                        <span class="block text-xs text-neutral-500">Enable transcript two-key release to the Registrar.</span>
+                        <span class="block text-xs text-neutral-500">Enable transcript two-key release and Statement of Marks printing by the Registrar.</span>
                     </span>
                     <input type="checkbox" name="transcript_issuance_enabled" value="1" @checked($settings['transcript_issuance_enabled'] === '1') class="w-5 h-5">
                 </label>

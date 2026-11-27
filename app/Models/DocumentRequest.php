@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class DocumentRequest extends Model
 {
+    /** §7.2: the Statement of Marks type; its details are in statements_of_marks. */
+    public const STATEMENT_OF_MARKS = 'Statement of Marks';
+
     protected $fillable = [
         'student_id', 'type', 'status', 'prepared_by', 'approved_by', 'approved_at',
         'principal_approved_by', 'principal_approved_at', 'generated_at', 'notes',
@@ -29,6 +32,11 @@ class DocumentRequest extends Model
     public function approvedBy()
     {
         return $this->belongsTo(StaffProfile::class, 'approved_by');
+    }
+
+    public function statement()
+    {
+        return $this->hasOne(StatementOfMarks::class);
     }
 
     public function principalApprovedBy()

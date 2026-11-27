@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Registrar;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\DocumentRequest;
+use App\Models\ResultFreeze;
 use App\Models\Student;
 use App\Services\AuditService;
+use App\Services\StatementOfMarksService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
@@ -13,9 +16,9 @@ class DocumentRequestController extends Controller
 {
     protected array $types = ['Transcript', 'Report Card', 'Transfer/Leaving Certificate', 'Completion Certificate', 'Enrollment Certificate'];
 
-    public function index(Request $request)
+    public function index(Request $request, StatementOfMarksService $statements)
     {
-        $query = DocumentRequest::with(['student', 'preparedBy.user']);
+        $query = DocumentRequest::with(['student', 'preparedBy.user', 'statement.academicYear']);
 
         if ($search = $request->string('search')->trim()->value()) {
             $query->whereHas('student', fn ($q) => $q->where('name', 'like', "%{$search}%")
@@ -26,16 +29,33 @@ class DocumentRequestController extends Controller
             $query->where('type', $type);
         }
 
+        $documents = $query->latest()->paginate(\App\Support\PerPage::resolve($request))->withQueryString();
+
         return view('registrar.documents.index', [
-            'documents' => $query->latest()->paginate(\App\Support\PerPage::resolve($request))->withQueryString(),
+            'documents' => $documents,
+            // Issued statements whose year results were re-frozen since: a new statement should be prepared.
+            'outdated' => $documents->filter(fn ($d) => $d->statement && $statements->isOutdated($d->statement))->pluck('id')->all(),
             'types' => $this->types,
             'filters' => $request->only(['search', 'type']),
+            // §7.2: the Statement of Marks form and the print gate.
+            'years' => AcademicYear::orderByDesc('year_label')->get(),
+            'defaultYearId' => $this->latestFrozenYearId(),
+            'issuanceEnabled' => StatementOfMarksService::issuanceEnabled(),
+            'issuanceOff' => StatementOfMarksService::ISSUANCE_OFF,
             'stats' => [
                 'queued' => DocumentRequest::where('status', 'Draft')->count(),
                 'readyToPrint' => DocumentRequest::where('status', 'Ready')->count(),
                 'printed' => DocumentRequest::where('status', 'Printed')->count(),
             ],
         ]);
+    }
+
+    /** The latest school year whose results are frozen (all four terms locked), else the active year. */
+    private function latestFrozenYearId(): ?int
+    {
+        return ResultFreeze::active()->whereNull('term_id')->join('academic_years', 'academic_years.id', '=', 'result_freezes.academic_year_id')
+            ->orderByDesc('academic_years.year_label')->value('result_freezes.academic_year_id')
+            ?? AcademicYear::where('is_active', true)->value('id');
     }
 
     public function store(Request $request, AuditService $audit)
@@ -71,6 +91,9 @@ class DocumentRequestController extends Controller
 
     public function download(Request $request, DocumentRequest $documentRequest, AuditService $audit)
     {
+        // A Statement of Marks prints through its own route, which issues it (StatementOfMarksController).
+        abort_if($documentRequest->type === DocumentRequest::STATEMENT_OF_MARKS, 404);
+
         if ($documentRequest->type === 'Transcript' && ! in_array($documentRequest->status, ['Ready', 'Printed'])) {
             return back()->withErrors(['status' => 'This transcript needs VP + Principal two-key approval before it can be issued.']);
         }

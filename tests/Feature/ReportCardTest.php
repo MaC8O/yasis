@@ -311,7 +311,7 @@ class ReportCardTest extends TestCase
     public function test_the_admin_edits_report_rules_and_the_principal_reads_them(): void
     {
         $admin = $this->makeStaff('admin', 'Admin', 'admin@test.local');
-        $values = ['min_attendance_pct' => '85', 'days_absent_counts' => 'absent_only', 'personality_shown' => 'latest_term'];
+        $values = ['min_attendance_pct' => '85', 'days_absent_counts' => 'absent_only', 'personality_shown' => 'latest_term', 'examination_centre' => 'YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL'];
 
         $this->actingAs($admin->user)->put('/admin/report-rules', ['values' => $values, 'confirmed' => ['min_attendance_pct']])->assertSessionHas('status');
         $this->assertSame(85, ReportRule::minAttendancePct());

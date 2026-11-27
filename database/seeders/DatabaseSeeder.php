@@ -419,5 +419,8 @@ class DatabaseSeeder extends Seeder
         // Term 1 was locked above, before its gradebook existed: freeze its results now that every
         // mark is in, as the Principal (results:freeze-locked-terms does the same on a deploy).
         app(\App\Services\ResultFreezeService::class)->freezeLockedTerms(User::where('email', 'principal@yasis.edu')->firstOrFail());
+
+        // Last school year, complete and frozen, so a Statement of Marks can be generated for each layout.
+        $this->call(PastYearResultsSeeder::class);
     }
 }
