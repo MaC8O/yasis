@@ -26,6 +26,7 @@ class VpDashboardController extends Controller
             });
 
         return view('vp_academic.dashboard', [
+            'attendanceFlags' => app(\App\Services\ReportCardActionsService::class)->flagSummary(),
             'departmentPerformance' => $departmentPerformance,
             'pendingPromotions' => PromotionBatch::where('status', 'Pending')->count(),
             'pendingTranscripts' => DocumentRequest::where('type', 'Transcript')->where('status', 'Pending Approval')->count(),

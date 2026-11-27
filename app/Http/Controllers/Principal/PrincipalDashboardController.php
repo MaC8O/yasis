@@ -65,6 +65,7 @@ class PrincipalDashboardController extends Controller
         $feeDistribution = $feeService->statusDistribution(FeeVisibility::LEADERSHIP);
 
         return view('principal.dashboard', [
+            'attendanceFlags' => app(\App\Services\ReportCardActionsService::class)->flagSummary(),
             'attendanceTrend' => $attendanceTrend,
             'feeStatusSegments' => [
                 ['label' => 'Paid', 'value' => $feeDistribution['paid'], 'color' => '#2E8B57'],

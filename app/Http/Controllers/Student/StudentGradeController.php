@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\ReportCardController;
 use App\Models\AcademicYear;
 use App\Models\ReportCardComment;
 use App\Models\Term;
 use App\Services\GradeService;
+use App\Services\ReportCardService;
 use App\Services\ResultService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 /**
@@ -38,19 +39,29 @@ class StudentGradeController extends Controller
         ]);
     }
 
-    public function reportCard(Request $request, ResultService $results)
+    /** The school's report card as a booklet PDF (released terms only). */
+    public function reportCard(Request $request, ReportCardService $cards)
     {
         $student = $request->user()->student;
         abort_unless($student, 403);
-
         $term = Term::findOrFail($request->integer('term'));
-        abort_unless($term->results_released, 403, 'This term\'s results have not been released yet.');
+        ReportCardController::assertReleased($term);
 
-        $report = $results->studentTerm($student, $term);
-        $comment = ReportCardComment::where('student_id', $student->id)->where('term_id', $term->id)->first();
+        return ReportCardController::stream($cards->build($student, $term) ?? abort(404, 'No report card for this term.'));
+    }
 
-        $pdf = Pdf::loadView('guardian.grades.report-card-pdf', ['child' => $student, 'term' => $term, 'report' => $report, 'comment' => $comment]);
+    /** The same report card on screen. */
+    public function showReportCard(Request $request, Term $term, ReportCardService $cards)
+    {
+        $student = $request->user()->student;
+        abort_unless($student, 403);
+        ReportCardController::assertReleased($term);
 
-        return $pdf->stream("report-card-{$student->student_id_number}-{$term->name}.pdf");
+        return view('report-cards.show', [
+            'card' => $cards->build($student, $term) ?? abort(404, 'No report card for this term.'),
+            'pdfUrl' => route('student.grades.report-card', ['term' => $term->id]),
+            'backUrl' => route('student.grades.index', ['term' => $term->id]),
+            'portal' => 'student',
+        ]);
     }
 }

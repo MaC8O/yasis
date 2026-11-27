@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\DB;
  */
 class ResultFreezeService
 {
-    public function __construct(private ResultService $results, private AuditService $audit) {}
+    public function __construct(private ResultService $results, private AuditService $audit, private AttendanceScoreService $attendance) {}
 
     /**
      * Lock a term and freeze its results. $rules: `previous_freeze` (the default: on a relock, the
@@ -84,7 +84,8 @@ class ResultFreezeService
             }
 
             $this->supersede($freeze, $section, $reason);
-            $count = $this->store($freeze, $this->results->liveSectionTerm($section, $term, $this->snapshotResolver($freeze), final: true));
+            $count = $this->store($freeze, $this->results->liveSectionTerm($section, $term, $this->snapshotResolver($freeze), final: true),
+                $this->attendance->forSectionTerm($section, $term));
 
             $year = ResultFreeze::active()->whereNull('term_id')->where('academic_year_id', $term->academic_year_id)->lockForUpdate()->first();
             if ($year) {
@@ -151,7 +152,8 @@ class ResultFreezeService
         $sections = Section::where('academic_year_id', $term->academic_year_id)->orderBy('id')->get();
         $students = 0;
         foreach ($sections as $section) {
-            $students += $this->store($freeze, $this->results->liveSectionTerm($section, $term, $resolver, final: true));
+            $students += $this->store($freeze, $this->results->liveSectionTerm($section, $term, $resolver, final: true),
+                $this->attendance->forSectionTerm($section, $term));
         }
 
         $details = [
@@ -239,10 +241,15 @@ class ResultFreezeService
             ->update(['superseded_at' => now(), 'superseded_reason' => mb_substr($reason, 0, 255)]);
     }
 
-    /** Store a section's calculated results under a freeze. Returns the number of students stored. */
-    private function store(ResultFreeze $freeze, SectionResults $results): int
+    /**
+     * Store a section's calculated results under a freeze, with the term's attendance (days absent
+     * and attendance %) when given, so the report card doesn't change if attendance is edited later.
+     * Returns the number of students stored.
+     */
+    private function store(ResultFreeze $freeze, SectionResults $results, ?array $attendance = null): int
     {
         foreach ($results->students as $r) {
+            $att = $attendance['students'][$r->studentId] ?? null;
             $row = StudentResult::create([
                 'result_freeze_id' => $freeze->id,
                 'student_id' => $r->studentId,
@@ -258,6 +265,8 @@ class ResultFreezeService
                 'passed' => $r->passed,
                 'position' => $r->position,
                 'ranked_count' => $r->rankedCount,
+                'days_absent' => $attendance ? AttendanceScoreService::daysAbsent($att) : null,
+                'attendance_pct' => $att && $att['pct'] !== null ? (string) \Brick\Math\BigDecimal::of($att['pct'])->toScale(2, \Brick\Math\RoundingMode::HALF_UP) : null,
                 'recommendation' => $r->recommendation,
             ]);
             $now = now();

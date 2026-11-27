@@ -1,4 +1,5 @@
 <x-app-layout title="VP Academic Dashboard" subtitle="Department-level academic performance and two-key approvals (first key)." badge="VP Academic" role="vp_academic">
+    @include('report-cards.partials.attendance-flags', ['flags' => $attendanceFlags])
     <div class="grid grid-cols-2 sm:grid-cols-2 gap-4">
         <x-stat-tile label="Promotion batches awaiting review" :href="route('vp_academic.approvals.index')" color="yellow">{{ $pendingPromotions }}</x-stat-tile>
         <x-stat-tile label="Transcripts awaiting review" :href="route('vp_academic.approvals.index')" color="yellow">{{ $pendingTranscripts }}</x-stat-tile>

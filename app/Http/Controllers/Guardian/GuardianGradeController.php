@@ -4,17 +4,21 @@ namespace App\Http\Controllers\Guardian;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Guardian\Concerns\ResolvesChild;
+use App\Http\Controllers\ReportCardController;
 use App\Models\AcademicYear;
+use App\Models\ReportAcknowledgement;
 use App\Models\ReportCardComment;
 use App\Models\Term;
 use App\Services\GradeService;
+use App\Services\ReportCardActionsService;
+use App\Services\ReportCardService;
 use App\Services\ResultService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 /**
  * A guardian's read-only view of a linked child's grades and report cards, from ResultService (the
  * same figures the student and the report card show): frozen for a locked term, provisional otherwise.
+ * The guardian acknowledges each released report here.
  */
 class GuardianGradeController extends Controller
 {
@@ -42,18 +46,38 @@ class GuardianGradeController extends Controller
         ]);
     }
 
-    public function reportCard(Request $request, ResultService $results)
+    /** The school's report card as a booklet PDF (released terms only). */
+    public function reportCard(Request $request, ReportCardService $cards)
     {
         $child = $this->selectedChild($request);
         $term = Term::findOrFail($request->integer('term'));
+        ReportCardController::assertReleased($term);
 
-        abort_unless($term->results_released, 403, 'This term\'s results have not been released yet.');
+        return ReportCardController::stream($cards->build($child, $term) ?? abort(404, 'No report card for this term.'));
+    }
 
-        $report = $results->studentTerm($child, $term);
-        $comment = ReportCardComment::where('student_id', $child->id)->where('term_id', $term->id)->first();
+    /** The same report card on screen, with "I acknowledge this report". */
+    public function showReportCard(Request $request, Term $term, ReportCardService $cards)
+    {
+        $child = $this->selectedChild($request);
+        ReportCardController::assertReleased($term);
 
-        $pdf = Pdf::loadView('guardian.grades.report-card-pdf', compact('child', 'term', 'report', 'comment'));
+        return view('report-cards.show', [
+            'card' => $cards->build($child, $term) ?? abort(404, 'No report card for this term.'),
+            'pdfUrl' => route('guardian.grades.report-card', ['child' => $child->id, 'term' => $term->id]),
+            'backUrl' => route('guardian.grades.index', ['child' => $child->id, 'term' => $term->id]),
+            'portal' => 'guardian',
+            'acknowledgeUrl' => route('guardian.report-cards.acknowledge', ['term' => $term->id, 'child' => $child->id]),
+            'acknowledged' => ReportAcknowledgement::current()->where('term_id', $term->id)->where('student_id', $child->id)
+                ->where('role', ReportAcknowledgement::GUARDIAN)->with('user')->first(),
+        ]);
+    }
 
-        return $pdf->stream("report-card-{$child->student_id_number}-{$term->name}.pdf");
+    public function acknowledge(Request $request, Term $term, ReportCardActionsService $actions)
+    {
+        $child = $this->selectedChild($request);
+        $actions->guardianAcknowledge($child, $term, $request->user());
+
+        return back()->with('status', "Thank you. {$child->name}'s {$term->name} report is acknowledged.");
     }
 }

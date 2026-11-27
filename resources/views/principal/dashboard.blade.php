@@ -1,4 +1,5 @@
 <x-app-layout title="Principal Dashboard" subtitle="Whole-school oversight — enrollment, attendance, academics, staff, finance, and two-key approvals." :badge="'Academic Year '.($activeYear?->year_label ?? '—')" role="principal">
+    @include('report-cards.partials.attendance-flags', ['flags' => $attendanceFlags])
     <div class="grid grid-cols-1 sm:grid-cols-5 gap-4">
         <x-stat-tile label="Total enrollment" :href="route('principal.board-reports.index')" color="blue">{{ $totalEnrollment }}</x-stat-tile>
         <x-stat-tile label="Attendance rate" color="green">{{ $attendanceRate !== null ? $attendanceRate.'%' : '—' }}</x-stat-tile>
