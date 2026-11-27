@@ -44,6 +44,7 @@ use App\Http\Controllers\Principal\PrincipalRegistrationController;
 use App\Http\Controllers\Registrar\AttendanceCorrectionController;
 use App\Http\Controllers\CurriculumController;
 use App\Http\Controllers\GradingSchemeController;
+use App\Http\Controllers\FeeScheduleController;
 use App\Http\Controllers\GradebookTemplateController;
 use App\Http\Controllers\ReportCardController;
 use App\Http\Controllers\ReportRulesController;
@@ -77,6 +78,7 @@ use App\Http\Controllers\Treasurer\FinanceInfoController;
 use App\Http\Controllers\Treasurer\ImportBatchController as TreasurerImportBatchController;
 use App\Http\Controllers\Treasurer\ImportedFeeRecordController;
 use App\Http\Controllers\Treasurer\TreasurerDashboardController;
+use App\Http\Controllers\Treasurer\SunLedgerController;
 use App\Http\Controllers\Treasurer\ValidateMatchController;
 use App\Http\Controllers\VpAcademic\SubjectCatalogController;
 use App\Http\Controllers\VpAcademic\VpApprovalController;
@@ -258,6 +260,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/settings/test-smtp', [SystemSettingsController::class, 'testSmtp'])->name('settings.test-smtp');
 
     Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
+    // The stored Sun ledger files (private, Sun file section 0): the Admin may download them too.
+    Route::get('/ledger-files/{batch}', [SunLedgerController::class, 'download'])->name('ledger-files.download');
     Route::post('/retention-actions', [RetentionActionController::class, 'store'])->name('retention-actions.store');
 
     Route::get('/export-snapshot', [DataExportController::class, 'download'])->name('export-snapshot');
@@ -270,6 +274,7 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
     // §2.2 fees.view_readonly: read-only fee visibility, same rules as the Principal/VP.
     Route::get('/fees', [FeeVisibilityController::class, 'index'])->name('fees.index');
     Route::get('/fees/{student}', [FeeVisibilityController::class, 'show'])->name('fees.show');
+    Route::get('/fee-schedule', [FeeScheduleController::class, 'index'])->name('fee-schedule.index');
 
     Route::get('/students', [StudentController::class, 'index'])->name('students.index');
     Route::get('/students/create', [StudentController::class, 'create'])->name('students.create');
@@ -393,6 +398,33 @@ Route::middleware(['auth', 'role:treasurer'])->prefix('treasurer')->name('treasu
     Route::put('/info/visibility-rules/policy', [FinanceInfoController::class, 'updatePolicy'])->name('info.visibility-policy');
     Route::post('/info/visibility-rules/batches/{importBatch}/confirm', [FinanceInfoController::class, 'confirmRestricted'])->name('info.confirm-restricted');
 
+    // §10 fee schedule: the Treasurer edits and publishes it; reference data only.
+    Route::get('/fee-schedule', [FeeScheduleController::class, 'index'])->name('fee-schedule.index');
+    Route::put('/fee-schedule/{feeSchedule}', [FeeScheduleController::class, 'update'])->name('fee-schedule.update');
+    Route::post('/fee-schedule/start/{academicYear}', [FeeScheduleController::class, 'start'])->name('fee-schedule.start');
+    Route::post('/fee-schedule/{feeSchedule}/publish', [FeeScheduleController::class, 'publish'])->name('fee-schedule.publish');
+    Route::post('/fee-schedule/{feeSchedule}/unpublish', [FeeScheduleController::class, 'unpublish'])->name('fee-schedule.unpublish');
+
+    // Sun Accounts ledger (sdp_doc/YASIS_Sun_Finance_Import.md): upload, summary, import, review, match, overrides.
+    Route::get('/ledger', [SunLedgerController::class, 'index'])->name('ledger.index');
+    Route::post('/ledger/upload', [SunLedgerController::class, 'upload'])->name('ledger.upload');
+    Route::post('/ledger/import', [SunLedgerController::class, 'import'])->name('ledger.import');
+    Route::post('/ledger/cancel', [SunLedgerController::class, 'cancel'])->name('ledger.cancel');
+    Route::get('/ledger/review', [SunLedgerController::class, 'review'])->name('ledger.review');
+    Route::get('/ledger/accounts', [SunLedgerController::class, 'accounts'])->name('ledger.accounts');
+    Route::get('/ledger/accounts/{account}', [SunLedgerController::class, 'account'])->name('ledger.account');
+    Route::post('/ledger/accounts/{account}/link', [SunLedgerController::class, 'link'])->name('ledger.link');
+    Route::post('/ledger/accounts/{account}/unlink', [SunLedgerController::class, 'unlink'])->name('ledger.unlink');
+    Route::post('/ledger/accounts/{account}/not-isms', [SunLedgerController::class, 'notIsms'])->name('ledger.not-isms');
+    Route::put('/ledger/lines/{line}', [SunLedgerController::class, 'line'])->name('ledger.line');
+    Route::get('/ledger/categories', [SunLedgerController::class, 'categories'])->name('ledger.categories');
+    Route::put('/ledger/categories', [SunLedgerController::class, 'saveCategories'])->name('ledger.categories.update');
+    Route::post('/ledger/categories/reapply', [SunLedgerController::class, 'reapply'])->name('ledger.categories.reapply');
+    Route::post('/ledger/{batch}/publish', [SunLedgerController::class, 'publish'])->name('ledger.publish');
+    Route::post('/ledger/{batch}/unpublish', [SunLedgerController::class, 'publish'])->name('ledger.unpublish');
+    Route::post('/ledger/{batch}/revert', [SunLedgerController::class, 'revert'])->name('ledger.revert');
+    Route::get('/ledger/{batch}/download', [SunLedgerController::class, 'download'])->name('ledger.download');
+
     Route::get('/import', [FeeImportController::class, 'index'])->name('import.index');
     Route::post('/import', [FeeImportController::class, 'store'])->name('import.store');
 
@@ -467,6 +499,7 @@ Route::middleware(['auth', 'role:principal'])->prefix('principal')->name('princi
 
     Route::get('/fees', [FeeVisibilityController::class, 'index'])->name('fees.index');
     Route::get('/fees/{student}', [FeeVisibilityController::class, 'show'])->name('fees.show');
+    Route::get('/fee-schedule', [FeeScheduleController::class, 'index'])->name('fee-schedule.index');
 });
 
 // --- VP ACADEMIC ---
@@ -494,6 +527,7 @@ Route::middleware(['auth', 'role:vp_academic'])->prefix('vp_academic')->name('vp
 
     Route::get('/fees', [FeeVisibilityController::class, 'index'])->name('fees.index');
     Route::get('/fees/{student}', [FeeVisibilityController::class, 'show'])->name('fees.show');
+    Route::get('/fee-schedule', [FeeScheduleController::class, 'index'])->name('fee-schedule.index');
 });
 
 // --- GUARDIAN ---

@@ -36,6 +36,8 @@
         <x-finance.statement :lines="$lines" />
     </div>
 
+    @include('fee-schedule.partials.family-card', ['card' => $feeCard])
+
     <x-card title="Finance note">
         <p class="text-sm text-neutral-500">
             The portal displays records from the school's finance office. Payments are recorded there and appear here

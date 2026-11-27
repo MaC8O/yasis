@@ -10,6 +10,9 @@ use App\Models\BehaviorReportVersion;
 use App\Models\Guardian;
 use App\Models\Student;
 use App\Models\StudentExitRequest;
+use App\Models\SunAccount;
+use App\Models\SunAccountBalance;
+use App\Models\SunLedgerLine;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -24,9 +27,7 @@ use Illuminate\Validation\ValidationException;
  */
 class RetentionService
 {
-    public function __construct(protected AuditService $audit)
-    {
-    }
+    public function __construct(protected AuditService $audit) {}
 
     public function eraseStudent(Student $student, string $reason, User $actor): void
     {
@@ -46,9 +47,10 @@ class RetentionService
             }
 
             $behavior = $this->eraseBehaviorText($student);
+            $ledger = $this->eraseLedgerText($student);
 
             $this->audit->log($actor, Str::limit("Retention erasure of student record: {$reason}", 255), 'Student', $student->id,
-                $behavior ? ['behavior_rows_scrubbed' => $behavior] : null);
+                array_filter(['behavior_rows_scrubbed' => $behavior, 'ledger_lines_scrubbed' => $ledger]) ?: null);
         });
     }
 
@@ -84,6 +86,23 @@ class RetentionService
      *
      * @return int number of behavior rows scrubbed
      */
+    /**
+     * The student's Sun ledger account (sdp_doc/YASIS_Sun_Finance_Import.md, section 0): the printed
+     * name and every line's memo are cleared. Amounts and balances stay, as financial records.
+     */
+    protected function eraseLedgerText(Student $student): int
+    {
+        $account = SunAccount::where('student_id', $student->id)->first();
+        if (! $account) {
+            return 0;
+        }
+        $erased = 'Erased Record '.$student->id;
+        $account->update(['name_as_printed' => $erased]);
+        SunAccountBalance::where('sun_account_id', $account->id)->update(['account_name_as_printed' => $erased]);
+
+        return SunLedgerLine::where('sun_account_id', $account->id)->update(['memo' => '']);
+    }
+
     protected function eraseBehaviorText(Student $student): int
     {
         $erased = '[erased under a retention request]';

@@ -50,6 +50,19 @@ return [
             'report' => false,
         ],
 
+        // Sun Accounts ledger files (Account Listings, real names and balances). Private like lesson
+        // plans: no URL, not served; only the Treasurer and the Admin can download one, through
+        // SunLedgerController::download. pending/ holds an upload between its summary and Import
+        // (deleted on Import or Cancel, expired after an hour). Back this folder up with the database.
+        'fee_imports' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/fee-imports'),
+            'serve' => false,
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
