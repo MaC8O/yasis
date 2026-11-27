@@ -15,6 +15,7 @@ use App\Models\StaffAttendance;
 use App\Models\StaffProfile;
 use App\Models\Student;
 use App\Services\FeeSummaryService;
+use App\Services\ReportCardActionsService;
 use App\Support\FeeVisibility;
 
 class PrincipalDashboardController extends Controller
@@ -65,7 +66,7 @@ class PrincipalDashboardController extends Controller
         $feeDistribution = $feeService->statusDistribution(FeeVisibility::LEADERSHIP);
 
         return view('principal.dashboard', [
-            'attendanceFlags' => app(\App\Services\ReportCardActionsService::class)->flagSummary(),
+            'attendanceFlags' => app(ReportCardActionsService::class)->flagSummary(),
             'attendanceTrend' => $attendanceTrend,
             'feeStatusSegments' => [
                 ['label' => 'Paid', 'value' => $feeDistribution['paid'], 'color' => '#2E8B57'],

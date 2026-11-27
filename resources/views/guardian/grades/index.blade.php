@@ -28,11 +28,11 @@
         </x-card>
     @endif
 
-    <x-card title="Report downloads" subtitle="Report cards remain read-only for guardians.">
+    <x-card title="Report cards" subtitle="Open a released report card to read it, download it, and acknowledge it.">
         <div class="flex flex-wrap gap-3">
             @forelse ($releasedTerms as $released)
-                <a href="{{ route('guardian.grades.report-card', ['child' => $child->id, 'term' => $released->id]) }}" target="_blank"
-                    class="border border-brand text-brand font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand/5 transition-colors">
+                <a href="{{ route('guardian.report-cards.show', ['term' => $released->id, 'child' => $child->id]) }}"
+                    class="inline-flex items-center min-h-[44px] border border-brand text-brand font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand/5 transition-colors">
                     {{ $released->name }} report card
                 </a>
             @empty

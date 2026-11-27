@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Teacher\SavePersonalityRatingsRequest;
 use App\Models\AcademicYear;
 use App\Models\PersonalityRating;
 use App\Models\ReportAcknowledgement;
@@ -14,7 +15,6 @@ use App\Services\ReportCardActionsService;
 use App\Services\ReportCardService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use App\Http\Requests\Teacher\SavePersonalityRatingsRequest;
 
 /**
  * Report cards for staff (§7.1): the homeroom teacher (their own sections: ratings, confirmation,

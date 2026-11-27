@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Admin\UpdateReportRulesRequest;
 use App\Models\ReportRule;
 use App\Services\ReportRuleService;
 use Illuminate\Http\Request;
-use App\Http\Requests\Admin\UpdateReportRulesRequest;
 
 /**
  * Report card and attendance rules (§7.1, §8): edited by the Admin (admin.report-rules.*), read-only

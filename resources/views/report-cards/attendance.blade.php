@@ -1,5 +1,5 @@
 @php $role = auth()->user()->getRoleNames()->first(); @endphp
-<x-app-layout title="Attendance below the minimum" :subtitle="'Students below '.$minimum.'% attendance this term (section 8 of the school\'s rules). Flagged only: the system never blocks a student; a person decides.'" :badge="ucfirst(str_replace('_', ' ', $role))" :role="$role">
+<x-app-layout title="Attendance below the minimum" :subtitle="'Students below '.$minimum.'% attendance this term (section 8 of the school\'s rules). Flagged only: the system never blocks a student; a person decides.'" :badge="(['vp_academic' => 'VP Academic'][$role] ?? ucfirst(str_replace('_', ' ', $role)))" :role="$role">
     <x-card>
         <form method="GET" class="flex flex-wrap gap-4 items-end">
             <div>

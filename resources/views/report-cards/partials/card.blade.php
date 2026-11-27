@@ -79,15 +79,15 @@
 
         <x-card title="Acknowledgement signature">
             <table class="w-full text-sm" data-acknowledgements>
-                <thead><tr class="border-b border-neutral-200 text-neutral-500 text-left"><th class="py-1.5 font-semibold">Reports</th><th class="py-1.5 font-semibold">Description</th><th class="py-1.5 font-semibold">Signature</th></tr></thead>
+                <thead><tr class="border-b border-neutral-200 text-neutral-500 text-left"><th class="py-1.5 font-semibold">Reports</th><th class="py-1.5 font-semibold">Description</th><th class="py-1.5 font-semibold hidden sm:table-cell">Signature</th></tr></thead>
                 <tbody>
                     @foreach ($cols as $seq => $c)
                         @foreach ($roles as $role => $roleLabel)
                             @php $sig = $card['acknowledgements'][$seq][$role] ?? null; @endphp
                             <tr class="{{ $loop->last ? 'border-b border-neutral-200' : '' }}">
                                 <td class="py-1 pr-2 font-medium">{{ $loop->first ? ucfirst(strtolower($labels[$seq] ?? $c['term']->name)).' Report' : '' }}</td>
-                                <td class="py-1 pr-2 text-neutral-600">{{ $roleLabel }}</td>
-                                <td class="py-1 text-neutral-800">{{ $sig ? $sig['name'].', '.$sig['date'] : '' }}</td>
+                                <td class="py-1 pr-2 text-neutral-600">{{ $roleLabel }}@if ($sig)<span class="block sm:hidden text-neutral-800">{{ $sig['name'].', '.$sig['date'] }}</span>@endif</td>
+                                <td class="py-1 text-neutral-800 hidden sm:table-cell">{{ $sig ? $sig['name'].', '.$sig['date'] : '' }}</td>
                             </tr>
                         @endforeach
                     @endforeach

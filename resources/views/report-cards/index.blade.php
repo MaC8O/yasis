@@ -2,7 +2,7 @@
     $role = auth()->user()->getRoleNames()->first();
     $traits = \App\Models\PersonalityRating::TRAITS;
 @endphp
-<x-app-layout title="Report Cards" :subtitle="$isHomeroom ? 'Your class: personality ratings, attendance and confirming the term\'s reports.' : 'Every class\'s report cards, read-only. Open terms are provisional.'" :badge="ucfirst(str_replace('_', ' ', $role))" :role="$role">
+<x-app-layout title="Report Cards" :subtitle="$isHomeroom ? 'Your class: personality ratings, attendance and confirming the term\'s reports.' : 'Every class\'s report cards, read-only. Open terms are provisional.'" :badge="(['vp_academic' => 'VP Academic'][$role] ?? ucfirst(str_replace('_', ' ', $role)))" :role="$role">
     <x-card>
         <form method="GET" class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
             <div>
