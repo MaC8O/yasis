@@ -54,6 +54,7 @@ use App\Http\Controllers\Registrar\PromotionBatchController;
 use App\Http\Controllers\Registrar\RegistrarAnnouncementController;
 use App\Http\Controllers\Registrar\RegistrarDashboardController;
 use App\Http\Controllers\Registrar\SectionController;
+use App\Http\Controllers\Registrar\StatementOfMarksController;
 use App\Http\Controllers\Registrar\StudentController;
 use App\Http\Controllers\Registrar\StudentImportController;
 use App\Http\Controllers\Registrar\TeachingAssignmentController;
@@ -322,6 +323,11 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
     Route::post('/documents', [DocumentRequestController::class, 'store'])->name('documents.store');
     Route::post('/documents/{documentRequest}/submit-for-approval', [DocumentRequestController::class, 'submitForApproval'])->name('documents.submit-for-approval');
     Route::get('/documents/{documentRequest}/download', [DocumentRequestController::class, 'download'])->name('documents.download');
+    // §7.2 Statement of Marks: prepared here, printed while the Principal's issuance control is on.
+    Route::post('/statements-of-marks', [StatementOfMarksController::class, 'store'])->name('statements.store');
+    Route::put('/statements-of-marks/{statement}', [StatementOfMarksController::class, 'update'])->name('statements.update');
+    Route::get('/statements-of-marks/{statement}/preview', [StatementOfMarksController::class, 'preview'])->name('statements.preview');
+    Route::post('/statements-of-marks/{statement}/print', [StatementOfMarksController::class, 'print'])->name('statements.print');
 
     Route::get('/promotions', [PromotionBatchController::class, 'index'])->name('promotions.index');
     Route::get('/promotions/{section}/create', [PromotionBatchController::class, 'create'])->name('promotions.create');

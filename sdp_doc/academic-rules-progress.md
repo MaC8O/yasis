@@ -10,8 +10,8 @@ Source of truth: [YASIS_Academic_and_Fee_Rules.md](YASIS_Academic_and_Fee_Rules.
 | 4a. Calculation service, frozen results, promotion recommendation | Merged (with the follow-up: a batch needs a frozen year) | `results-service`, PR #43; `promotion-needs-frozen-year`, PR #44 |
 | 4b. Switch the pages to the new results, retire the department grade scale, Q20 ranking setting | Merged, deployed to staging (fresh reset 2026-11-27) | `results-pages`, PR #45 |
 | 5. KG1 to Grade 10 gradebook template and calculated attendance | Merged (with the follow-up: archive instead of delete) | `gradebook-template`, PR #46; `archive-gradebook-items`, PR #47 |
-| 6. Report cards | PR open, awaiting review | `report-cards`, PR #48 |
-| 7. Statement of Marks | Not started | |
+| 6. Report cards | Merged | `report-cards`, PR #48 |
+| 7. Statement of Marks | PR open, awaiting review | `statement-of-marks`, PR #49 |
 | 8. Fee schedule (reference data only) | Not started | |
 
 ## Phase 1: grade levels (merged)
@@ -255,7 +255,7 @@ Frozen terms and Grades 11-12 don't change.
 
 A fresh reset with the seeder is the alternative, as last time.
 
-## Phase 6: report cards (done, in review)
+## Phase 6: report cards (merged)
 
 **Built:**
 - **Four cards, chosen by `grade_levels.report_card_layout`:** KG1-4 blue, 5-9 green, Grade 10 yellow, 11-12 yellow. They replace the single report card from 4b.
@@ -307,6 +307,82 @@ A fresh reset with the seeder is the alternative, as last time.
 
 Terms that are already locked have no frozen days absent: their cards fall back to the live count until a re-freeze. A fresh reset with the seeder avoids this.
 
+## Phase 7: Statement of Marks (done, in review)
+
+**Built:**
+- **A new document type, "Statement of Marks",** in the Registrar's Transcripts & Certificates page.
+  - The Registrar enters the student ID, the school year, the date of examination (free text, printed as typed in capitals) and the date of issue. This creates a Draft (`document_requests` + `statements_of_marks`), and it is audited.
+  - While it is a Draft, its two dates can be changed (audited), and "Preview draft" gives the PDF with a "DRAFT – NOT ISSUED" watermark.
+  - "Print (issue)" works only while the Principal's "Transcript & certificate issuance" control is on. Until then the button is disabled with the reason, and the server refuses it. There is no VP/Principal two-key approval: the control is the Principal's go-ahead (owner, 2026-11-27).
+  - The first print issues it. The checks run again, the content is saved with the year freeze it came from (`statements_of_marks.content`, `result_freeze_id`), and it is audited. Every reprint is that saved copy and is audited too.
+  - If the year is re-frozen after issue (an approved grade change), the record says so and a new statement should be prepared.
+- **Made from the frozen year result only:** the year freeze exists once the Principal has locked all four terms.
+- **Refusals, each with its reason shown to the Registrar:**
+  - The year isn't frozen (the terms not locked yet are listed).
+  - Grade 10 (Q11).
+  - A level without a layout.
+  - An incomplete or blocked year result (the result's own reasons).
+  - A student who withdrew that year, or wasn't enrolled.
+  - A second draft for the same student and year.
+- **Two layouts (`grade_levels.statement_layout`), A4 portrait, one page, laid out like the school's samples:**
+  - **KG1 to Grade 9 (`kg9`):** every counted subject with its year score, the first four (Moral, Myanmar, English, Mathematics) in the left column and the rest on the right. Then the accumulative score, RESULT and CLASS OF PASS, and the footer word for word. KG-4's Character Building and Social Study aren't counted (Q4), so they aren't listed, as on the sample.
+  - **Grades 11 and 12 (`g11_12`):**
+    - Compulsory subjects with letter and HRS. SUPW prints PASS or FAIL with HRS "-".
+    - Optional subjects with letter and HRS, "-" for the ones not taken.
+    - The GPA, RESULT and CLASS OF PASS.
+    - The footer, described next.
+- **The 11-12 footer:**
+  - The heading "How are the accumulated GPA calculated and CP grouped?".
+  - A conversion table generated from the grading scheme's bands, as saved with the year freeze: letter, grade value, and points for 3 and 2 hours, with D+ and F included.
+  - The class-of-pass GPA ranges, from the scheme's result bands.
+  - The Note paragraph word for word.
+  - **Corrected from the sample:** the sample's table placed D in Third and left out D+ (owner, 2026-11-27).
+- **Printed text:**
+  - The header word for word, the name in capitals, the grade as the level code ("2", "12"), the date of birth as "JAN 25, 2016" and the date of issue as "MARCH 26, 2027".
+  - The subject labels are the curriculum's report labels (owner).
+  - A student who failed gets a statement with RESULT FAIL and CLASS OF PASS "—" (owner).
+  - The Registrar and Principal signature lines are blank: the seal and the signatures stay manual, so no names or dates are printed.
+- **Examination centre:** a text rule on the Admin's Report Card Rules page, read-only for the Principal, flagged Q15. The rule values now hold up to 120 characters.
+- **Seeder (`PastYearResultsSeeder`):** creates 2025-2026 (inactive) with four terms.
+  - **Grade 8-A (KG-9 layout):** the students now in Grade 9-A.
+  - **Grade 11-A (11-12 layout):** those now in Grade 12-A, with their option choices.
+  - Their enrollments are Completed, every term has a full gradebook and attendance, and the Principal locks all four terms through `ResultFreezeService`, so the year freeze is real.
+  - One Grade 11-A student has no option choices (as in this year's seed), so their statement is refused with the reason, which shows the refusal on staging.
+  - The sections have no homeroom teacher and no teaching assignments, so this year's teacher and student pages don't change (see "Out of phase" below).
+  - The Term 1 seeder now shares its gradebook and attendance code with it (`Database\Seeders\Concerns\SeedsTermResults`); Term 1's marks and attendance are unchanged (marks in a subject with no teaching assignment are now recorded as entered by the homeroom teacher).
+
+**Migrations (4):**
+1. Add "Statement of Marks" to `document_requests.type`.
+2. Create `statements_of_marks`.
+3. Add `grade_levels.statement_layout` (kg9 for KG1-9, g11_12 for 11-12, null for Grade 10).
+4. Widen `report_rules.value` to 120 and add the `examination_centre` rule (Q15).
+
+Each rollback is refused while any statement exists, so none is lost.
+
+**Tests:** `StatementOfMarksTest` (11):
+- Both rules-file worked examples: Grade 2 = 90, PASS, FIRST; Grade 12 GPA 3.04, PASS, SECOND, with "-" options, SUPW PASS and the generated table.
+- A failed student.
+- Each refusal.
+- The issuance control and the draft preview.
+- The issued copy never changing after a re-freeze, with the outdated notice.
+- Draft dates and their audit.
+- The Q15 rule.
+- Access.
+
+The phase 6 rules test now sends the new rule. The full suite passes (559).
+
+**Checked in the browser (fresh seed, 1280 px and 390 px):**
+- **Registrar:** every refusal with its reason, preparing both layouts, changing a draft's dates, the preview PDFs (A4 portrait, one page), Print disabled while the control is off, then issued and Re-print only.
+- **Principal:** turned the control on in Setup & Controls; the examination centre rule shows read-only.
+- **Admin:** the examination centre text rule.
+- **Student, guardian and teacher pages:** nothing from last year shows.
+
+**Deploy (staging), when asked:**
+1. `php artisan migrate` (4 migrations).
+2. An asset build.
+
+To have statements to generate, a fresh reset with the seeder creates the frozen 2025-2026 year. On existing data, a year must have all four terms locked.
+
 ## Defaults applied so far
 
 | Rule | Default | Question (rules file) | Where it lives |
@@ -340,9 +416,16 @@ Terms that are already locked have no frozen days absent: their cards fall back 
 | Days absent | Absent plus Excused days in the term. The Admin can switch it to Absent only. | Q8 | `report_rules.days_absent_counts`, flagged Q8 |
 | Personality record | Rated every term; the card prints the latest rated term. The Admin can switch it to the report's own term. | Q14 | `report_rules.personality_shown`, flagged Q14 |
 | Minimum attendance | 80% to sit the examinations, checked on the section's daily attendance (attended over counted days, Excused left out). Flagged, never blocked. | Q16 | `report_rules.min_attendance_pct`, flagged Q16 |
+| Examination centre | "YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL" on every statement; the Admin can change it. | Q15 | `report_rules.examination_centre`, flagged Q15 |
+| Grade 10 statement | None until the school answers; the Registrar sees why. | Q11 | `grade_levels.statement_layout` null for Grade 10 |
+| SUPW on the statement | A score for Grades 5-9 (counted), PASS or FAIL for 11-12, as the curriculum says. | Q5 | `StatementOfMarksService::content()` |
+| PE on the Grade 5-9 statement | Listed, because PE counts in the average; the sample leaves it out. | Q21 (new) | KG-9 lists every counted subject |
+| No statement | An incomplete or blocked year result gets no statement, with the reason. | not asked | `StatementOfMarksService::source()` |
+| Failed students | Issued with RESULT FAIL and CLASS OF PASS "—". | not asked (owner, 2026-11-27) | `StatementOfMarksService::content()` |
+| 11-12 conversion table | Generated from the scheme's bands, D+ included, with the class-of-pass GPA ranges under it. The sample's table placed D in Third and left out D+. | not asked (owner, 2026-11-27) | `StatementOfMarksService::conversion()`, `classes()` |
 
 ## Open questions waiting on the school
-All of Q1 to Q20 in the rules file are still open, as are the Treasurer questions T1 to T11. A KG1/KG2 decision has been recorded under Q2 while the school's answer is pending.
+All of Q1 to Q21 in the rules file are still open, as are the Treasurer questions T1 to T11. A KG1/KG2 decision has been recorded under Q2 while the school's answer is pending.
 
 ### Question numbers: letter to the school vs rules file
 The letter sent to the school left out Q2 (Nursery), so from Q2 onwards each letter number is one less than the rules file's number. **The rules file's numbers are the ones used in the code, the data (`pending_question`) and this file.**
@@ -369,6 +452,7 @@ The letter sent to the school left out Q2 (Nursery), so from Q2 onwards each let
 | Q17 | Q18 |
 | — (not sent yet) | Q19 (added 2026-11-26) |
 | — (not sent yet) | Q20 (added 2026-11-26) |
+| — (not sent yet) | Q21 (added 2026-11-27) |
 | T1 to T11 | T1 to T11 (same numbers) |
 
 ## Notes for the next session
@@ -389,5 +473,6 @@ The letter sent to the school left out Q2 (Nursery), so from Q2 onwards each let
   - Rounding uses the scheme's mode and decimals, with no floats.
 - **The old department grade scale is retired (4b):** everything that read it now reads `ResultService`, and its hard-deleting Admin page is gone. Only the `grade_scale_bands` table, its rows, the `GradeScaleBand` model, `Department::gradeScaleBands()` and its `AuditLog` category remain, for past records.
 - **Out of phase:** the Principal and VP dashboards average raw `Grade` scores without any scale; they read neither the old nor the new results.
+- **Out of phase (found in phase 7):** the teacher's Dashboard, My Classes and Attendance pages list the teacher's homeroom sections of every school year (`StaffProfile::homeroomSections` has no year filter), so after a year rollover last year's class shows beside this year's. Not fixed; the past-year seeder leaves its sections without a homeroom teacher so the demo isn't affected.
 - **Phase 6 and the report card:** the year result is not on the report card (Q3, option B). Phase 7's Statement of Marks is where `ResultService::sectionYear()` is printed.
 - **Fixed after phase 5 (PR #47):** removing a gradebook item or a teacher's own category (Grades 11-12) now archives it (`archived_at`) instead of deleting its grades. Archived items and categories count in no mark, keep their grades, and can be restored by the teacher while the term is open; both actions are audited. Locked terms stay read-only. Template categories still can't be archived.
