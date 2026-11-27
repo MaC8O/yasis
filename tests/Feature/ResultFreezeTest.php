@@ -91,6 +91,9 @@ class ResultFreezeTest extends TestCase
     {
         return $this->actingAs($this->principal->user)->put('/principal/governance', array_merge([
             'promotion_window_open' => '1', 'transcript_issuance_enabled' => '0', 'principal_may_assist_registration' => '1',
+            // These fixtures' gradebooks aren't on the template, so locking always meets the empty-category
+            // warning (tested in GradebookTemplateTest); acknowledge it here.
+            'acknowledge_empty_categories' => '1',
         ], $fields));
     }
 

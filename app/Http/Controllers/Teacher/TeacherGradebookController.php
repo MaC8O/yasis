@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Teacher;
 
+use App\Exceptions\ActionRefused;
 use App\Http\Controllers\Controller;
 use App\Imports\AssessmentScoresImport;
 use App\Models\AcademicYear;
@@ -17,7 +18,9 @@ use App\Models\Student;
 use App\Models\Subject;
 use App\Models\SubjectOffering;
 use App\Models\Term;
+use App\Services\AttendanceScoreService;
 use App\Services\AuditService;
+use App\Services\GradebookTemplateService;
 use App\Services\ResultService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -59,7 +62,7 @@ class TeacherGradebookController extends Controller
         }
     }
 
-    public function index(Request $request, ResultService $resultService)
+    public function index(Request $request, ResultService $resultService, GradebookTemplateService $templates, AttendanceScoreService $attendanceScores)
     {
         $teacher = $request->user()->staffProfile;
         $assignments = $this->assignments($teacher);
@@ -78,13 +81,34 @@ class TeacherGradebookController extends Controller
         $terms = $activeYear?->terms()->orderBy('sequence')->get() ?? collect();
         $term = $terms->firstWhere('id', $request->integer('term')) ?? $terms->first();
 
-        $categories = AssessmentCategory::where('section_id', $section->id)
+        // KG1 to Grade 10: an open term's gradebook is put on the school's fixed template first (§4.1).
+        $usesTemplate = $templates->appliesTo($section);
+        if ($usesTemplate && $term && ! $term->is_locked) {
+            $templates->adopt($section, $subject->id, $term, $request->user());
+        }
+
+        $allCategories = AssessmentCategory::where('section_id', $section->id)
             ->where('subject_id', $subject->id)
             ->where('term_id', $term?->id)
             ->with('assessments.grades')
             ->get();
+        $order = $templates->template()->pluck('sort_order', 'key');
+        $categories = $allCategories->whereNull('archived_at')
+            ->sortBy(fn ($c) => [$c->template_key ? $order[$c->template_key] ?? 99 : 99, $c->id])->values();
+        $archivedCategories = $allCategories->whereNotNull('archived_at')->filter(fn ($c) => $c->assessments->isNotEmpty())->values();
 
         $roster = $section->enrollments()->with('student')->where('status', 'Active')->get()->pluck('student');
+
+        // The Attendance category's figures, and students with section school days that have no record for them.
+        $attendance = $usesTemplate && $term ? $attendanceScores->forSectionTerm($section, $term) : null;
+        $missingAttendance = $attendance
+            ? $roster->filter(fn ($s) => ($attendance['students'][$s->id]['missing'] ?? 0) > 0)
+                ->map(fn ($s) => ['name' => $s->name, 'missing' => $attendance['students'][$s->id]['missing']])->values()
+            : collect();
+
+        // One-time notices: items moved when a gradebook was put on the template.
+        $notices = $request->user()->unreadNotifications()->where('data->kind', 'gradebook_template')->get();
+        $notices->markAsRead();
 
         // A locked term shows its frozen figures; an unlocked one is previewed live in the grid (provisional).
         $sectionResults = $term ? $resultService->sectionTerm($section, $term) : null;
@@ -120,6 +144,11 @@ class TeacherGradebookController extends Controller
             'terms' => $terms,
             'term' => $term,
             'categories' => $categories,
+            'archivedCategories' => $archivedCategories,
+            'usesTemplate' => $usesTemplate,
+            'attendance' => $attendance,
+            'missingAttendance' => $missingAttendance,
+            'notices' => $notices,
             'roster' => $roster,
             'frozenRows' => $frozenRows,
             'frozenAt' => $sectionResults?->freeze?->frozen_at,
@@ -135,7 +164,7 @@ class TeacherGradebookController extends Controller
         ]);
     }
 
-    public function storeCategory(Request $request, AuditService $audit)
+    public function storeCategory(Request $request, AuditService $audit, GradebookTemplateService $templates)
     {
         $data = $request->validate([
             'section_id' => ['required', 'exists:sections,id'],
@@ -147,6 +176,7 @@ class TeacherGradebookController extends Controller
 
         $this->assertTeaches($request, (int) $data['section_id'], (int) $data['subject_id']);
         $this->assertTermUnlocked(Term::find($data['term_id']));
+        $this->refuseFixedCategories(Section::findOrFail($data['section_id']), $templates);
 
         $existingTotal = AssessmentCategory::where('section_id', $data['section_id'])
             ->where('subject_id', $data['subject_id'])->where('term_id', $data['term_id'])->sum('weight_pct');
@@ -161,10 +191,14 @@ class TeacherGradebookController extends Controller
         return back()->with('status', "Category \"{$category->name}\" added.");
     }
 
-    public function destroyCategory(Request $request, AssessmentCategory $assessmentCategory, AuditService $audit)
+    public function destroyCategory(Request $request, AssessmentCategory $assessmentCategory, AuditService $audit, GradebookTemplateService $templates)
     {
         $this->assertTeaches($request, $assessmentCategory->section_id, $assessmentCategory->subject_id);
         $this->assertTermUnlocked($assessmentCategory->term);
+        if ($assessmentCategory->isTemplate() || $assessmentCategory->isArchived()) {
+            throw new ActionRefused("“{$assessmentCategory->name}” is one of the school's fixed categories and can't be deleted.");
+        }
+        $this->refuseFixedCategories($assessmentCategory->section, $templates);
 
         $id = $assessmentCategory->id;
         $assessmentCategory->delete();
@@ -185,6 +219,12 @@ class TeacherGradebookController extends Controller
         $category = AssessmentCategory::findOrFail($data['category_id']);
         $this->assertTeaches($request, $category->section_id, $category->subject_id);
         $this->assertTermUnlocked($category->term);
+        if ($category->isAttendance()) {
+            throw new ActionRefused('Attendance has no items: its score comes from the attendance records.');
+        }
+        if ($category->isArchived()) {
+            throw new ActionRefused("“{$category->name}” is archived. Add the item to one of the current categories.");
+        }
 
         $assessment = Assessment::create($data);
         $audit->log($request->user(), 'Created assessment', 'Assessment', $assessment->id);
@@ -233,6 +273,41 @@ class TeacherGradebookController extends Controller
         $audit->log($request->user(), 'Deleted assessment', 'Assessment', $id);
 
         return back()->with('status', "Item \"{$name}\" and its scores were deleted.");
+    }
+
+    /**
+     * Move an item, with its grades, to another category of the same gradebook (KG1 to Grade 10:
+     * a template category other than Attendance). Audited.
+     */
+    public function moveAssessment(Request $request, Assessment $assessment, AuditService $audit)
+    {
+        $from = $this->assertTeachesAssessment($request, $assessment);
+        $this->assertTermUnlocked($from->term);
+        $data = $request->validate(['category_id' => ['required', 'integer']]);
+
+        $to = AssessmentCategory::where('id', $data['category_id'])->where('section_id', $from->section_id)
+            ->where('subject_id', $from->subject_id)->where('term_id', $from->term_id)->active()->first();
+        if (! $to || $to->id === $from->id) {
+            throw new ActionRefused('Choose another current category in the same gradebook.');
+        }
+        if ($to->isAttendance()) {
+            throw new ActionRefused('Attendance has no items: its score comes from the attendance records.');
+        }
+
+        $assessment->update(['category_id' => $to->id]);
+        $audit->log($request->user(), 'Moved assessment to another category', 'Assessment', $assessment->id, [
+            'item' => $assessment->name, 'from' => $from->name, 'to' => $to->name, 'grades' => $assessment->grades()->count(),
+        ]);
+
+        return back()->with('status', "“{$assessment->name}” moved to {$to->name}, with its scores.");
+    }
+
+    /** KG1 to Grade 10 use the school's fixed categories: teachers can't add or remove categories. */
+    protected function refuseFixedCategories(Section $section, GradebookTemplateService $templates): void
+    {
+        if ($templates->appliesTo($section)) {
+            throw new ActionRefused("{$section->name} uses the school's fixed gradebook categories. Teachers add items inside them; the Admin edits the categories on Gradebook Template.");
+        }
     }
 
     /**

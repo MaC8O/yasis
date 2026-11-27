@@ -32,12 +32,13 @@
                     <span class="w-5 text-neutral-400 transition-transform" :class="isOpen({{ $category->id }}) ? 'rotate-90' : ''" aria-hidden="true">▶</span>
                     <span class="font-semibold">{{ $category->name }}</span>
                     <x-badge color="blue">{{ $num($category->weight_pct) }}% weight</x-badge>
+                    @if ($category->isTemplate()) <span class="text-xs text-neutral-400" title="Set by the school">fixed</span> @endif
                     <span class="text-xs text-neutral-400">
                         {{ $items->count() }} {{ Str::plural('item', $items->count()) }}@if ($typeCounts->isNotEmpty()) ·
                             {{ $typeCounts->map(fn ($n, $t) => $n.' '.Str::lower($types[$t] ?? $t))->join(', ') }}@endif
                     </span>
                 </button>
-                @if ($editable)
+                @if ($editable && ! $category->isTemplate())
                     <form method="POST" action="{{ route('teacher.gradebook.categories.destroy', $category) }}"
                           data-confirm="Delete the “{{ $category->name }}” category and all its items and scores?" onsubmit="return confirm(this.dataset.confirm)">
                         @csrf @method('DELETE')
@@ -47,6 +48,9 @@
             </div>
 
             <div x-show="isOpen({{ $category->id }})" x-cloak class="border-t border-neutral-100 px-4 py-3 space-y-2">
+                @if ($category->isAttendance())
+                    <p class="text-sm text-neutral-600">Calculated from the attendance records: days attended (Present and Tardy) over the student's recorded days, with Excused days left out. It shows read-only in the grid below.</p>
+                @else
                 @forelse ($items as $assessment)
                     @php $scored = $assessment->grades->whereIn('student_id', $rosterIds)->count(); @endphp
                     <div x-data="{ edit: false }" x-show="filter === '' || filter === '{{ $assessment->type }}'"
@@ -61,6 +65,7 @@
                                class="inline-flex items-center min-h-[36px] px-3 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark">{{ $editable ? 'Enter scores' : 'View scores' }}</a>
                             @if ($editable)
                                 <button type="button" @click="edit = true" class="min-h-[36px] text-xs font-semibold text-neutral-500 hover:underline">Edit</button>
+                                @include('teacher.gradebook.partials.move-item', ['item' => $assessment, 'from' => $category])
                                 <form method="POST" action="{{ route('teacher.gradebook.assessments.destroy', $assessment) }}"
                                       data-confirm="Delete “{{ $assessment->name }}” and its {{ $scored }} {{ Str::plural('score', $scored) }}?" onsubmit="return confirm(this.dataset.confirm)">
                                     @csrf @method('DELETE')
@@ -112,6 +117,7 @@
                         </label>
                         <button type="submit" class="min-h-[40px] border border-brand text-brand font-semibold rounded-lg px-3 py-2 text-sm hover:bg-brand hover:text-white transition">+ Add item</button>
                     </form>
+                @endif
                 @endif
             </div>
         </div>

@@ -41,7 +41,7 @@
                         <p class="text-xs text-neutral-400">Not counted in the {{ $report->resultLabel() === 'GPA' ? 'GPA' : mb_strtolower($report->resultLabel()) }}.</p>
                     @endif
                     @foreach ($breakdown[$subject->subjectId] ?? [] as $cat)
-                        <p class="text-xs text-neutral-500">{{ $cat['name'] }} · {{ rtrim(rtrim(number_format((float) $cat['weight'], 2), '0'), '.') }}% weight · {{ $cat['avg'] !== null ? $cat['avg'].'%' : 'not graded' }}</p>
+                        <p class="text-xs text-neutral-500">{{ $cat['name'] }} · {{ rtrim(rtrim(number_format((float) $cat['weight'], 2), '0'), '.') }}% weight · {{ $cat['avg'] !== null ? $cat['avg'].'%' : 'not graded' }}@if (! empty($cat['detail'])) ({{ $cat['detail'] }})@endif</p>
                     @endforeach
                 </div>
                 <div class="text-right shrink-0">

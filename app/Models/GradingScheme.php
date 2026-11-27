@@ -38,7 +38,7 @@ class GradingScheme extends Model
 
     protected $fillable = [
         'code', 'name', 'result_basis', 'result_max', 'mark_decimals', 'result_decimals',
-        'rounding_mode', 'subject_fail_rule', 'failed_ranking', 'pending_question',
+        'rounding_mode', 'subject_fail_rule', 'failed_ranking', 'uses_gradebook_template', 'pending_question',
     ];
 
     protected function casts(): array
@@ -47,6 +47,7 @@ class GradingScheme extends Model
             'result_max' => 'decimal:2',
             'mark_decimals' => 'integer',
             'result_decimals' => 'integer',
+            'uses_gradebook_template' => 'boolean',
         ];
     }
 

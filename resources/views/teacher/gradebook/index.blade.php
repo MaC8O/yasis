@@ -1,4 +1,4 @@
-@php $allAssessments = $categories->flatMap->assessments; @endphp
+@php $allAssessments = $categories->flatMap->assessments->merge($archivedCategories->flatMap->assessments); @endphp
 <x-app-layout title="Category Gradebook" subtitle="Set up weighted categories and items, enter scores with live results, and add report-card comments — assigned classes only." badge="Teacher · Assigned classes only" role="teacher">
     <x-card>
         <form method="GET" class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
@@ -23,6 +23,30 @@
             </div>
         </form>
     </x-card>
+
+    @foreach ($notices as $notice)
+        <div class="rounded-xl border border-info-line bg-info-soft px-5 py-3 text-sm text-info" data-gradebook-notice role="status">
+            <p class="font-semibold">{{ $notice->data['title'] ?? 'Gradebook notice' }}</p>
+            <ul class="mt-1 list-disc pl-5 space-y-0.5">
+                @foreach ($notice->data['lines'] ?? [] as $line)
+                    <li>{{ $line }}</li>
+                @endforeach
+            </ul>
+            <p class="mt-1 text-xs">Shown once. It stays under My notifications.</p>
+        </div>
+    @endforeach
+
+    @if ($missingAttendance->isNotEmpty())
+        <div class="rounded-xl border border-warning-line bg-warning-soft px-5 py-3 text-sm text-warning" data-missing-attendance>
+            <p class="font-semibold">Attendance records missing</p>
+            <p class="mt-0.5">These students have section school days in {{ $term?->name }} with no attendance record for them. Only their recorded days count towards Attendance, so fill the gaps on the Attendance page.</p>
+            <ul class="mt-1 list-disc pl-5">
+                @foreach ($missingAttendance as $row)
+                    <li>{{ $row['name'] }}: {{ $row['missing'] }} {{ Str::plural('day', $row['missing']) }} with no record</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
     @if ($term?->is_locked)
         <div class="bg-warning-soft border border-warning-line text-warning text-sm rounded-xl px-5 py-3">
@@ -107,10 +131,13 @@
     @endif
 
     @php $categoryPresets = ['Homework', 'Quiz', 'Test / Exam', 'Project', 'Classwork', 'Participation', 'Lab', 'Assignment', 'Extra Credit']; @endphp
-    <x-card title="Categories & items" subtitle="Group work into weighted categories, then add the graded items (quizzes, tests, projects…) inside each. Weights should total 100%.">
+    <x-card title="Categories & items" :subtitle="$usesTemplate
+            ? 'This grade uses the school\'s fixed categories and weights. Add your own items inside each category; Attendance is calculated from the attendance records. A category\'s score is the marks earned over the marks possible.'
+            : 'Group work into weighted categories, then add the graded items (quizzes, tests, projects…) inside each. Weights should total 100%.'">
         @if (! $term?->is_locked)
             @include('teacher.gradebook.partials.category-groups', ['editable' => true])
 
+            @unless ($usesTemplate)
             <div class="border-t border-neutral-100 pt-4">
                 <form method="POST" action="{{ route('teacher.gradebook.categories.store') }}" x-data="{ pick: 'Homework', custom: '' }" class="flex flex-wrap gap-3 items-end">
                     @csrf
@@ -139,9 +166,28 @@
                     <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors">Add category</button>
                 </form>
             </div>
+            @endunless
         @else
             @include('teacher.gradebook.partials.category-groups', ['editable' => false])
             <p class="text-xs text-warning">Term is locked — categories and items are read-only. Open an item to view its scores.</p>
+        @endif
+
+        @if ($archivedCategories->isNotEmpty())
+            <div class="mt-4 border-t border-neutral-100 pt-4" data-archived-categories>
+                <p class="text-sm font-semibold">Archived categories <span class="font-normal text-neutral-500">(kept with their marks, not counted)</span></p>
+                @foreach ($archivedCategories as $archived)
+                    <div class="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm">
+                        <p class="font-medium">{{ $archived->name }}</p>
+                        @foreach ($archived->assessments as $item)
+                            <div class="mt-1 flex flex-wrap items-center gap-2">
+                                <span>{{ $item->name }}</span>
+                                <span class="text-xs text-neutral-500">out of {{ rtrim(rtrim(number_format($item->max_score, 2), '0'), '.') }}</span>
+                                @include('teacher.gradebook.partials.move-item', ['item' => $item, 'from' => $archived])
+                            </div>
+                        @endforeach
+                    </div>
+                @endforeach
+            </div>
         @endif
     </x-card>
 
@@ -207,11 +253,16 @@
     @endif
 
     @php
-        $gridCategories = $categories->filter(fn ($c) => $c->assessments->isNotEmpty())->values();
+        $gridCategories = $categories->filter(fn ($c) => $c->assessments->isNotEmpty() || ($c->isAttendance() && $attendance))->values();
+        $hasItems = $gridCategories->contains(fn ($c) => ! $c->isAttendance());
         $gridMeta = [
             'categories' => $gridCategories->map(fn ($c) => [
                 'id' => $c->id,
                 'weight' => (float) $c->weight_pct,
+                // ratio: earned over possible (template categories); mean: mean of item %s (own categories);
+                // attendance: the server's figure from the attendance records.
+                'rule' => $c->isAttendance() ? 'attendance' : ($c->isTemplate() ? 'ratio' : 'mean'),
+                'att' => $c->isAttendance() ? collect($attendance['students'] ?? [])->map(fn ($r) => $r['pct'] === null ? null : (float) $r['pct']) : null,
                 'assessments' => $c->assessments->map(fn ($a) => ['id' => $a->id, 'max' => (float) $a->max_score])->values(),
             ])->values(),
             'preview' => $preview,
@@ -229,8 +280,9 @@
     @endphp
 
     <script>
-        // Mirrors App\Services\GradeService::sectionMarks(): category % = mean of (score/max*100) over
-        // graded items; mark = weighted mean of category %s, counting only categories that have a score.
+        // Mirrors App\Services\GradeService::sectionMarks(): a template category is marks earned over marks
+        // possible; a teacher's own category the mean of its item %s; Attendance comes from the server. The
+        // mark is the weighted mean of the categories that have a score, once at least one item is graded.
         // The letter is a preview with ResultService's rounding and the section's scheme bands.
         window.gradebookGrid = function (init) {
             return {
@@ -243,20 +295,22 @@
                     return isNaN(n) ? null : n;
                 },
                 catPct(cat, sid) {
-                    let sum = 0, n = 0;
+                    if (cat.rule === 'attendance') return cat.att?.[sid] ?? null;
+                    let sum = 0, n = 0, earned = 0, possible = 0;
                     for (const a of cat.assessments) {
                         const v = this.num(a.id, sid);
-                        if (v !== null && a.max > 0) { sum += (v / a.max) * 100; n++; }
+                        if (v !== null && a.max > 0) { sum += (v / a.max) * 100; n++; earned += v; possible += a.max; }
                     }
-                    return n ? sum / n : null;
+                    if (!n) return null;
+                    return cat.rule === 'ratio' ? (earned / possible) * 100 : sum / n;
                 },
                 finalPct(sid) {
-                    let ws = 0, wu = 0;
+                    let ws = 0, wu = 0, items = false;
                     for (const cat of this.meta.categories) {
                         const p = this.catPct(cat, sid);
-                        if (p !== null) { ws += p * cat.weight; wu += cat.weight; }
+                        if (p !== null) { ws += p * cat.weight; wu += cat.weight; items = items || cat.rule !== 'attendance'; }
                     }
-                    return wu > 0 ? ws / wu : null;
+                    return items && wu > 0 ? ws / wu : null;
                 },
                 // The mark as printed: two decimals, then the scheme's decimals and rounding mode.
                 printed(sid) {
@@ -289,7 +343,7 @@
         <input type="hidden" name="term_id" value="{{ $term?->id }}">
 
         <x-card title="Enter scores" subtitle="Type a score for each item — subtotals and the weighted result update instantly. Enter points out of each item's maximum (not a percentage).">
-            @if ($gridCategories->isEmpty())
+            @if (! $hasItems)
                 <p class="text-sm text-neutral-400 py-6 text-center">No graded items yet. Add categories and items above, then scores appear here.</p>
             @else
                 <div class="overflow-x-auto">
@@ -298,7 +352,7 @@
                             <tr class="text-neutral-500">
                                 <th rowspan="2" class="sticky left-0 z-10 bg-white text-left py-2 pr-4 font-semibold border-b border-neutral-200 align-bottom">Student</th>
                                 @foreach ($gridCategories as $category)
-                                    <th colspan="{{ $category->assessments->count() + 1 }}" class="py-2 px-2 text-center font-semibold border-b border-l border-neutral-200 bg-neutral-50">
+                                    <th colspan="{{ $category->isAttendance() ? 1 : $category->assessments->count() + 1 }}" class="py-2 px-2 text-center font-semibold border-b border-l border-neutral-200 bg-neutral-50">
                                         {{ $category->name }}
                                         <span class="text-xs font-normal text-neutral-400">· {{ rtrim(rtrim(number_format($category->weight_pct, 2), '0'), '.') }}%</span>
                                     </th>
@@ -310,6 +364,10 @@
                             </tr>
                             <tr class="text-neutral-400 text-xs">
                                 @foreach ($gridCategories as $category)
+                                    @if ($category->isAttendance())
+                                        <th class="py-1.5 px-2 font-semibold border-b border-l border-neutral-200 text-center bg-neutral-50">From attendance<br><span class="font-normal text-neutral-300">read-only</span></th>
+                                        @continue
+                                    @endif
                                     @foreach ($category->assessments as $assessment)
                                         <th class="py-1.5 px-2 font-medium border-b border-l border-neutral-200 text-center whitespace-nowrap">
                                             {{ $assessment->name }}<br><span class="text-neutral-300">/ {{ rtrim(rtrim(number_format($assessment->max_score, 2), '0'), '.') }}</span>
@@ -324,6 +382,14 @@
                                 <tr class="hover:bg-neutral-50/50">
                                     <td class="sticky left-0 z-10 bg-white py-2 pr-4 font-semibold border-b border-neutral-100 whitespace-nowrap">{{ $student->name }}</td>
                                     @foreach ($gridCategories as $ci => $category)
+                                        @if ($category->isAttendance())
+                                            @php $att = $attendance['students'][$student->id] ?? null; @endphp
+                                            <td class="py-1.5 px-2 border-b border-l border-neutral-100 text-center bg-neutral-50/50" data-attendance="{{ $student->id }}">
+                                                <span class="font-medium text-neutral-600" x-text="fmt(catPct(meta.categories[{{ $ci }}], {{ $student->id }}))"></span>
+                                                <span class="block text-[11px] text-neutral-400 whitespace-nowrap">{{ \App\Services\AttendanceScoreService::describe($att) }}</span>
+                                            </td>
+                                            @continue
+                                        @endif
                                         @foreach ($category->assessments as $assessment)
                                             <td class="py-1.5 px-2 border-b border-l border-neutral-100 text-center">
                                                 <input type="number" step="0.01" min="0" max="{{ $assessment->max_score }}"

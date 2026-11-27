@@ -8,8 +8,8 @@ Source of truth: [YASIS_Academic_and_Fee_Rules.md](YASIS_Academic_and_Fee_Rules.
 | 2. Curriculum (`subject_offerings`, Grade 11-12 electives) | Merged | `curriculum`, PR #41 |
 | 3. Grading schemes per grade level | Merged | `grading-schemes`, PR #42 |
 | 4a. Calculation service, frozen results, promotion recommendation | Merged (with the follow-up: a batch needs a frozen year) | `results-service`, PR #43; `promotion-needs-frozen-year`, PR #44 |
-| 4b. Switch the pages to the new results, retire the department grade scale, Q20 ranking setting | PR open, awaiting review | `results-pages`, PR #45 |
-| 5. KG-9 gradebook template | Not started | |
+| 4b. Switch the pages to the new results, retire the department grade scale, Q20 ranking setting | Merged, deployed to staging (fresh reset 2026-11-27) | `results-pages`, PR #45 |
+| 5. KG1 to Grade 10 gradebook template and calculated attendance | PR open, awaiting review | `gradebook-template`, PR #46 |
 | 6. Report cards | Not started | |
 | 7. Statement of Marks | Not started | |
 | 8. Fee schedule (reference data only) | Not started | |
@@ -163,7 +163,7 @@ Phase 4 is split in two (owner, 2026-11-26). 4a adds the calculation, the frozen
 
 No asset build is needed beyond the usual: the new classes are on the Registrar and Principal pages.
 
-## Phase 4b: pages switched to the new results (done, in review)
+## Phase 4b: pages switched to the new results (merged)
 
 **Built:**
 - **Every page that shows grades reads `ResultService`:**
@@ -189,6 +189,72 @@ No asset build is needed beyond the usual: the new classes are on the Registrar 
 
 **Out of scope:** the Principal and VP dashboards average raw `Grade` scores without any scale. They are unchanged.
 
+## Phase 5: fixed gradebook template and calculated attendance (done, in review)
+
+**Built:**
+- **`gradebook_template_categories`:** the school's five categories, all editable by the Admin (name and weight, which must total 100) and read-only for the Principal:
+  - Class tests / quizzes 10%
+  - Attendance 10% (no items, calculated; flagged Q8)
+  - Assignments 10%
+  - Participation / obedience / Code of Conduct 10%
+  - Examinations 60%
+  - Every change is audited and applied to the open terms' gradebooks in the same transaction. Locked terms keep theirs.
+- **`grading_schemes.uses_gradebook_template`:** KG_9 and G10 use the template; G11_12 doesn't. Q9 is flagged on G10 and G11_12. It is set by migration and shown read-only.
+- **`assessment_categories`:** two new columns:
+  - `template_key`: which template category this is (null for a teacher's own category).
+  - `archived_at`: a category taken out of use, kept with its items and grades but not counted.
+- **Scoring (`GradeService`):**
+  - A template category scores marks earned / marks possible over the items the student has a mark for.
+  - Attendance comes from `AttendanceScoreService`.
+  - A teacher's own category (Grades 11-12) keeps the mean of its item percentages.
+  - Categories with nothing graded are left out of the weighting while the term is open.
+  - A subject has no mark until one of its items is graded: Attendance alone, being the same for every subject, doesn't make one.
+- **Locking (owner's decision 4):**
+  - The Principal sees every KG1 to Grade 10 section and subject with an empty items category, and must tick "Lock anyway".
+  - In the frozen result, a subject whose Examinations category has no items has no final mark ("No examination was set in …"), so the student's overall result is incomplete.
+  - Attendance with no records stays left out.
+- **Teacher gradebook (KG1 to Grade 10):**
+  - Opening it puts the gradebook on the template.
+  - The categories can't be added, renamed, reweighted or deleted (refused on the server too).
+  - Items are added inside them, except Attendance, which shows read-only per student with its days.
+  - Items can be moved between categories with their grades, audited.
+  - Archived categories are listed with their items and a "Move to…" action.
+- **Missing attendance records (owner's decision 1):** each student with section school days that have no record for them is listed, with the count, in the gradebook and on the teacher's Attendance page.
+- **Existing gradebooks:** `php artisan gradebook:adopt-template --actor=<admin or principal>` moves open-term KG1 to Grade 10 gradebooks onto the template. It is safe to run again and never touches a locked term; the same happens when a teacher opens a gradebook.
+  1. A category whose name matches becomes the template category.
+  2. A second match is merged into the first.
+  3. Items in a category that matches nothing move by their name (exam, mid-term, final → Examinations), then their type (quiz or test → Class tests / quizzes, anything else → Assignments).
+  4. A hand-entered Attendance category with items is archived.
+  5. Missing categories are created.
+  - No grade is deleted.
+  - Each change is audited, and each affected teacher gets a one-time notice listing every moved item (shown the next time they open the gradebook, and kept under My notifications).
+- **Seeder (`Term1ResultsSeeder`):** complete Term 1 marks and attendance (every weekday) for three sections; Term 1 is then frozen.
+  - Grade 9-A (template): 7 complete results, averages 73-81.
+  - Grade 10-A (template): blocked by Q6/Q19.
+  - Grade 12-A (own categories): 4 GPAs; the fifth student has no elective chosen.
+  - The old Quiz/Test demo gradebook is replaced.
+
+**Decisions (owner, 2026-11-27):**
+1. Only the days on which the student has their own attendance record count. Section school days with no record for a student are flagged, with the count.
+2. Unmatched items move by name and type, and each affected teacher gets a one-time notice.
+3. The Admin can rename and reweight only. Use per scheme stays set by migration.
+4. While a term is open, empty categories are left out of the weighting. At lock, there is a warning listing empty items categories, and an empty Examinations category means no final mark (incomplete).
+
+**Pages whose numbers change (open terms, KG1 to Grade 10):**
+- the teacher gradebook (subtotals, the Attendance column, result and preview)
+- the student and guardian grade pages (marks, breakdown, term average) and dashboards
+- the provisional report card
+- the Registrar's promotion recommendations
+
+Frozen terms and Grades 11-12 don't change.
+
+**Deploy (staging):**
+1. `php artisan migrate` (3 migrations).
+2. An asset build.
+3. `php artisan gradebook:adopt-template --actor=<admin email>`.
+
+A fresh reset with the seeder is the alternative, as last time.
+
 ## Defaults applied so far
 
 | Rule | Default | Question (rules file) | Where it lives |
@@ -212,6 +278,10 @@ No asset build is needed beyond the usual: the new classes are on the Registrar 
 | Pass/Fail subjects | PASS when the rounded mark reaches the scheme's pass mark (the lowest band that is not a fail band). | not asked | `ResultService::subject()` |
 | Grade 10 promotion | No automatic recommendation; the DHSC result decides. | Q11 | `ResultService::promotionRecommendations()` |
 | Failed students' position | Ranked together with those who passed (a Grade 12 student who failed Mathematics can be 2nd). The Admin can switch a scheme to rank failed students after all who passed. | Q20 (new) | `grading_schemes.failed_ranking`, flagged Q20 |
+| Attendance component | Present and Tardy count as attended, Absent counts against, Excused days are left out of both attended and counted days. Only the days the student has their own record count (missing days are flagged to the teacher). | Q8 | `gradebook_template_categories` (attendance row flagged Q8), `AttendanceScoreService` |
+| Where the fixed template applies | KG1 to Grade 10. Grades 11 and 12 keep free category weighting. | Q9 | `grading_schemes.uses_gradebook_template`, G10 and G11_12 flagged Q9 |
+| School days in the term | The dates with an attendance record for the section in that term. | Q8 | `AttendanceScoreService` |
+| Empty categories | Left out of the weighting while the term is open. At lock, an empty Examinations category means no final mark for that subject (incomplete). | not asked (owner, 2026-11-27) | `ResultService::liveSectionTerm(final: true)` |
 
 ## Open questions waiting on the school
 All of Q1 to Q20 in the rules file are still open, as are the Treasurer questions T1 to T11. A KG1/KG2 decision has been recorded under Q2 while the school's answer is pending.
@@ -261,3 +331,4 @@ The letter sent to the school left out Q2 (Nursery), so from Q2 onwards each let
   - Rounding uses the scheme's mode and decimals, with no floats.
 - **The old department grade scale is retired (4b):** everything that read it now reads `ResultService`, and its hard-deleting Admin page is gone. Only the `grade_scale_bands` table, its rows, the `GradeScaleBand` model, `Department::gradeScaleBands()` and its `AuditLog` category remain, for past records.
 - **Out of phase:** the Principal and VP dashboards average raw `Grade` scores without any scale; they read neither the old nor the new results.
+- **Known, out of phase (phase 5):** deleting an item (`destroyAssessment`) or a teacher's own category (`destroyCategory`, still possible for Grades 11-12) hard-deletes its grades, against the no-hard-delete rule. The template categories can't be deleted.

@@ -19,6 +19,22 @@
                     </span>
                     <input type="checkbox" name="grade_lock" value="1" @checked($currentTerm?->is_locked) class="w-5 h-5">
                 </label>
+                @if ($emptyCategories)
+                    <div class="-mt-1 rounded-xl border border-warning-line bg-warning-soft p-3 text-sm text-warning" data-empty-categories>
+                        <p class="font-semibold">Before you lock {{ $currentTerm->name }}: {{ count($emptyCategories) }} {{ count($emptyCategories) === 1 ? 'gradebook has' : 'gradebooks have' }} an empty category</p>
+                        <p class="mt-0.5 text-xs">A subject with no Examinations items gets no final mark, so its students have no overall result. Other empty categories are left out of the weighting.</p>
+                        <ul class="mt-2 max-h-48 overflow-y-auto list-disc pl-5 text-xs space-y-0.5">
+                            @foreach ($emptyCategories as $row)
+                                <li>{{ $row['section'] }} · {{ $row['subject'] }}: {{ implode(', ', $row['categories']) }}</li>
+                            @endforeach
+                        </ul>
+                        <label class="mt-2 flex items-center gap-2 text-sm min-h-[44px]">
+                            <input type="hidden" name="acknowledge_empty_categories" value="0">
+                            <input type="checkbox" name="acknowledge_empty_categories" value="1" class="w-5 h-5">
+                            Lock anyway
+                        </label>
+                    </div>
+                @endif
                 @if ($currentTerm?->is_locked && $activeFreeze)
                     <p class="-mt-2 text-xs text-neutral-500">Results frozen {{ $activeFreeze->frozen_at->format('j M Y, H:i') }}: report cards and past-term views read these stored results. Unlocking lifts the freeze (it is kept) and the term is calculated live again.</p>
                 @elseif ($currentTerm?->is_locked)
