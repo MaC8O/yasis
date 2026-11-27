@@ -29,6 +29,21 @@
         </x-card>
     </div>
 
+    <x-card title="Sun ledger files" subtitle="The Account Listings the Treasurer imported, kept privately (real names and balances). Back up storage/app/private/fee-imports together with the database.">
+        @if ($ledgerFiles->isEmpty())
+            <p class="text-sm text-neutral-400">None stored.</p>
+        @else
+            <ul class="divide-y divide-neutral-100 text-sm">
+                @foreach ($ledgerFiles as $file)
+                    <li class="py-2 flex flex-wrap justify-between gap-2">
+                        <span><span class="font-medium break-all">{{ $file->source_file }}</span> <span class="text-neutral-500">· {{ $file->yearLabel() }} · imported {{ $file->created_at->format('j M Y') }}{{ $file->isReverted() ? ' · reverted' : '' }}</span></span>
+                        <a href="{{ route('admin.ledger-files.download', $file) }}" class="text-xs font-semibold text-brand hover:underline">Download</a>
+                    </li>
+                @endforeach
+            </ul>
+        @endif
+    </x-card>
+
     <x-card title="Data retention &amp; erasure" subtitle="§6.2 — action an erasure request against a student or guardian. Records are anonymized, never hard-deleted; academic history is retained without PII. This action is audited.">
         <form method="POST" action="{{ route('admin.retention-actions.store') }}" class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
             @csrf

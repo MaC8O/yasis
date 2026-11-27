@@ -13,7 +13,8 @@ Source of truth: [YASIS_Academic_and_Fee_Rules.md](YASIS_Academic_and_Fee_Rules.
 | 6. Report cards | Merged | `report-cards`, PR #48 |
 | 7. Statement of Marks | Merged | `statement-of-marks`, PR #49 |
 | 8a. Fee schedule (reference data only) | PR open, awaiting review | `fee-schedule`, PR #50 |
-| 8b. Sun Accounts ledger import (`YASIS_Sun_Finance_Import.md`, gitignored) | Plan sent, waiting for approval | |
+| 8b-1. Sun Accounts ledger import: parser, import, validation, matching, overrides, re-import, revert, Treasurer screens | PR open, awaiting review (stacked on #50: merge #50 first) | `sun-ledger-import`, PR #51 |
+| 8b-2. Family netting, guardian and student Fees pages, reports and dashboards, retiring the CSV upload, demo seeder | Plan sent, waiting for approval | |
 
 ## Phase 1: grade levels (merged)
 
@@ -457,6 +458,127 @@ The full suite passes (567).
 2. An asset build.
 3. The Treasurer checks the amounts and publishes.
 
+## Phase 8b-1: Sun Accounts ledger import (done, in review)
+
+The spec is `sdp_doc/YASIS_Sun_Finance_Import.md`, gitignored, so read it locally. Section 8 of it was updated locally for the `sun_accounts` table (owner, 2026-11-27).
+
+**Built:**
+- **New tables beside the CSV import, which is untouched (owner, 2026-11-27):**
+  - `sun_import_batches`
+  - `sun_accounts`: every code, its linked student (unique), `is_control`, `not_isms_student`, the name as printed
+  - `sun_ledger_lines`: signed DECIMAL(14,2), §9 unique key
+  - `sun_account_balances`
+  - `sun_ledger_versions`: what each import created or changed
+  - `fee_categories` and `fee_category_rules`
+  - three settings
+- **Nothing is hard-deleted.** A reverted import's lines are marked `removed_at`. `imported_fee_records` and `import_batches` aren't changed; once 8b-2 is in, no screen reads them, and dropping them can be a later clean-up PR.
+- **Parser (`App\Services\Sun\AccountListingParser`):**
+  - Follows the §2 patterns, reads Latin-1, skips page headers (including a page break between a line and its memo), and uses BigDecimal, with debit positive and credit negative.
+  - Every §3 rejection refuses the whole file, and nothing is saved.
+  - Errors carry line numbers and counts only, never names, amounts or memos.
+- **Upload flow:**
+  - Upload, then a summary page before anything is saved (counts, matched and unmatched, new codes, "Unallocated in Student Control", the §3 warnings), then Import or Cancel.
+  - The upload waits on the private disk (`storage/app/private/fee-imports/pending`). Import or Cancel deletes it, and it expires after an hour (`sun:purge-pending`, scheduled hourly, and also run on every upload and page load).
+  - Import parses the same file again, rather than keeping a parsed copy, and writes in one transaction. The file is kept at `fee-imports/<year>/<sha256>.prn`, downloadable only by the Treasurer and the Admin.
+- **Dates (§4):** the month comes from the accounting period. Period 01 = April is a setting (T2). The typed date is kept, and `date_suspect` is set when it's before the start of the month before the period or after the end of the month after it.
+- **Categories (§5):**
+  - Rules are data (`fee_categories`, `fee_category_rules`), edited by the Treasurer on Fee Categories: keywords switched off, never deleted, plus a new keyword and "Re-apply to imported lines".
+  - The billed month is read from memos such as "for Jan 2020".
+  - **One change to §5's order:** the "any credit in a CR journal" rule is checked right after Brought forward, not at Payment's place. §5's own example "Payment monthly fee for Jan 2020" is a cash receipt that the literal order would call tuition (because of "monthly"). The payment keywords ("payment", "paid", "on a/c") stay last, so a charge mentioning "unpaid" isn't taken for a payment.
+  - Per-line category and visibility overrides survive re-imports and re-applying the rules, and are audited.
+- **Matching (§8):**
+  - By code only; names only suggest candidates.
+  - A student has at most one code, and a code stays with its student in later years (T3).
+  - The control account (a setting, default 1000285005, T7) is never linked.
+  - "Not an ISMS student" takes an account out of the unmatched list.
+  - Unlinking is refused while the account has lines in a published import.
+  - All audited.
+- **Re-import (§10):**
+  - An existing line (by unique key) is updated, keeping the overrides, and a changed amount is listed.
+  - New lines are inserted.
+  - Lines in the ISMS that the new file doesn't have are marked `missing_from_latest`, not deleted.
+- **Revert:**
+  - Restores exactly what an import created or changed.
+  - Refused when a newer import has since changed any of the same lines or balances; the message names the newer import (owner, 2026-11-27).
+  - A re-import after a revert brings the lines back.
+- **Publishing:** per import, audited. Families see nothing until 8b-2.
+- **Fee schedule check (§10 of the rules file):**
+  - Per student and year, tuition, yearly fee and deposit charges (debits) are compared with the schedule for the student's grade that year. Flagged on Ledger Review, never refused.
+  - Tuition matches the year's amount or a whole number of instalments, so a student who joined mid-year isn't flagged. No monthly or instalment pattern is assumed (T10).
+  - A year with no schedule shows "No fee schedule for <year>" and flags nothing (owner).
+- **Treasurer screens:**
+  - Ledger Import (upload, summary, imports with publish, revert and download; cards on phones).
+  - Ledger Review (accounts to match with suggestions, the schedule check, unclassified lines, suspect dates, lines missing from the latest file, amounts changed by the latest import, renamed accounts, opening balances that differ from last year).
+  - Ledger Accounts and the account page (lines with category and visibility, link, unlink, not an ISMS student).
+  - Fee Categories.
+- **Privacy (§0):**
+  - Files stay on the private disk.
+  - The Admin's Data & Backup page lists and downloads them.
+  - Nothing from a file reaches `laravel.log` (tested).
+  - Erasing a student clears their ledger account name and line memos; amounts stay.
+
+**Migrations (3):**
+1. The ledger tables.
+2. The category tables, seeded with §5 and T4.
+3. The settings: T2, T7, and T5 for 8b-2.
+
+They roll back and reapply cleanly on a fresh seed, and the old CSV tables are untouched.
+
+**Tests:** `SunLedgerImportTest` (20 cases, synthetic fixtures from `Tests\Support\SunListingBuilder` with invented names), covering:
+- Every line type across page breaks.
+- Each of the seven §3 rejections, with nothing saved and the upload deleted.
+- The summary, then import.
+- Cancel and expiry.
+- Categories, including the misspellings.
+- Overrides surviving a re-import.
+- Re-import: no duplicates, a changed amount, a missing line, a new line.
+- Revert, including the newer-import refusal.
+- The opening balance and rename warnings.
+- Matching by code only; the control account never linked.
+- The schedule check, with and without a schedule.
+- Access: the Treasurer imports; the Treasurer and Admin download; everyone else refused.
+- Nothing in the log.
+- Retention.
+
+The full suite passes (587).
+
+**The real files, read-only, parsed locally (counts only, never imported or copied):**
+
+| | 2019-2020 | 2020-2021 |
+|---|---|---|
+| Accounts | 887 | 1,021 |
+| Lines | 14,702 | 7,270 |
+| Failed checks | 0 | 0 |
+| Closing balances | sum 0.00, equal to Report Balance | sum 0.00, equal to Report Balance |
+| Suspect dates | 447 | 21 |
+| Not allocated | 0 | 15 |
+| Unclassified student lines | 18 | 31 |
+| CR credits counted as payments | 4,754 of 4,754 | 2,367 of 2,367 |
+| Parse time | 0.23 s | 0.16 s |
+| Parse memory | 28 MB | 19 MB |
+
+Between the two years: 887 accounts carried over, 134 new, 16 opening balances differ from the previous closing, and 9 accounts were renamed. All match the owner's figures and the Sun file.
+
+**Import time:** a synthetic listing the size of the 2019-2020 file (887 accounts, about 15,900 lines) imports in about 4.5 s and re-imports in about 6 s on this PC. The whole process peaks at about 90 MB (the import itself adds about 66 MB), well inside a 30-second request limit. Staging's PHP memory limit hasn't been checked yet.
+
+**Checked in the browser (fresh seed, 1280 px and 390 px), with a synthetic 2026-2027 listing using seeded invented names:**
+- Upload, the summary with warnings, then import.
+- Matching from a suggestion. Two seeded students share a name, which shows why names only suggest.
+- Not an ISMS student.
+- The schedule check flagging a 350,000 yearly fee against 300,000.
+- A category set by hand, and a line hidden from families by hand.
+- A new keyword.
+- Publishing.
+- The Admin's ledger files list.
+
+**Deploy (staging), when asked:**
+1. `php artisan migrate` (3 migrations).
+2. An asset build.
+3. A cron entry for `php artisan schedule:run` (pending uploads also expire on every upload, without it).
+4. Back up `storage/app/private/fee-imports` with the database.
+
+The upload limit must allow 10 MB.
+
 ## Defaults applied so far
 
 | Rule | Default | Question (rules file) | Where it lives |
@@ -499,6 +621,13 @@ The full suite passes (567).
 | 11-12 conversion table | Generated from the scheme's bands, D+ included, with the class-of-pass GPA ranges under it. The sample's table placed D in Third and left out D+. | not asked (owner, 2026-11-27) | `StatementOfMarksService::conversion()`, `classes()` |
 | Grade 9 tuition | 2,600,000 Ks, as printed on the fee sheet (grouped with Grades 11-12, not 5-8). | Q17 | `fee_schedule_items.pending_question` on Grade 9 tuition |
 | Instalments | Tuition in four equal instalments (whole kyats, the last takes any remainder); the yearly fee and the refundable deposit as separate one-time lines. | Q18 | `fee_schedule_items.instalments`, every 2026-2027 row flagged Q18 |
+| Sun period 01 | April (period 12 is March; the year is the one the financial year ends in). | T2 | setting `fees.sun_period_one_month` = 4 |
+| Account codes | A code is never reused for another student: once linked it stays with that student, and a student has at most one code. | T3 | `sun_accounts.student_id` unique; linking refuses a second code |
+| Hidden from families | Only the allowance category (education allowances, scholarships, stipends). Christmas donations and cash advances for uniforms and textbooks are shown. | T4 | `fee_categories.restricted_by_default`, flagged T4 |
+| Hidden allowances | Netted into the charge they belong to in the family view (8b-2); what can't be matched shows as "Adjustments". | T5 | setting `fees.family_nets_allowances` = 1 |
+| Credit balances | Shown as "In credit" (Owing above 0, Settled at 0, In credit below 0). | T6 | `SunAccountBalance::status()` |
+| Student Control | Account 1000285005, a clearing account: never matched, never shown to families. | T7 | setting `fees.sun_control_account` |
+| Charging pattern | No assumption about monthly or instalment charging: the import reads what the ledger has, and the schedule check compares annual totals. | T10 | `SunScheduleCheck` |
 
 ## Open questions waiting on the school
 All of Q1 to Q21 in the rules file are still open, as are the Treasurer questions T1 to T11. A KG1/KG2 decision has been recorded under Q2 while the school's answer is pending.
@@ -549,6 +678,8 @@ The letter sent to the school left out Q2 (Nursery), so from Q2 onwards each let
   - Rounding uses the scheme's mode and decimals, with no floats.
 - **The old department grade scale is retired (4b):** everything that read it now reads `ResultService`, and its hard-deleting Admin page is gone. Only the `grade_scale_bands` table, its rows, the `GradeScaleBand` model, `Department::gradeScaleBands()` and its `AuditLog` category remain, for past records.
 - **Out of phase:** the Principal and VP dashboards average raw `Grade` scores without any scale; they read neither the old nor the new results.
+- **Out of phase (found in phase 8b-1):** the Admin's Data & Backup page shows the heading `Data retention &amp; erasure` with a literal `&amp;` (the title is escaped twice). Not fixed.
+- **Treasurer questions still open, with no default needed:** T1, T8, T9, T11.
 - **Out of phase (found in phase 7):** the teacher's Dashboard, My Classes and Attendance pages list the teacher's homeroom sections of every school year (`StaffProfile::homeroomSections` has no year filter), so after a year rollover last year's class shows beside this year's. Not fixed; the past-year seeder leaves its sections without a homeroom teacher so the demo isn't affected.
 - **Phase 6 and the report card:** the year result is not on the report card (Q3, option B). Phase 7's Statement of Marks is where `ResultService::sectionYear()` is printed.
 - **Fixed after phase 5 (PR #47):** removing a gradebook item or a teacher's own category (Grades 11-12) now archives it (`archived_at`) instead of deleting its grades. Archived items and categories count in no mark, keep their grades, and can be restored by the teacher while the term is open; both actions are audited. Locked terms stay read-only. Template categories still can't be archived.

@@ -25,6 +25,8 @@ class BackupController extends Controller
             'lastExportAt' => $lastExport ? \Carbon\Carbon::parse($lastExport) : null,
             'snapshotTables' => $export->tableNames(),
             'recordCounts' => $this->recordCounts(),
+            // Stored Sun ledger files: private, downloadable by the Admin and the Treasurer only.
+            'ledgerFiles' => \App\Models\SunImportBatch::whereNotNull('stored_path')->orderByDesc('id')->get(),
             'lastExportEvents' => AuditLog::with('user')
                 ->whereIn('action', ['Generated data export snapshot'])
                 ->latest('created_at')->limit(5)->get(),
