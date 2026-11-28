@@ -309,6 +309,8 @@ class ReportCardTest extends TestCase
 
     public function test_students_below_the_minimum_attendance_are_flagged_never_blocked(): void
     {
+        // The measure on the days so far; the whole-period measure is in AttendanceFlagsTest.
+        ReportRule::where('key', 'flag_basis')->update(['value' => 'so_far']);
         $exactly = $this->pupil('Exactly Eighty', $this->section);
         $below = $this->pupil('Below Eighty', $this->section);
         // 8 of 10 counted (Tardy attends) = 80%: not below.
@@ -323,9 +325,9 @@ class ReportCardTest extends TestCase
         $this->assertStringContainsString('Below Eighty', $list('data-below-list'));
         $this->assertStringContainsString('77.8%', $list('data-below-list'));
         $this->assertStringNotContainsString('Exactly Eighty', $list('data-below-list'));
-        // More than 10% absent in the term: both (20% and 22.2%).
+        // More than 10% absent in the term: both (80% and 77.8% attended).
         $this->assertStringContainsString('Exactly Eighty', $list('data-subject-absence-list'));
-        $this->assertStringContainsString('22.2%', $list('data-subject-absence-list'));
+        $this->assertStringContainsString('77.8% attended', $list('data-subject-absence-list'));
         $this->actingAs($vp->user)->get('/vp_academic/dashboard')->assertOk()->assertSee('1 student below 80% attendance');
         $this->actingAs($this->principal->user)->get('/principal/dashboard')->assertOk()->assertSee('1 student below 80% attendance');
         $this->actingAs($this->homeroom->user)->get("/report-cards?section={$this->section->id}&term={$this->terms[0]->id}")->assertOk()
@@ -366,7 +368,7 @@ class ReportCardTest extends TestCase
     public function test_the_admin_edits_report_rules_and_the_principal_reads_them(): void
     {
         $admin = $this->makeStaff('admin', 'Admin', 'admin@test.local');
-        $values = ['min_attendance_pct' => '85', 'excused_absences' => 'leave_out', 'personality_shown' => 'latest_term', 'lates_per_absence' => '3', 'attendance_check_period' => 'year', 'max_subject_absence_pct' => '10', 'subject_attendance_source' => 'daily',
+        $values = ['min_attendance_pct' => '85', 'excused_absences' => 'leave_out', 'personality_shown' => 'latest_term', 'lates_per_absence' => '3', 'attendance_check_period' => 'year', 'max_subject_absence_pct' => '10', 'subject_attendance_source' => 'daily', 'flag_basis' => 'whole_period', 'school_week' => 'mon_fri',
             'examination_centre' => 'YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL', 'supw_incomplete_blocks_promotion' => 'no'];
 
         $this->actingAs($admin->user)->put('/admin/report-rules', ['values' => $values, 'confirmed' => ['min_attendance_pct']])->assertSessionHas('status');

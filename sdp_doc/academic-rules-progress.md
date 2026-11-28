@@ -16,7 +16,8 @@ Source of truth: [YASIS_Academic_and_Fee_Rules.md](YASIS_Academic_and_Fee_Rules.
 | 8b-1. Sun Accounts ledger import: parser, import, validation, matching, overrides, re-import, revert, Treasurer screens | Merged | `sun-ledger-import`, PR #51 |
 | 8b-2. Family statements, reused codes (T3), guardian and student Fees pages, reports and dashboards, retiring the CSV upload, demo seeder | Merged | `sun-family-view`, PR #52 |
 | 9a. The school's answers: curriculum and results (KG-4 counting, SUPW words, Grade 10 and 11-12 tracks, Final column, dense ranking, Grade 10 G.P.A row, personality once a year, Statement of Marks) | Merged | `school-answers-results`, PR #53 |
-| 9b. The school's answers: the Grades 11-12 gradebook template and the attendance rules | PR open, awaiting review | `attendance-rules`, PR #54 |
+| 9b. The school's answers: the Grades 11-12 gradebook template and the attendance rules | Merged | `attendance-rules`, PR #54 |
+| 9c. Attendance follow-ups: flags against the whole period, frozen figures on the homeroom list, realistic seed attendance | PR open, awaiting review | `attendance-flags`, PR #55 |
 
 ## Phase 1: grade levels (merged)
 
@@ -727,7 +728,7 @@ Rolling back 2-4 is refused once the Registrar has set a track or a SUPW word ha
 
 **Deploy (staging), when asked:** `php artisan migrate` (7 migrations) and an asset build. Existing elective choices become tracks where they are all one track, and the Registrar sets the rest on Tracks. A fresh reset with the seeder is the alternative.
 
-## Phase 9b: the school's answers, gradebook and attendance (done, in review)
+## Phase 9b: the school's answers, gradebook and attendance (merged)
 
 Built on the school's answers to Q8, Q9 and Q16 (`YASIS_School_Answers.md`). Sections 4.1 and 8 of the rules file are rewritten to match.
 
@@ -805,6 +806,65 @@ On a fresh seed all three roll back (restoring the old rule, flags and scheme) a
 2. `php artisan gradebook:adopt-template --actor=<admin email>`, or let teachers' first visits move their 11-12 gradebooks.
 3. An asset build.
 
+## Phase 9c: attendance follow-ups (done, in review)
+
+Two follow-ups from 9b, before the fee PR (owner, 2026-11-28).
+
+**Built:**
+- **Flags measured against the whole period** (`report_rules.flag_basis` = whole_period, default; `so_far` keeps 9b's behaviour). A flag fires only once the breach is certain:
+  - **10% rule:** the term's absences (after the excused and late rules) are more than 10% of the term's school days.
+  - **80% rule:** the year's absences so far are more than 20% of the year's school days, or the term's with the check set to each term.
+  - The attendance so far stays beside each flagged student as information, for example "37 absences of 180 school days in the year (limit 36) · 17.8% attended so far".
+  - The homeroom page, the Attendance Check page and the dashboards all use it.
+- **School days (`SchoolDays`):**
+  - Each term from its start to its end date, on the days the school meets: `report_rules.school_week`, Monday to Friday by default, or Monday to Saturday, or Sunday to Thursday.
+  - Minus the published Academic Calendar events of type **Holiday** or **Term Break** inside it. Exams, meetings and activities count as school days. There's no new holiday table.
+  - The year is the terms added up.
+  - A holiday added later lowers an open term's school days. Locked terms keep their frozen figures (tested).
+- **Homeroom Report Cards list, locked term:** Days absent and attendance % come from the term's freeze, as the card's do. A term locked before freezes existed still shows the live figures.
+- **Seed attendance:**
+  - `K12StructureSeeder` writes a record for every school day of the active year so far, with every term from its start up to today, in bulk inserts of 1,000 rows (`insertOrIgnore`).
+  - Ordinary students get a fixed, spread-out 0-2 absences, 0-2 late arrivals and at most one excused day per term, always under both limits.
+  - Named students go over:
+    - Grade 7-A's 2nd and Grade 3-A's 3rd over the term limit
+    - Grade 4-A's 2nd over the year limit, and so the term limit too
+  - On a fresh seed (today 2026-11-28, Term 3) that is exactly those three students.
+  - The Term 1 seeder now fills nothing for Grade 9-A, 10-A and 12-A, because their days already have a record.
+
+**Seed size and time (this PC):**
+- 10,010 attendance rows for the active year (12,170 with last year's).
+- The attendance step alone takes 0.86 s, at a peak memory of 68 MB.
+- The whole fresh seed (`migrate:fresh --seed`) takes about 128 s:
+  - migrations 23 s
+  - `K12StructureSeeder` 18 s
+  - `Term1ResultsSeeder` 11 s
+  - `PastYearResultsSeeder` 31 s
+  - `SunLedgerDemoSeeder` 3 s
+  - the rest is the base seeder
+- The attendance step is not the slow part. Each seeder runs in its own call, so any per-request limit applies to the seeder, not the whole run, but staging's PHP time and memory limits for CLI haven't been checked.
+
+**Migration (1):** `add_attendance_flag_rules` adds `flag_basis` = whole_period and `school_week` = mon_fri. Rollback deletes both; it was rolled back and reapplied on a fresh seed. With the rules removed, this code's built-in defaults are still whole_period and Monday to Friday, so going back to 9b's behaviour needs 9b's code too.
+
+**Tests:**
+- `AttendanceFlagsTest` (6):
+  - school days with a holiday, a term break, an exam, a pending holiday and a weekend holiday, under each school week
+  - the term flag at 4 and 5 absences, and `so_far`
+  - the year flag at 36 and 37 absences, and the page text
+  - a holiday added to an open term against a locked term
+  - the locked term's homeroom list against the card
+  - the seed's attendance flagging only the named students
+- `AttendanceRulesTest`, `ReportCardTest` and `StatementOfMarksTest` set `flag_basis` = so_far where they test the so-far measure, and send the two new rules on the rules form.
+- The full suite passes (580).
+
+**Checked in the browser (fresh seed, 1280 px and 390 px):**
+- **Grade 4-A homeroom teacher, Term 3:**
+  - the year flag ("46 absences of 174 school days in the year (limit 34) · 64.6% attended so far")
+  - the term flag ("14 absences of 45 school days in the term (limit 4)")
+  - locked Term 1's list showing exactly the frozen attendance % and Days absent
+- **VP:** the dashboard and Attendance Check show exactly the three seeded cases (3 term flags, 1 year flag; it was 73 before).
+- **Principal:** the same flags, and the two new rules read-only.
+- **Screenshots:** they timed out this time (Chrome's capture), so these were checked by reading the rendered pages and measuring the 390 px frame, not visually.
+
 ## Defaults applied so far
 
 | Rule | Default | Question (rules file) | Where it lives |
@@ -839,7 +899,7 @@ On a fresh seed all three roll back (restoring the old rule, flags and scheme) a
 | Report card position | The ranked position from the results (1, 2, 2, 3). | Q13 (answered, 9a) | `ResultService::rank()` |
 | Days absent | Absent days, excused absences (by the excused rule) and absences from late arrivals (per term, with the term's own lates). Final adds up the four terms. | Q8 (answered, 9b), FQ1 | `AttendanceScoreService::daysAbsent()` |
 | Personality record | Rated once a year on the last term, printed on the final report only. The rule can still be set to the latest rated term or the report's own term. | Q14 (answered, 9a) | `report_rules.personality_shown` = `final_report` |
-| Minimum attendance | 80%, checked over the school year so far, late arrivals converted on the year's total. Also flagged: more than 10% absent in a term (per subject, from daily attendance). Flagged, never blocked. | Q16 (answered, 9b) | `report_rules.min_attendance_pct`, `attendance_check_period`, `max_subject_absence_pct` |
+| Minimum attendance | 80% over the school year; flagged once the year's absences are more than 20% of the year's school days (term dates, school week, calendar holidays and term breaks), late arrivals converted on the year's total. Also flagged: more than 10% of the term's school days absent (per subject, from daily attendance). Flagged, never blocked. | Q16 (answered, 9b; whole period since 9c) | `report_rules.min_attendance_pct`, `attendance_check_period`, `max_subject_absence_pct`, `flag_basis`, `school_week` |
 | Examination centre | "YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL" on every statement; the Admin can change it. | Q15 (answered, 9a) | `report_rules.examination_centre` |
 | Grade 10 statement | None: MYUM's Education Department issues it. | Q11 (answered) | `grade_levels.statement_layout` null for Grade 10 |
 | SUPW on the statement | Its word (PASS, INCOMPLETE, COMPLETE): after the counted subjects for Grades 5-9, among the compulsory subjects with HRS "-" for 11-12. | Q5 (answered, 9a) | `StatementOfMarksService::content()` |

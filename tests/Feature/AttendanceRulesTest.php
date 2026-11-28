@@ -100,6 +100,8 @@ class AttendanceRulesTest extends TestCase
 
     public function test_the_minimum_is_checked_over_the_school_year_with_lates_converted_on_the_years_total(): void
     {
+        // The measure on the days so far (9b); the whole-period measure is in AttendanceFlagsTest.
+        $this->rule('flag_basis', 'so_far');
         // Two lates in each of three terms: none counts in a term, but six in the year are two absences.
         foreach ([1, 2, 3] as $term) {
             $this->attend(['Tardy', 'Tardy', 'Present', 'Present', 'Absent'], $term);
@@ -119,6 +121,8 @@ class AttendanceRulesTest extends TestCase
 
     public function test_more_than_ten_percent_absent_in_a_term_is_flagged_and_exactly_ten_is_not(): void
     {
+        // The measure on the days so far (9b); the whole-period measure is in AttendanceFlagsTest.
+        $this->rule('flag_basis', 'so_far');
         $ten = $this->pupil('Invented Exactly Ten', $this->section);
         $this->attend(array_merge(array_fill(0, 9, 'Present'), ['Absent']), 1, $ten);           // 10% absent
         $this->attend(array_merge(array_fill(0, 8, 'Present'), ['Absent', 'Excused']), 1);         // 20% absent

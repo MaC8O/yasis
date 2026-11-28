@@ -387,9 +387,14 @@ The report card footnote states two rules: more than 10% absence in a subject in
 
 Rules, each a report rule the Admin edits and the Principal reads:
 
-- **Minimum attendance:** 80% (`min_attendance_pct`), checked over the school year so far (`attendance_check_period` = year; it can be set to each term). A student's attendance is attended over counted days, with the excused and late-arrival rules of section 4.1. For the year, late arrivals are converted on the year's total.
-- **Absence in a subject:** more than 10% (`max_subject_absence_pct`) absent in a term. ISMS has no attendance per subject, so it uses the section's daily attendance and is the same for every subject (FQ2). Early in a term, when few days are recorded, a single absence can pass 10%.
-- **Days absent** on the report card: absent days, excused absences (by the same rule), and absences from late arrivals counted per term with the term's own lates. The Final column adds up the four terms.
+- **Minimum attendance:** 80% (`min_attendance_pct`) over the school year (`attendance_check_period` = year; it can be set to each term). A student's absences are their counted days minus their attended days, with the excused and late-arrival rules of section 4.1; for the year, late arrivals are converted on the year's total.
+- **Absence in a subject:** more than 10% (`max_subject_absence_pct`) absent in a term. ISMS has no attendance per subject, so it uses the section's daily attendance and is the same for every subject (FQ2).
+- **Measured against the whole period** (`flag_basis` = whole_period, the default): the rules are about a whole term and a whole year, so a student is flagged only once the breach is certain:
+  - the 10% rule, when the term's absences are more than 10% of the term's school days;
+  - the 80% rule, when the year's absences so far are more than 20% of the year's school days (or the term's, with the check set to each term).
+  For example, a 45-day term allows 4 absences: the 5th flags the student, however early in the term. The attendance so far is shown beside each flagged student as information. Set to `so_far`, the flags fire on the days recorded so far instead, as before.
+- **School days:** each term from its start date to its end date, on the days the school meets (`school_week`: Monday to Friday by default, or Monday to Saturday, or Sunday to Thursday), minus the published Academic Calendar events of type Holiday or Term Break inside it. Exams, meetings and activities are school days. The year is its terms added up, so the gaps between terms don't count. A holiday added to the calendar later lowers the open terms' school days; locked terms keep their frozen figures.
+- **Days absent** on the report card: absent days, excused absences (by the same rule), and absences from late arrivals counted per term with the term's own lates. The Final column adds up the four terms. For a locked term, the card and the homeroom list both show the figures frozen with the term.
 
 The system flags students on the homeroom teacher's Report Cards page, on the Attendance Check page (VP and Principal) and on the VP and Principal dashboards. It never blocks a student automatically; a person decides.
 
