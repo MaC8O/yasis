@@ -1,11 +1,12 @@
-@use('App\Support\Money')
-@use('App\Services\FeeSummaryService')
+{{--
+    Statement of account for a family, from the published Sun ledger statements (one section per
+    financial year). Lines the Treasurer hid by hand appear only as "Adjustments". $statements:
+    SunFamilyStatement rows, newest year first.
+--}}
+@use('App\Support\LedgerFormat')
 @php
     $section = $student->enrollments->firstWhere('status', 'Active')?->section;
-    $charges = $lines->sum('charge');
-    $payments = $lines->sum('payment');
-    $open = $lines->sum('open');
-    $closing = $lines->last()?->balance ?? 0;
+    $latest = $statements->first();
     $statementNo = 'SOA-'.$student->student_id_number.'-'.now()->format('Ymd');
 @endphp
 <!DOCTYPE html>
@@ -27,16 +28,12 @@
         .box h4 { margin: 0 0 4px; font-size: 9px; letter-spacing: 1px; color: #666; text-transform: uppercase; }
         .due { background: #f4f4f0; border: 1px solid #ccc; padding: 8px 10px; text-align: right; }
         .due .amt { font-size: 18px; font-weight: bold; }
-        .lines { margin-top: 14px; }
-        .lines th { background: #1F573D; color: #fff; font-size: 9px; text-transform: uppercase; letter-spacing: .5px; padding: 6px; text-align: left; }
-        .lines td { border-bottom: 1px solid #e3e3e3; padding: 5px 6px; }
+        h3 { margin: 16px 0 4px; font-size: 12px; color: #1F573D; }
+        .lines th { background: #1F573D; color: #fff; font-size: 9px; text-transform: uppercase; letter-spacing: .5px; padding: 5px 6px; text-align: left; }
+        .lines td { border-bottom: 1px solid #e3e3e3; padding: 4px 6px; }
         .lines .num { text-align: right; white-space: nowrap; }
-        .lines tr.alt td { background: #fafaf7; }
-        .lines tfoot td { border-top: 2px solid #1F573D; border-bottom: 0; font-weight: bold; padding-top: 7px; }
-        .tag { font-size: 8px; font-weight: bold; color: #4a2d6e; background: #e4daf3; padding: 1px 4px; }
-        .aging { margin-top: 16px; }
-        .aging th { font-size: 9px; color: #666; text-transform: uppercase; border-bottom: 1px solid #ccc; padding: 4px 6px; text-align: right; }
-        .aging td { padding: 6px; text-align: right; font-weight: bold; }
+        .lines tr.sub td { background: #fafaf7; font-weight: bold; }
+        .lines tfoot td { border-top: 2px solid #1F573D; border-bottom: 0; font-weight: bold; padding-top: 6px; }
         .footer { margin-top: 24px; font-size: 9px; color: #777; border-top: 1px solid #ddd; padding-top: 8px; }
     </style>
 </head>
@@ -51,7 +48,7 @@
                 <div class="doc-title">STATEMENT OF ACCOUNT</div>
                 <div class="muted">No. {{ $statementNo }}</div>
                 <div class="muted">Date: {{ now()->format('d M Y') }}</div>
-                <div class="copy">{{ $familyCopy ? 'FAMILY COPY' : 'OFFICE COPY' }}</div>
+                <div class="copy">FAMILY COPY</div>
             </td>
         </tr>
     </table>
@@ -63,7 +60,7 @@
                 <div class="box">
                     <h4>Student</h4>
                     <strong>{{ $student->name }}</strong><br>
-                    Account: {{ $student->student_id_number }}<br>
+                    Student ID: {{ $student->student_id_number }}<br>
                     {{ $section?->name ?? '—' }} · {{ $student->department?->name ?? '—' }}
                 </div>
             </td>
@@ -71,74 +68,51 @@
                 <div class="box">
                     <h4>Bill to</h4>
                     <strong>{{ $guardian?->user?->name ?? '—' }}</strong><br>
-                    {{ $guardian?->relationship ? $guardian->relationship.' · ' : '' }}{{ $guardian?->phone ?? $guardian?->user?->phone ?? '' }}<br>
-                    {{ $guardian?->user?->email ?? '' }}
+                    {{ $guardian?->relationship ? $guardian->relationship.' · ' : '' }}{{ $guardian?->phone ?? '' }}
                 </div>
             </td>
             <td style="vertical-align:top">
                 <div class="due">
-                    <div class="muted">Still owed ({{ Money::CURRENCY }})</div>
-                    <div class="amt">{{ Money::format($closing) }}</div>
+                    <div class="muted">{{ $latest ? 'Balance, '.$latest->content['year_label'] : 'Balance' }} (Ks)</div>
+                    <div class="amt">{{ $latest ? LedgerFormat::money($latest->closing_balance) : '—' }}</div>
+                    <div class="muted">{{ $latest ? $latest->status() : 'No records published' }}</div>
                 </div>
             </td>
         </tr>
     </table>
 
-    <table class="lines">
-        <thead>
-            <tr>
-                <th>Date</th><th>Period</th><th>Description</th>
-                <th class="num">Charged</th><th class="num">Paid</th><th class="num">Still owed</th><th class="num">Running total</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td colspan="6"><em>Opening balance</em></td><td class="num">0</td></tr>
-            @foreach ($lines as $i => $line)
-                <tr class="{{ $i % 2 ? 'alt' : '' }}">
-                    <td>{{ $line->record->txn_date->format('d M Y') }}</td>
-                    <td>{{ $line->record->importBatch?->period }}</td>
-                    <td>
-                        {{ $line->record->description ?: 'Fee charge' }}
-                        @if (! $familyCopy && $line->record->is_restricted) <span class="tag">SDA</span> @endif
-                    </td>
-                    <td class="num">{{ Money::format($line->charge, true) }}</td>
-                    <td class="num">{{ Money::format($line->payment, true) }}</td>
-                    <td class="num">{{ Money::format($line->open, true) }}</td>
-                    <td class="num">{{ Money::format($line->balance) }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="3">Total</td>
-                <td class="num">{{ Money::format($charges) }}</td>
-                <td class="num">{{ Money::format($payments) }}</td>
-                <td class="num">{{ Money::format($open) }}</td>
-                <td class="num">{{ Money::format($closing) }}</td>
-            </tr>
-        </tfoot>
-    </table>
-
-    <table class="aging">
-        <thead>
-            <tr>
-                @foreach (FeeSummaryService::AGING_BUCKETS as $label)<th>{{ $label }}</th>@endforeach
-                <th>Still owed</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                @foreach (array_keys(FeeSummaryService::AGING_BUCKETS) as $key)<td>{{ Money::format($aging[$key], true) }}</td>@endforeach
-                <td>{{ Money::format($closing) }}</td>
-            </tr>
-        </tbody>
-    </table>
+    @foreach ($statements as $statement)
+        @php $c = $statement->content; @endphp
+        <h3>Financial year {{ $c['year_label'] }}</h3>
+        <table class="lines">
+            <thead><tr><th style="width:18%">Month</th><th>Description</th><th class="num">Charged</th><th class="num">Paid / credited</th></tr></thead>
+            <tbody>
+                <tr class="sub"><td colspan="3">Balance at the start of the year</td><td class="num">{{ LedgerFormat::money($c['opening']) }}</td></tr>
+                @foreach ($c['lines'] as $line)
+                    @php $credit = (float) $line['amount'] < 0; @endphp
+                    <tr>
+                        <td>{{ \Illuminate\Support\Carbon::parse($line['month'])->format('M Y') }}</td>
+                        <td>{{ $line['memo'] !== '' ? $line['memo'] : ucfirst(str_replace('_', ' ', $line['category'])) }}</td>
+                        <td class="num">{{ $credit ? '' : number_format((float) $line['amount'], 2) }}</td>
+                        <td class="num">{{ $credit ? number_format(abs((float) $line['amount']), 2) : '' }}</td>
+                    </tr>
+                @endforeach
+                @if ((float) $c['adjustments'] != 0)
+                    <tr><td></td><td>Adjustments</td>
+                        <td class="num">{{ (float) $c['adjustments'] > 0 ? number_format((float) $c['adjustments'], 2) : '' }}</td>
+                        <td class="num">{{ (float) $c['adjustments'] < 0 ? number_format(abs((float) $c['adjustments']), 2) : '' }}</td></tr>
+                @endif
+            </tbody>
+            <tfoot>
+                <tr><td colspan="2">Balance at the end of the year · {{ $statement->status() }}</td><td class="num" colspan="2">{{ LedgerFormat::money($c['closing']) }}</td></tr>
+            </tfoot>
+        </table>
+    @endforeach
 
     <div class="footer">
-        Amounts in Myanmar Kyat ({{ Money::CURRENCY }}). This statement summarises fee records exported from the school's accounting
-        system; it is not a receipt or tax invoice. Please settle payments with the Finance Office and quote the account number above.
-        @if (! $familyCopy) Office copy — includes restricted (SDA) lines; do not hand to families. @endif
-        Generated {{ now()->format('d M Y, H:i') }}.
+        Amounts in Myanmar Kyat (Ks); "Cr" means in credit (paid in advance or overpaid). This statement shows the school's accounts as
+        last published by the finance office; it is not a receipt or tax invoice. Please settle payments with the Finance Office by the
+        15th of the month and quote the student ID above.
     </div>
 </body>
 </html>

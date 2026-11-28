@@ -5,6 +5,7 @@ namespace App\Services\Sun;
 use App\Models\AcademicYear;
 use App\Models\Enrollment;
 use App\Models\FeeSchedule;
+use App\Models\Student;
 use App\Models\SunAccount;
 use App\Models\SunLedgerLine;
 use App\Services\FeeScheduleService;
@@ -21,7 +22,7 @@ use Brick\Math\BigDecimal;
  */
 class SunScheduleCheck
 {
-    public function __construct(private FeeScheduleService $schedules) {}
+    public function __construct(private FeeScheduleService $schedules, private SunLinks $links) {}
 
     /** @return array{label: string, has_schedule: bool, rows: list<array>} */
     public function forYear(int $fiscalYear): array
@@ -38,12 +39,16 @@ class SunScheduleCheck
             ->groupBy('sun_account_id')->map(fn ($rows) => $rows->pluck('total', 'category'));
         $reversals = SunLedgerLine::current()->where('fiscal_year', $fiscalYear)->where('category', 'reversal')
             ->selectRaw('sun_account_id, COUNT(*) AS n')->groupBy('sun_account_id')->pluck('n', 'sun_account_id');
-        $accounts = SunAccount::with('student')->whereNotNull('student_id')
-            ->whereIn('id', SunLedgerLine::current()->where('fiscal_year', $fiscalYear)->select('sun_account_id'))->get();
+        // The student each account's lines belong to this year (held accounts are left out).
+        $students = $this->links->forYear($fiscalYear, SunLedgerLine::current()->where('fiscal_year', $fiscalYear)->distinct()->pluck('sun_account_id'));
+        $accounts = SunAccount::whereIn('id', array_keys($students))->get();
+        $studentModels = Student::whereIn('id', array_values($students))->get()->keyBy('id');
 
         $rows = [];
         foreach ($accounts as $account) {
-            $level = Enrollment::with('section.gradeLevel')->where('student_id', $account->student_id)->where('status', '!=', 'Withdrawn')
+            $student = $studentModels[$students[$account->id]];
+            $account->setRelation('student', $student);
+            $level = Enrollment::with('section.gradeLevel')->where('student_id', $student->id)->where('status', '!=', 'Withdrawn')
                 ->whereHas('section', fn ($q) => $q->where('academic_year_id', $year->id))->latest('id')->first()?->section?->gradeLevel;
             $base = ['account' => $account, 'grade' => $level?->name, 'reversals' => (int) ($reversals[$account->id] ?? 0)];
             if (! $level) {

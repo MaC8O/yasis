@@ -5,16 +5,15 @@ namespace App\Http\Controllers\Guardian;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Guardian\Concerns\ResolvesChild;
 use App\Models\AcademicYear;
-use App\Services\FeeSummaryService;
 use App\Services\ResultService;
-use App\Support\FeeVisibility;
+use App\Services\Sun\SunFamilyStatements;
 use Illuminate\Http\Request;
 
 class GuardianDashboardController extends Controller
 {
     use ResolvesChild;
 
-    public function index(Request $request, ResultService $results, FeeSummaryService $feeService)
+    public function index(Request $request, ResultService $results, SunFamilyStatements $statements)
     {
         $children = $this->guardianChildren($request);
         $child = $this->selectedChild($request);
@@ -31,14 +30,15 @@ class GuardianDashboardController extends Controller
         $report = $currentTerm ? $results->studentTerm($child, $currentTerm) : null;
         $snapshot = collect($report?->subjects() ?? [])->filter(fn ($s) => $s->mark !== null)->values();
 
-        $feeSummary = $feeService->studentSummaries(FeeVisibility::FAMILY)->firstWhere('student.id', $child->id);
+        // The latest published fee statement's status (Owing, Settled or In credit).
+        $latestFees = $statements->forStudent($child)->first();
 
         return view('guardian.dashboard', [
             'children' => $children,
             'child' => $child,
             'attendanceRate' => $attendanceRate,
             'report' => $report,
-            'feeStatus' => $feeSummary?->status ?? 'No records',
+            'feeStatus' => $latestFees?->status() ?? 'No records',
             'snapshot' => $snapshot->take(6),
             'attendanceSegments' => [
                 ['label' => 'Present', 'value' => $attendance->where('status', 'Present')->count(), 'color' => '#2E8B57'],

@@ -7,8 +7,8 @@ use App\Models\AuditLog;
 use App\Models\Enrollment;
 use App\Models\Section;
 use App\Models\Student;
-use App\Models\TeachingAssignment;
 use App\Models\Subject;
+use App\Models\TeachingAssignment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Concerns\SeedsCoreData;
 use Tests\TestCase;
@@ -147,6 +147,6 @@ class DashboardChartsTest extends TestCase
 
         $this->actingAs($hr->user)->get('/hr_office/dashboard')->assertOk()->assertSee('Leave requests');
         $this->actingAs($registrar->user)->get('/registrar/dashboard')->assertOk()->assertSee('Enrollment by class');
-        $this->actingAs($treasurer->user)->get('/treasurer/dashboard')->assertOk()->assertSee('Collection rate by period');
+        $this->actingAs($treasurer->user)->get('/treasurer/dashboard')->assertOk()->assertSee('Waiting for you');
     }
 }

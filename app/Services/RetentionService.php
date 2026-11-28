@@ -12,8 +12,11 @@ use App\Models\Student;
 use App\Models\StudentExitRequest;
 use App\Models\SunAccount;
 use App\Models\SunAccountBalance;
+use App\Models\SunAccountLink;
+use App\Models\SunAccountReview;
 use App\Models\SunLedgerLine;
 use App\Models\User;
+use App\Services\Sun\SunFamilyStatements;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -80,29 +83,34 @@ class RetentionService
     }
 
     /**
+     * The student's Sun ledger accounts, every code ever linked to them (T3: a code can pass to
+     * another student): the printed names, the names on "possible reused code" reviews and links,
+     * every line's memo and the memos inside the family statements are cleared. Amounts and
+     * balances stay, as financial records.
+     */
+    protected function eraseLedgerText(Student $student): int
+    {
+        $accountIds = SunAccountLink::where('student_id', $student->id)->pluck('sun_account_id')->unique()->values();
+        if ($accountIds->isEmpty()) {
+            return 0;
+        }
+        $erased = 'Erased Record '.$student->id;
+        SunAccount::whereIn('id', $accountIds)->update(['name_as_printed' => $erased]);
+        SunAccountBalance::whereIn('sun_account_id', $accountIds)->update(['account_name_as_printed' => $erased]);
+        SunAccountReview::whereIn('sun_account_id', $accountIds)->update(['previous_name' => $erased, 'printed_name' => $erased]);
+        SunAccountLink::whereIn('sun_account_id', $accountIds)->update(['accepted_name' => $erased]);
+        app(SunFamilyStatements::class)->scrub($accountIds);
+
+        return SunLedgerLine::whereIn('sun_account_id', $accountIds)->update(['memo' => '']);
+    }
+
+    /**
      * Behavior records: blank every free-text field (descriptions and reasons can name people)
      * but keep dates, categories, points, scores and statuses, so counts and the ledger stay
      * intact. Every notice about this student, whoever received it, is blanked too.
      *
      * @return int number of behavior rows scrubbed
      */
-    /**
-     * The student's Sun ledger account (sdp_doc/YASIS_Sun_Finance_Import.md, section 0): the printed
-     * name and every line's memo are cleared. Amounts and balances stay, as financial records.
-     */
-    protected function eraseLedgerText(Student $student): int
-    {
-        $account = SunAccount::where('student_id', $student->id)->first();
-        if (! $account) {
-            return 0;
-        }
-        $erased = 'Erased Record '.$student->id;
-        $account->update(['name_as_printed' => $erased]);
-        SunAccountBalance::where('sun_account_id', $account->id)->update(['account_name_as_printed' => $erased]);
-
-        return SunLedgerLine::where('sun_account_id', $account->id)->update(['memo' => '']);
-    }
-
     protected function eraseBehaviorText(Student $student): int
     {
         $erased = '[erased under a retention request]';

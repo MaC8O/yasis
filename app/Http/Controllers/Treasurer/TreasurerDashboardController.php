@@ -3,36 +3,31 @@
 namespace App\Http\Controllers\Treasurer;
 
 use App\Http\Controllers\Controller;
-use App\Models\ImportBatch;
-use App\Models\ImportedFeeRecord;
-use App\Services\FeeSummaryService;
+use App\Models\SunAccountBalance;
+use App\Models\SunAccountReview;
+use App\Models\SunImportBatch;
+use App\Services\Sun\SunAccountService;
+use App\Services\Sun\SunFeeOverview;
+use App\Support\LedgerFormat;
 
+/** The Treasurer's dashboard: the latest financial year's ledger and what is waiting for review. */
 class TreasurerDashboardController extends Controller
 {
-    public function index(FeeSummaryService $service)
+    public function index(SunFeeOverview $fees, SunAccountService $accounts)
     {
-        $summaries = $service->studentSummaries();
-        $billed = $summaries->sum('total_billed');
+        $fy = SunAccountBalance::current()->max('fiscal_year');
+        $rows = $fy ? $fees->liveRows($fy) : collect();
 
         return view('treasurer.dashboard', [
-            'receivables' => $summaries->sum('balance'),
-            'collected' => $summaries->sum('paid'),
-            'collectionRate' => $billed > 0 ? round($summaries->sum('paid') / $billed * 100, 1) : null,
-            'aging' => $service->agingTotals($summaries),
-            'accountsWithBalance' => $summaries->where('balance', '>', 0)->count(),
-            'totalRows' => ImportedFeeRecord::count(),
-            'matchedRows' => ImportedFeeRecord::whereNotNull('student_id')->count(),
-            'needsReview' => ImportedFeeRecord::unmatched()->where('is_held', false)->count(),
-            'restrictedRows' => ImportedFeeRecord::where('is_restricted', true)->count(),
-            'draftBatches' => ImportBatch::whereNull('published_at')->count(),
-            'unconfirmedBatches' => ImportBatch::whereNull('restricted_confirmed_at')
-                ->whereHas('importedFeeRecords', fn ($q) => $q->where('is_restricted', true))->count(),
-            'recentBatches' => ImportBatch::withCount([
-                'importedFeeRecords',
-                'importedFeeRecords as matched_count' => fn ($q) => $q->whereNotNull('student_id'),
-            ])->withSum('importedFeeRecords as billed_sum', 'amount')
-                ->orderByDesc('uploaded_at')->take(5)->get(),
-            'byPeriod' => $service->collectionRateByPeriod(),
+            'yearLabel' => $fy ? LedgerFormat::year($fy) : null,
+            'fy' => $fy,
+            'distribution' => $fees->distribution($rows),
+            'totals' => $fees->totals($rows),
+            'control' => $fy ? SunAccountBalance::current()->where('fiscal_year', $fy)->where('is_control', true)->value('closing_balance') : null,
+            'unmatched' => $fy ? $accounts->unmatchedQuery($fy)->count() : 0,
+            'pendingReviews' => SunAccountReview::pending()->count(),
+            'unpublished' => SunImportBatch::current()->whereNull('published_at')->count(),
+            'recentBatches' => SunImportBatch::current()->orderByDesc('id')->take(5)->get(),
         ]);
     }
 }

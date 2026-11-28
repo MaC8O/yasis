@@ -12,9 +12,54 @@
                     </select>
                 </div>
                 @if ($control)
-                    <p class="text-sm">Unallocated in Student Control: <span class="font-semibold tabular-nums">{{ LedgerFormat::money($control->closing_balance) }}</span></p>
+                    <p class="text-sm">Student Control balance: <span class="font-semibold tabular-nums">{{ LedgerFormat::money($control->closing_balance) }}</span></p>
                 @endif
             </form>
+        </x-card>
+
+        {{-- T3: possible reused codes --}}
+        @php $pendingReviews = $reviews->where('status', \App\Models\SunAccountReview::PENDING); @endphp
+        <x-card :title="'Possible reused codes ('.$pendingReviews->count().')'" subtitle="A linked code printed under a different name. Its lines for this year are held, matched to nobody and shown to no family, until you say whether the code still belongs to the same student. Case and spacing don't count as a different name.">
+            @if ($reviews->isEmpty())
+                <p class="text-sm text-success" data-no-reviews>None this year.</p>
+            @else
+                <div class="divide-y divide-neutral-100" data-reviews>
+                    @foreach ($reviews as $review)
+                        @php $link = $reviewLinks[$review->sun_account_id] ?? null; @endphp
+                        <div class="py-3 grid gap-3 lg:grid-cols-[1fr_1.3fr] lg:items-start text-sm" data-review="{{ $review->account->code }}">
+                            <div>
+                                <a href="{{ route('treasurer.ledger.account', [$review->account, 'year' => $fy]) }}" class="font-semibold text-brand hover:underline tabular-nums">{{ $review->account->code }}</a>
+                                <span class="block">{{ $review->previous_name }} → <span class="font-semibold">{{ $review->printed_name }}</span></span>
+                                <span class="block text-xs text-neutral-500">Closing {{ LedgerFormat::money($reviewClosing[$review->sun_account_id] ?? 0) }}{{ $link?->student ? ' · linked to '.$link->student->name.' ('.$link->student->student_id_number.')' : '' }}</span>
+                            </div>
+                            @if ($review->status === \App\Models\SunAccountReview::PENDING)
+                                <div class="space-y-2">
+                                    <form method="POST" action="{{ route('treasurer.ledger.review.same', $review) }}">
+                                        @csrf
+                                        <button type="submit" class="w-full sm:w-auto rounded-lg border border-brand px-3 py-2 text-xs font-semibold text-brand min-h-[40px]">Same student (the name was corrected)</button>
+                                    </form>
+                                    @foreach ($reviewSuggestions[$review->id] ?? [] as $s)
+                                        <form method="POST" action="{{ route('treasurer.ledger.review.relink', $review) }}">
+                                            @csrf
+                                            <input type="hidden" name="student_id_number" value="{{ $s['student']->student_id_number }}">
+                                            <button type="submit" class="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-700 min-h-[36px]">Different student: {{ $s['student']->name }} ({{ $s['student']->student_id_number }}, {{ $s['score'] }}% alike)</button>
+                                        </form>
+                                    @endforeach
+                                    <form method="POST" action="{{ route('treasurer.ledger.review.relink', $review) }}" class="flex gap-2">
+                                        @csrf
+                                        <label class="sr-only" for="relink-{{ $review->id }}">New student's ID for {{ $review->account->code }}</label>
+                                        <input id="relink-{{ $review->id }}" type="text" name="student_id_number" required placeholder="Different student: their ID" class="flex-1 min-w-0 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm min-h-[40px]">
+                                        <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-4 py-2 text-xs min-h-[40px]">Link</button>
+                                    </form>
+                                    <p class="text-xs text-neutral-500">"Different student" ends the old link at {{ LedgerFormat::year($fy - 1) }} and links the new student from {{ LedgerFormat::year($fy) }}.</p>
+                                </div>
+                            @else
+                                <p class="text-xs text-neutral-500 self-center">{{ $review->status === \App\Models\SunAccountReview::SAME ? 'Same student' : 'Linked to another student' }}, {{ $review->resolved_at?->format('j M Y') }}.</p>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </x-card>
 
         {{-- Unmatched accounts --}}
@@ -102,14 +147,7 @@
             @include('treasurer.ledger.partials.lines', ['lines' => $changed, 'total' => $changed->count(), 'fy' => $fy, 'empty' => 'None.'])
         </x-card>
 
-        <div class="grid gap-6 lg:grid-cols-2">
-            <x-card :title="'Renamed accounts ('.$renamed->count().')'" :subtitle="'The name differs from '.LedgerFormat::year($fy - 1).'. The code is what matches.'">
-                @forelse ($renamed as $r)
-                    <p class="text-sm py-1"><span class="tabular-nums font-semibold">{{ $r['balance']->account->code }}</span>: {{ $r['before'] }} → {{ $r['balance']->account_name_as_printed }}</p>
-                @empty
-                    <p class="text-sm text-neutral-400">None.</p>
-                @endforelse
-            </x-card>
+        <div>
             <x-card :title="'Opening balance differs from last year ('.$openingDiffers->count().')'" :subtitle="'Opening '.LedgerFormat::year($fy).' against closing '.LedgerFormat::year($fy - 1).', for example year-end adjustments.'">
                 @forelse ($openingDiffers as $r)
                     <p class="text-sm py-1"><a href="{{ route('treasurer.ledger.account', [$r['balance']->account, 'year' => $fy]) }}" class="tabular-nums font-semibold text-brand hover:underline">{{ $r['balance']->account->code }}</a>:

@@ -5,20 +5,42 @@
     <div class="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         <x-card title="Student">
             @if ($account->is_control)
-                <p class="text-sm">The Student Control clearing account. Never linked to a student and never shown to families.</p>
-            @elseif ($account->student)
-                <p class="text-sm" data-linked>Linked to <span class="font-semibold">{{ $account->student->name }}</span> ({{ $account->student->student_id_number }}){{ $account->linked_at ? ' on '.$account->linked_at->format('j M Y') : '' }}. The code stays with this student in later years.</p>
-                <form method="POST" action="{{ route('treasurer.ledger.unlink', $account) }}" class="mt-3">
-                    @csrf
-                    <button type="submit" class="text-xs font-semibold text-danger hover:underline min-h-[36px]">Unlink (only to fix a mistake)</button>
-                </form>
+                <p class="text-sm">Student Control: carries charges and receipts that aren't on a student's own account. Never linked to a student and never shown to families.</p>
             @else
-                @if ($account->not_isms_student)
+                @if ($review)
+                    <div class="mb-3 rounded-xl border border-warning-line bg-warning-soft px-3 py-2 text-sm text-warning" data-held>
+                        Held for {{ LedgerFormat::year($fy) }}: printed as "{{ $review->printed_name }}", not "{{ $review->previous_name }}". Its lines this year match nobody until you resolve it on
+                        <a href="{{ route('treasurer.ledger.review', ['year' => $fy]) }}" class="font-semibold underline">Ledger Review</a>.
+                    </div>
+                @endif
+                @if ($owner)
+                    <p class="text-sm" data-linked>{{ LedgerFormat::year($fy) }}: <span class="font-semibold">{{ $owner->name }}</span> ({{ $owner->student_id_number }}).
+                        <a href="{{ route('treasurer.reports.statement', $owner) }}" target="_blank" class="ml-1 text-xs font-semibold text-brand hover:underline">Family copy of the statement (PDF)</a></p>
+                @elseif (! $review)
+                    <p class="text-sm text-warning">{{ $fy ? 'No student for '.LedgerFormat::year($fy).'.' : 'Not matched yet.' }}</p>
+                @endif
+
+                @if ($links->isNotEmpty())
+                    <ul class="mt-3 space-y-1 text-xs text-neutral-600" data-links>
+                        @foreach ($links as $link)
+                            <li class="{{ $link->voided_at ? 'line-through text-neutral-400' : '' }}">
+                                {{ $link->student->name }} ({{ $link->student->student_id_number }}): {{ LedgerFormat::year($link->from_fiscal_year) }}
+                                {{ $link->to_fiscal_year ? 'to '.LedgerFormat::year($link->to_fiscal_year) : 'onwards' }}{{ $link->voided_at ? ' (voided: a mistake)' : '' }}
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+
+                @if ($openLink)
+                    <form method="POST" action="{{ route('treasurer.ledger.unlink', $account) }}" class="mt-3">
+                        @csrf
+                        <button type="submit" class="text-xs font-semibold text-danger hover:underline min-h-[36px]">Unlink (only to fix a mistake)</button>
+                    </form>
+                @elseif ($account->not_isms_student)
                     <p class="text-sm">Marked as not an ISMS student: its lines are seen by the Treasurer only.</p>
                     <form method="POST" action="{{ route('treasurer.ledger.not-isms', $account) }}" class="mt-2">@csrf<input type="hidden" name="not_isms" value="0">
                         <button type="submit" class="text-xs font-semibold text-brand hover:underline min-h-[36px]">Put it back in the unmatched list</button></form>
                 @else
-                    <p class="text-sm text-warning">Not matched yet.</p>
                     @foreach ($suggestions as $s)
                         <form method="POST" action="{{ route('treasurer.ledger.link', $account) }}" class="mt-2">@csrf
                             <input type="hidden" name="student_id_number" value="{{ $s['student']->student_id_number }}">

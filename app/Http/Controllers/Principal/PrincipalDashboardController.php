@@ -13,14 +13,12 @@ use App\Models\LeaveRequest;
 use App\Models\PromotionBatch;
 use App\Models\StaffAttendance;
 use App\Models\StaffProfile;
-use App\Models\Student;
-use App\Services\FeeSummaryService;
 use App\Services\ReportCardActionsService;
-use App\Support\FeeVisibility;
+use App\Services\Sun\SunFeeOverview;
 
 class PrincipalDashboardController extends Controller
 {
-    public function index(FeeSummaryService $feeService)
+    public function index(SunFeeOverview $fees)
     {
         $activeYear = AcademicYear::where('is_active', true)->first();
 
@@ -39,10 +37,11 @@ class PrincipalDashboardController extends Controller
             ? round($grades->avg(fn ($g) => $g->assessment->max_score > 0 ? $g->score / $g->assessment->max_score * 100 : 0), 1)
             : null;
 
-        // §2.2: the Principal reads fees as leadership — published, matched, non-held rows only.
-        $summaries = $feeService->studentSummaries(FeeVisibility::LEADERSHIP);
-        $totalBilled = $summaries->sum('total_billed');
-        $feeCollectionRate = $totalBilled > 0 ? round($summaries->sum('paid') / $totalBilled * 100) : null;
+        // §2.2: the Principal reads fees as leadership: the published statements of the latest
+        // financial year, the same figures families see.
+        $feeRows = $fees->publishedRows();
+        $feeDistribution = $fees->distribution($feeRows);
+        $feeTotals = $fees->totals($feeRows);
 
         $pendingApprovals = PromotionBatch::where('status', 'VP_Approved')->count()
             + DocumentRequest::where('type', 'Transcript')->where('status', 'Approved')->count()
@@ -63,23 +62,23 @@ class PrincipalDashboardController extends Controller
             ->values()
             ->all();
 
-        $feeDistribution = $feeService->statusDistribution(FeeVisibility::LEADERSHIP);
-
         return view('principal.dashboard', [
             'attendanceFlags' => app(ReportCardActionsService::class)->flagSummary(),
             'attendanceTrend' => $attendanceTrend,
             'feeStatusSegments' => [
-                ['label' => 'Paid', 'value' => $feeDistribution['paid'], 'color' => '#2E8B57'],
-                ['label' => 'Partial', 'value' => $feeDistribution['partial'], 'color' => '#A8841B'],
-                ['label' => 'Outstanding', 'value' => $feeDistribution['outstanding'], 'color' => '#B0392B'],
+                ['label' => 'Owing', 'value' => $feeDistribution['Owing'], 'color' => '#B0392B'],
+                ['label' => 'Settled', 'value' => $feeDistribution['Settled'], 'color' => '#2E8B57'],
+                ['label' => 'In credit', 'value' => $feeDistribution['In credit'], 'color' => '#3B6EA5'],
             ],
             'activeYear' => $activeYear,
             'totalEnrollment' => $totalEnrollment,
             'enrollmentByDepartment' => $enrollmentByDepartment,
             'attendanceRate' => $attendanceRate,
             'academicAverage' => $academicAverage,
-            'feeCollectionRate' => $feeCollectionRate,
-            'outstandingTotal' => $summaries->sum('balance'),
+            'feeOwingCount' => $feeDistribution['Owing'],
+            'feeStudents' => $feeRows->count(),
+            'outstandingTotal' => $feeTotals['owing'],
+            'creditTotal' => $feeTotals['credit'],
             'pendingApprovals' => $pendingApprovals,
             'staffHeadcount' => StaffProfile::whereIn('status', ['Active', 'On Leave', 'Probation'])->count(),
             'onLeaveToday' => $staffToday->where('status', 'On-Leave')->count(),
