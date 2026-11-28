@@ -229,42 +229,15 @@ class K12StructureSeeder extends Seeder
         }
 
         // ------------------------------------------------------------------
-        // Attendance history: the last 8 weekdays for every class, mostly
-        // Present with a deterministic sprinkle of Absent/Tardy/Excused.
+        // Attendance: a record for every school day of the active year so far
+        // (every term from its start, up to today; school days as SchoolDays
+        // counts them: Monday to Friday, without the calendar's holidays and
+        // term breaks). Ordinary students have a few absences, late arrivals
+        // and excused days in each term, always under both limits; a few
+        // named students go over them, so the attendance flags show real
+        // cases. Inserted in bulk.
         // ------------------------------------------------------------------
-        $currentTerm = Term::where('academic_year_id', $year->id)
-            ->where('start_date', '<=', today())->where('end_date', '>=', today())->first()
-            ?? Term::where('academic_year_id', $year->id)->orderBy('sequence')->first();
-
-        $days = [];
-        for ($d = 1; count($days) < 8; $d++) {
-            $day = today()->subDays($d);
-            if (! $day->isWeekend()) {
-                $days[] = $day->toDateString();
-            }
-        }
-
-        foreach ($sections as $section) {
-            $recorder = $section->homeroom_teacher_id ?? $teachers[0]->id;
-            $studentIds = Enrollment::where('section_id', $section->id)->where('status', 'Active')->pluck('student_id');
-
-            foreach ($days as $dayIdx => $date) {
-                foreach ($studentIds as $sIdx => $studentId) {
-                    $roll = ($studentId + $dayIdx) % 17;
-                    $status = match (true) {
-                        $roll === 3 => 'Absent',
-                        $roll === 7 => 'Tardy',
-                        $roll === 11 => 'Excused',
-                        default => 'Present',
-                    };
-
-                    AttendanceRecord::firstOrCreate(
-                        ['student_id' => $studentId, 'section_id' => $section->id, 'attendance_date' => $date],
-                        ['term_id' => $currentTerm->id, 'status' => $status, 'recorded_by' => $recorder]
-                    );
-                }
-            }
-        }
+        $this->seedAttendance($year, $sections, $teachers[0]->id);
 
         // ------------------------------------------------------------------
         // Grade 10 and Grades 11-12 tracks: the first four students of each class
@@ -289,5 +262,72 @@ class K12StructureSeeder extends Seeder
                 );
             }
         }
+    }
+
+    /**
+     * Section name => [roster position (1-based), absence share in the current term, absence share
+     * every term]. The first two go over the term limit (more than 10% of the term's school days);
+     * the third over the year limit (more than 20% of the year's), and so the term limit too.
+     */
+    private const OVER_THE_LIMIT = [
+        'Grade 7-A' => [2, 20, 0],
+        'Grade 3-A' => [3, 25, 0],
+        'Grade 4-A' => [2, 35, 35],
+    ];
+
+    /** @param  array<int, Section>|\Illuminate\Support\Collection  $sections */
+    private function seedAttendance(AcademicYear $year, $sections, int $fallbackRecorder): void
+    {
+        $schoolDays = app(\App\Services\SchoolDays::class);
+        $terms = Term::where('academic_year_id', $year->id)->where('start_date', '<=', today())->orderBy('sequence')->get();
+        $current = $terms->last();
+        $now = now();
+        $rows = [];
+        $flush = function (bool $all = false) use (&$rows) {
+            if (count($rows) >= 1000 || ($all && $rows)) {
+                AttendanceRecord::insertOrIgnore($rows);
+                $rows = [];
+            }
+        };
+
+        foreach ($sections as $section) {
+            $recorder = $section->homeroom_teacher_id ?? $fallbackRecorder;
+            $studentIds = Enrollment::where('section_id', $section->id)->where('status', 'Active')->orderBy('student_id')->pluck('student_id')->values();
+            foreach ($terms as $term) {
+                $days = $schoolDays->between($term->start_date, $term->end_date->min(today()));
+                $n = count($days);
+                if ($n === 0) {
+                    continue;
+                }
+                foreach ($studentIds as $position => $studentId) {
+                    [$at, $currentShare, $everyShare] = self::OVER_THE_LIMIT[$section->name] ?? [0, 0, 0];
+                    $share = $position + 1 === $at ? ($term->is($current) ? max($currentShare, $everyShare) : $everyShare) : 0;
+                    $status = array_fill(0, $n, 'Present');
+                    // An ordinary term: 0-2 absences, 0-2 late arrivals and at most one excused day.
+                    $plan = ['Absent' => $studentId % 3, 'Tardy' => ($studentId + $term->sequence) % 3, 'Excused' => (int) (($studentId + $term->sequence) % 4 === 0)];
+                    if ($share > 0) {
+                        $plan['Absent'] = intdiv($n * $share, 100);
+                    }
+                    $step = 0;
+                    foreach ($plan as $mark => $count) {
+                        for ($k = 0; $k < $count; $k++) {
+                            // Spread the days through the term, skipping days already marked.
+                            $i = ($studentId * 7 + $k * 11 + $step * 5) % $n;
+                            for ($tries = 0; $status[$i] !== 'Present' && $tries < $n; $tries++) {
+                                $i = ($i + 1) % $n;
+                            }
+                            $status[$i] = $mark;
+                        }
+                        $step++;
+                    }
+                    foreach ($days as $i => $date) {
+                        $rows[] = ['student_id' => $studentId, 'section_id' => $section->id, 'term_id' => $term->id, 'attendance_date' => $date,
+                            'status' => $status[$i], 'recorded_by' => $recorder, 'created_at' => $now, 'updated_at' => $now];
+                        $flush();
+                    }
+                }
+            }
+        }
+        $flush(true);
     }
 }

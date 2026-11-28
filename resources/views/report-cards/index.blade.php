@@ -28,10 +28,10 @@
     @if ($below->isNotEmpty())
         <div class="rounded-xl border border-warning-line bg-warning-soft px-5 py-3 text-sm text-warning" data-below-minimum>
             <p class="font-semibold">Below the {{ $minimum }}% attendance minimum {{ $checksYear ? 'in the school year up to '.$term->name : 'in '.$term->name }}</p>
-            <p class="mt-0.5">These students may be denied permission to sit the examinations. The system does not block anyone: a person decides.</p>
+            <p class="mt-0.5">{{ $wholePeriod ? 'Their absences already make the minimum impossible to reach.' : 'Their attendance so far is below the minimum.' }} They may be denied permission to sit the examinations. The system does not block anyone: a person decides.</p>
             <ul class="mt-1 list-disc pl-5">
                 @foreach ($below as $row)
-                    <li>{{ $row['student'] }}: {{ $row['pct'] }}% ({{ $row['attended'] }} of {{ $row['counted'] }} days)</li>
+                    <li>{{ $row['student'] }}: @include('report-cards.partials.flag-detail', ['row' => $row, 'period' => $checksYear ? 'year' : 'term'])</li>
                 @endforeach
             </ul>
         </div>
@@ -42,7 +42,7 @@
             <p class="mt-0.5">The rule is per subject; ISMS has no attendance per subject, so it uses the daily attendance and is the same for every subject. Flagged only.</p>
             <ul class="mt-1 list-disc pl-5">
                 @foreach ($aboveSubject as $row)
-                    <li>{{ $row['student'] }}: {{ $row['absent_pct'] }}% absent ({{ $row['counted'] - $row['attended'] }} of {{ $row['counted'] }} days)</li>
+                    <li>{{ $row['student'] }}: @include('report-cards.partials.flag-detail', ['row' => $row, 'period' => 'term'])</li>
                 @endforeach
             </ul>
         </div>

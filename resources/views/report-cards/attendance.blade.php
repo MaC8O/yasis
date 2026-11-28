@@ -20,7 +20,7 @@
     </x-card>
 
     <x-card :title="count($below).' '.Str::plural('student', count($below)).' below '.$minimum.'%'.($checksYear && $term ? ' in the school year up to '.$term->name : ($term ? ' in '.$term->name : ''))"
-            :subtitle="$checksYear ? 'Checked over the school year so far, as the school decided; late arrivals are converted on the year\'s total.' : 'Checked over the term.'">
+            :subtitle="($wholePeriod ? 'Flagged once the absences make the minimum impossible to reach for the whole '.($checksYear ? 'school year' : 'term').'. ' : 'Flagged on the attendance so far. ').($checksYear ? 'Late arrivals are converted on the year\'s total.' : '')">
         @if ($below === [])
             <p class="text-sm text-neutral-400">No student is below the minimum.</p>
         @else
@@ -32,7 +32,7 @@
                             <tr class="border-b border-neutral-100">
                                 <td class="py-2 pr-3 font-medium">{{ $row['student'] }}</td>
                                 <td class="py-2 pr-3">{{ $row['section'] }}</td>
-                                <td class="py-2 pr-3 text-warning font-semibold">{{ $row['pct'] }}% <span class="font-normal text-neutral-500">({{ $row['attended'] }} of {{ $row['counted'] }} days{{ $row['late_absences'] ? ', '.$row['late_absences'].' from late arrivals' : '' }})</span></td>
+                                <td class="py-2 pr-3 text-warning font-semibold">@include('report-cards.partials.flag-detail', ['row' => $row, 'period' => $checksYear ? 'year' : 'term'])</td>
                                 <td class="py-2"><a href="{{ route('report-cards.show', [$row['section_id'], $term->id, $row['student_id']]) }}" class="text-brand font-semibold hover:underline">View</a></td>
                             </tr>
                         @endforeach
@@ -43,7 +43,7 @@
     </x-card>
 
     <x-card :title="count($aboveSubject).' '.Str::plural('student', count($aboveSubject)).' more than '.$subjectLimit.'% absent'.($term ? ' in '.$term->name : '')"
-            subtitle="The rule is per subject, per term. ISMS has no attendance per subject, so it uses the daily attendance and is the same for every subject.">
+            :subtitle="'The rule is per subject, per term. ISMS has no attendance per subject, so it uses the daily attendance and is the same for every subject.'.($wholePeriod ? ' Flagged once the absences are over the limit for the whole term.' : ' Flagged on the days so far.')">
         @if ($aboveSubject === [])
             <p class="text-sm text-neutral-400">No student is above the limit this term.</p>
         @else
@@ -55,7 +55,7 @@
                             <tr class="border-b border-neutral-100">
                                 <td class="py-2 pr-3 font-medium">{{ $row['student'] }}</td>
                                 <td class="py-2 pr-3">{{ $row['section'] }}</td>
-                                <td class="py-2 pr-3 text-warning font-semibold">{{ $row['absent_pct'] }}% <span class="font-normal text-neutral-500">({{ $row['counted'] - $row['attended'] }} of {{ $row['counted'] }} days)</span></td>
+                                <td class="py-2 pr-3 text-warning font-semibold">@include('report-cards.partials.flag-detail', ['row' => $row, 'period' => 'term'])</td>
                                 <td class="py-2"><a href="{{ route('report-cards.show', [$row['section_id'], $term->id, $row['student_id']]) }}" class="text-brand font-semibold hover:underline">View</a></td>
                             </tr>
                         @endforeach

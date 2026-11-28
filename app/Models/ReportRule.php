@@ -26,6 +26,15 @@ class ReportRule extends Model
             'term' => 'Each term on its own',
         ]],
         'max_subject_absence_pct' => ['Absence in a subject in a term above which a student is flagged (%)', null],
+        'flag_basis' => ['Attendance flags fire', [
+            'whole_period' => 'Once the limit is certainly broken for the whole term or year (school days from the dates and the calendar)',
+            'so_far' => 'As soon as the days so far are over the limit',
+        ]],
+        'school_week' => ['The school meets', [
+            'mon_fri' => 'Monday to Friday',
+            'mon_sat' => 'Monday to Saturday',
+            'sun_thu' => 'Sunday to Thursday',
+        ]],
         'subject_attendance_source' => ['Attendance in each subject comes from', [
             'daily' => 'The daily attendance of the section (ISMS has no attendance per subject)',
         ]],

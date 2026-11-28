@@ -7,8 +7,10 @@ use App\Models\AcademicYear;
 use App\Models\PersonalityRating;
 use App\Models\ReportAcknowledgement;
 use App\Models\ReportRule;
+use App\Models\ResultFreeze;
 use App\Models\Section;
 use App\Models\Student;
+use App\Models\StudentResult;
 use App\Models\Term;
 use App\Services\AttendanceScoreService;
 use App\Services\ReportCardActionsService;
@@ -65,6 +67,16 @@ class ReportCardController extends Controller
 
         $roster = Student::whereIn('id', $this->actions->roster($section))->orderBy('name')->get();
         $att = $attendance->forSectionTerm($section, $term)['students'];
+        // A locked term shows the figures frozen with it, as the card does, so the two never disagree.
+        $freeze = $term->is_locked ? ResultFreeze::active()->where('term_id', $term->id)->latest('id')->first() : null;
+        if ($freeze) {
+            $frozen = StudentResult::where('result_freeze_id', $freeze->id)->where('section_id', $section->id)->current()
+                ->whereNotNull('days_absent')->get(['student_id', 'days_absent', 'attendance_pct'])->keyBy('student_id');
+            foreach ($frozen as $studentId => $row) {
+                $att[$studentId] = ['days_absent' => (int) $row->days_absent, 'pct' => $row->attendance_pct === null ? null : (string) $row->attendance_pct, 'frozen' => true]
+                    + ($att[$studentId] ?? []);
+            }
+        }
         $minimum = ReportRule::minAttendancePct();
         $acks = ReportAcknowledgement::current()->where('term_id', $term->id)->whereIn('student_id', $roster->pluck('id'))->get();
 
@@ -79,6 +91,7 @@ class ReportCardController extends Controller
             'below' => collect($this->actions->belowMinimumAttendance($term, collect([$section])))->keyBy('student_id'),
             'aboveSubject' => collect($this->actions->aboveSubjectAbsence($term, collect([$section])))->keyBy('student_id'),
             'checksYear' => ReportCardActionsService::checksYear(),
+            'wholePeriod' => ReportCardActionsService::wholePeriod(),
             'subjectLimit' => ReportCardActionsService::subjectAbsenceLimit(),
             'confirmed' => $acks->where('role', ReportAcknowledgement::CLASS_TEACHER)->pluck('student_id')->all(),
             'guardianAcks' => $acks->where('role', ReportAcknowledgement::GUARDIAN)->pluck('student_id')->all(),
@@ -138,6 +151,7 @@ class ReportCardController extends Controller
             'below' => $term ? $this->actions->belowMinimumAttendance($term) : [],
             'aboveSubject' => $term ? $this->actions->aboveSubjectAbsence($term) : [],
             'checksYear' => ReportCardActionsService::checksYear(),
+            'wholePeriod' => ReportCardActionsService::wholePeriod(),
             'subjectLimit' => ReportCardActionsService::subjectAbsenceLimit(),
             'rules' => AttendanceScoreService::rules(),
         ]);
