@@ -77,6 +77,9 @@ class ReportCardController extends Controller
             'attendance' => $att,
             'minimum' => $minimum,
             'below' => collect($this->actions->belowMinimumAttendance($term, collect([$section])))->keyBy('student_id'),
+            'aboveSubject' => collect($this->actions->aboveSubjectAbsence($term, collect([$section])))->keyBy('student_id'),
+            'checksYear' => ReportCardActionsService::checksYear(),
+            'subjectLimit' => ReportCardActionsService::subjectAbsenceLimit(),
             'confirmed' => $acks->where('role', ReportAcknowledgement::CLASS_TEACHER)->pluck('student_id')->all(),
             'guardianAcks' => $acks->where('role', ReportAcknowledgement::GUARDIAN)->pluck('student_id')->all(),
             'ratings' => PersonalityRating::where('term_id', $term->id)->whereIn('student_id', $roster->pluck('id'))->get()->groupBy('student_id')
@@ -133,6 +136,10 @@ class ReportCardController extends Controller
             'term' => $term,
             'minimum' => ReportRule::minAttendancePct(),
             'below' => $term ? $this->actions->belowMinimumAttendance($term) : [],
+            'aboveSubject' => $term ? $this->actions->aboveSubjectAbsence($term) : [],
+            'checksYear' => ReportCardActionsService::checksYear(),
+            'subjectLimit' => ReportCardActionsService::subjectAbsenceLimit(),
+            'rules' => AttendanceScoreService::rules(),
         ]);
     }
 

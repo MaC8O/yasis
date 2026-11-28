@@ -35,10 +35,11 @@ class GradeService
      *
      * @return array<int, array<int, string>> student id => subject id => mark, e.g. "82.25"
      */
-    public function sectionMarks(Section $section, Term $term): array
+    /** @param  ?array  $attendanceRules  a freeze's attendance rules (default: the rules in force now) */
+    public function sectionMarks(Section $section, Term $term, ?array $attendanceRules = null): array
     {
         $marks = [];
-        foreach ($this->scores($section, $term) as $subjectId => $categories) {
+        foreach ($this->scores($section, $term, $attendanceRules) as $subjectId => $categories) {
             $totals = [];
             foreach ($categories as $category) {
                 $weight = BigDecimal::of((string) $category['weight']);
@@ -116,7 +117,7 @@ class GradeService
      *
      * @return array<int, list<array{name: string, weight: string, kind: string, students: array<int, BigDecimal>}>> subject id => categories
      */
-    private function scores(Section $section, Term $term): array
+    private function scores(Section $section, Term $term, ?array $attendanceRules = null): array
     {
         $categories = AssessmentCategory::where('section_id', $section->id)->where('term_id', $term->id)
             ->active()->with('activeAssessments.grades')->orderBy('id')->get();
@@ -132,7 +133,7 @@ class GradeService
             $students = [];
 
             if ($kind === 'attendance') {
-                $attendance ??= $this->attendance->forSectionTerm($section, $term);
+                $attendance ??= $this->attendance->forSectionTerm($section, $term, $attendanceRules);
                 foreach ($attendance['students'] as $studentId => $row) {
                     if ($row['pct'] !== null) {
                         $students[$studentId] = BigDecimal::of($row['pct']);

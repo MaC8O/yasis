@@ -98,7 +98,7 @@ class TeacherGradebookController extends Controller
             ]);
         }
 
-        // KG1 to Grade 10: an open term's gradebook is put on the school's fixed template first (§4.1).
+        // KG1 to Grade 12: an open term's gradebook is put on the school's fixed template first (§4.1).
         $usesTemplate = $templates->appliesTo($section);
         if ($usesTemplate && $term && ! $term->is_locked) {
             $templates->adopt($section, $subject->id, $term, $request->user());
@@ -380,7 +380,7 @@ class TeacherGradebookController extends Controller
     }
 
     /**
-     * Move an item, with its grades, to another category of the same gradebook (KG1 to Grade 10:
+     * Move an item, with its grades, to another category of the same gradebook (KG1 to Grade 12:
      * a template category other than Attendance). Audited.
      */
     public function moveAssessment(Request $request, Assessment $assessment, AuditService $audit)
@@ -407,7 +407,7 @@ class TeacherGradebookController extends Controller
         return back()->with('status', "“{$assessment->name}” moved to {$to->name}, with its scores.");
     }
 
-    /** KG1 to Grade 10 use the school's fixed categories: teachers can't add or remove categories. */
+    /** Every grade (KG1 to Grade 12) uses the school's fixed categories: teachers can't add or remove categories. */
     protected function refuseFixedCategories(Section $section, GradebookTemplateService $templates): void
     {
         if ($templates->appliesTo($section)) {

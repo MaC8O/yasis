@@ -10,12 +10,24 @@ use Illuminate\Database\Eloquent\Model;
  */
 class ReportRule extends Model
 {
-    /** key => [label, allowed values (value => description), null for a whole number 1-100, or 'text' for a line of text] */
+    /**
+     * key => [label, allowed values (value => description), null for a whole number 1-100, 'count' for
+     * a whole number 0-10, or 'text' for a line of text]
+     */
     public const RULES = [
         'min_attendance_pct' => ['Minimum attendance to sit examinations (%)', null],
-        'days_absent_counts' => ['"Days absent" on the report card counts', [
-            'absent_and_excused' => 'Absent and Excused days',
-            'absent_only' => 'Absent days only',
+        'excused_absences' => ['An excused absence (for the attendance mark, "Days absent" and the minimum attendance)', [
+            'count_as_absent' => 'Counts as an absence',
+            'leave_out' => 'Is left out: it neither counts as attended nor as absent',
+        ]],
+        'lates_per_absence' => ['Late arrivals that count as one absence (0 = late arrivals never count)', 'count'],
+        'attendance_check_period' => ['The minimum attendance is checked over', [
+            'year' => 'The school year so far',
+            'term' => 'Each term on its own',
+        ]],
+        'max_subject_absence_pct' => ['Absence in a subject in a term above which a student is flagged (%)', null],
+        'subject_attendance_source' => ['Attendance in each subject comes from', [
+            'daily' => 'The daily attendance of the section (ISMS has no attendance per subject)',
         ]],
         'personality_shown' => ['The personality record prints', [
             'final_report' => 'On the final report only (traits are rated once a year, on the last term)',

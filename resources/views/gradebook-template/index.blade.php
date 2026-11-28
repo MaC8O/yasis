@@ -3,15 +3,19 @@
     $flags = $template->flatMap->pendingQuestions()->unique()->values();
 @endphp
 <x-app-layout title="Gradebook Template" :subtitle="$readOnly
-        ? 'The fixed gradebook categories for KG1 to Grade 10. Set by the Admin; shown here read-only.'
-        : 'The fixed gradebook categories every KG1 to Grade 10 gradebook uses. Teachers add their own items inside them.'"
+        ? 'The fixed gradebook categories for KG1 to Grade 12. Set by the Admin; shown here read-only.'
+        : 'The fixed gradebook categories every KG1 to Grade 12 gradebook uses. Teachers add their own items inside them.'"
     :badge="$readOnly ? 'Principal' : 'Admin'" :role="$portal">
 
     <x-card title="Categories" subtitle="A category's score is the marks earned over the marks possible across its items. Attendance has no items: it comes from the attendance records.">
         @if ($flags->isNotEmpty())
             <div class="mb-4 rounded-xl border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning">
                 Uses defaults that <span class="font-semibold">need confirmation from the school</span> ({{ $flags->implode(', ') }} in the rules file):
-                Present and Tardy count as attended, Absent counts against, Excused days are left out, and only the days a student has a record for count.
+                @php $att = \App\Services\AttendanceScoreService::rules(); @endphp
+                Present and Late count as attended, Absent counts against,
+                {{ $att['excused'] === 'count_as_absent' ? 'an excused absence counts as an absence' : 'Excused days are left out' }},
+                @if ($att['lates_per_absence'] > 0) every {{ $att['lates_per_absence'] }} late arrivals count as one absence, @endif
+                attendance in each subject is the daily attendance, and only the days a student has a record for count. The Admin sets these on Report Card Rules.
             </div>
         @endif
 

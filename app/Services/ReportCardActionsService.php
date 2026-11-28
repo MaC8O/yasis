@@ -167,7 +167,7 @@ class ReportCardActionsService
         return $list;
     }
 
-    /** For the VP and Principal dashboards: how many students are below the minimum in the current term. */
+    /** For the VP and Principal dashboards: how many students are below the minimum, and above the subject-absence limit, now. */
     public function flagSummary(): ?array
     {
         $term = \App\Http\Controllers\Principal\GovernanceController::currentTermFor();
@@ -175,12 +175,26 @@ class ReportCardActionsService
             return null;
         }
 
-        return ['term' => $term, 'minimum' => ReportRule::minAttendancePct(), 'count' => count($this->belowMinimumAttendance($term))];
+        return ['term' => $term, 'minimum' => ReportRule::minAttendancePct(), 'yearly' => self::checksYear(),
+            'count' => count($this->belowMinimumAttendance($term)), 'subject_count' => count($this->aboveSubjectAbsence($term)),
+            'subject_limit' => self::subjectAbsenceLimit()];
+    }
+
+    /** Q16: the 80% rule is checked over the school year to date (the default), or per term. */
+    public static function checksYear(): bool
+    {
+        return ReportRule::value('attendance_check_period', 'year') === 'year';
+    }
+
+    public static function subjectAbsenceLimit(): int
+    {
+        return (int) ReportRule::value('max_subject_absence_pct', '10');
     }
 
     /**
-     * Students below the minimum attendance for the term (§8, Q16), on the section's daily records.
-     * Flagged only: nothing is blocked.
+     * Students below the minimum attendance (§8, Q16), on the section's daily records: over the
+     * school year up to and including $term (late arrivals converted on the year's total), or over
+     * $term alone when the rule says so. Flagged only: nothing is blocked.
      *
      * @param  Collection<int, Section>|null  $sections  limit to these (default: every section of the term's year)
      * @return list<array{student_id: int, student: string, section: string, section_id: int, pct: string, attended: int, counted: int}>
@@ -188,18 +202,40 @@ class ReportCardActionsService
     public function belowMinimumAttendance(Term $term, ?Collection $sections = null): array
     {
         $minimum = BigDecimal::of(ReportRule::minAttendancePct());
+
+        return $this->flagged($term, $sections, self::checksYear(),
+            fn (array $row) => $row['pct'] !== null && BigDecimal::of($row['pct'])->isLessThan($minimum));
+    }
+
+    /**
+     * Students with more than the subject-absence limit (default 10%) absent in a subject in the
+     * term. ISMS has no subject attendance, so it is worked out from the section's daily attendance
+     * (`subject_attendance_source` = daily, FQ2) and is the same for every subject. Flagged only.
+     */
+    public function aboveSubjectAbsence(Term $term, ?Collection $sections = null): array
+    {
+        $limit = BigDecimal::of(self::subjectAbsenceLimit());
+
+        return $this->flagged($term, $sections, false,
+            fn (array $row) => $row['pct'] !== null && BigDecimal::of(100)->minus($row['pct'])->isGreaterThan($limit));
+    }
+
+    private function flagged(Term $term, ?Collection $sections, bool $yearToDate, callable $matches): array
+    {
         $sections ??= Section::where('academic_year_id', $term->academic_year_id)->whereNull('archived_at')->orderByGradeLevel()->orderBy('name')->get();
         $names = Student::whereIn('id', Enrollment::whereIn('section_id', $sections->pluck('id'))->pluck('student_id'))->pluck('name', 'id');
 
         $list = [];
         foreach ($sections as $section) {
             $roster = $this->roster($section);
-            foreach ($this->attendance->forSectionTerm($section, $term)['students'] as $studentId => $row) {
-                if ($row['pct'] !== null && $roster->contains($studentId) && BigDecimal::of($row['pct'])->isLessThan($minimum)) {
+            $rows = $yearToDate ? $this->attendance->forSectionYearTo($section, $term) : $this->attendance->forSectionTerm($section, $term);
+            foreach ($rows['students'] as $studentId => $row) {
+                if ($roster->contains($studentId) && $matches($row)) {
                     $list[] = [
                         'student_id' => $studentId, 'student' => $names[$studentId] ?? '?', 'section' => $section->name, 'section_id' => $section->id,
                         'pct' => (string) BigDecimal::of($row['pct'])->toScale(1, \Brick\Math\RoundingMode::HALF_UP),
-                        'attended' => $row['attended'], 'counted' => $row['counted'],
+                        'absent_pct' => (string) BigDecimal::of(100)->minus($row['pct'])->toScale(1, \Brick\Math\RoundingMode::HALF_UP),
+                        'attended' => $row['attended'], 'counted' => $row['counted'], 'late_absences' => $row['late_absences'],
                     ];
                 }
             }

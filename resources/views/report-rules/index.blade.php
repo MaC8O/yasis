@@ -10,7 +10,7 @@
                     @php [$label, $options] = \App\Models\ReportRule::RULES[$rule->key] ?? [$rule->key, null]; @endphp
                     <div class="py-3">
                         <dt class="text-neutral-500">{{ $label }}</dt>
-                        <dd class="font-semibold">{{ is_array($options) ? ($options[$rule->value] ?? $rule->value) : ($options === 'text' ? $rule->value : $rule->value.'%') }}
+                        <dd class="font-semibold">{{ is_array($options) ? ($options[$rule->value] ?? $rule->value) : (in_array($options, ['text', 'count'], true) ? $rule->value : $rule->value.'%') }}
                             @if ($rule->pending_question)<span class="ml-1 rounded-full bg-tint-yellow text-tint-yellow-ink px-2.5 py-0.5 text-xs font-semibold">Needs confirmation from the school ({{ $rule->pending_question }})</span>@endif
                         </dd>
                     </div>
@@ -25,6 +25,8 @@
                         <label for="rule-{{ $rule->key }}" class="block text-sm font-semibold mb-1">{{ $label }}</label>
                         @if ($options === 'text')
                             <input id="rule-{{ $rule->key }}" name="values[{{ $rule->key }}]" type="text" maxlength="120" required value="{{ old('values.'.$rule->key, $rule->value) }}" class="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm">
+                        @elseif ($options === 'count')
+                            <input id="rule-{{ $rule->key }}" name="values[{{ $rule->key }}]" type="number" min="0" max="10" value="{{ old('values.'.$rule->key, $rule->value) }}" class="w-32 rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm">
                         @elseif ($options)
                             <select id="rule-{{ $rule->key }}" name="values[{{ $rule->key }}]" class="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm">
                                 @foreach ($options as $value => $text)

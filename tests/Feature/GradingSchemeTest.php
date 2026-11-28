@@ -83,8 +83,8 @@ class GradingSchemeTest extends TestCase
         ], $this->bands('KG_9', 'result'));
 
         $g10 = $this->scheme('G10');
-        // Q9 (does the fixed gradebook template apply to Grade 10 and 11-12?) was added in phase 5.
-        $this->assertSame(['point_total', '70.00', 0, 'any_counted', 'Q9,Q10,Q19,Q20'],
+        // Q9 (does the fixed gradebook template apply to Grade 10 and 11-12?) was added in phase 5 and answered (every grade) in 9b.
+        $this->assertSame(['point_total', '70.00', 0, 'any_counted', 'Q10,Q19,Q20'],
             [$g10->result_basis, (string) $g10->result_max, $g10->result_decimals, $g10->subject_fail_rule, $g10->pending_question]);
         $this->assertSame([
             ['A', '85.00', '100.00', '10.00', false], ['B', '76.00', '84.00', '9.00', false], ['C+', '67.00', '75.00', '8.00', false],
@@ -100,7 +100,7 @@ class GradingSchemeTest extends TestCase
         $this->assertSame(['Q19', 'Q19'], GradingSchemeBand::active()->whereNotNull('pending_question')->pluck('pending_question')->all());
 
         $gpa = $this->scheme('G11_12');
-        $this->assertSame(['gpa', '4.00', 0, 2, 'any_compulsory', 'Q9,Q10,Q20'],
+        $this->assertSame(['gpa', '4.00', 0, 2, 'any_compulsory', 'Q10,Q20'],
             [$gpa->result_basis, (string) $gpa->result_max, $gpa->mark_decimals, $gpa->result_decimals, $gpa->subject_fail_rule, $gpa->pending_question]);
         $this->assertSame([
             ['A', '90.00', '100.00', '4.00', false], ['A-', '85.00', '89.00', '3.67', false], ['B+', '80.00', '84.00', '3.33', false],
@@ -331,7 +331,7 @@ class GradingSchemeTest extends TestCase
             ->assertSee('Grade 10')
             ->assertSee('Point total of the counted subjects')
             ->assertSee('Needs confirmation from the school (Q19)')
-            ->assertSee('Q9, Q10, Q19, Q20 in the rules file')
+            ->assertSee('Q10, Q19, Q20 in the rules file')
             ->assertSee('Position in class')
             ->assertSee('Everyone is ranked together by their result')
             ->assertSee('Edit subject marks bands')

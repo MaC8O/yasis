@@ -296,7 +296,7 @@ class StatementOfMarksTest extends TestCase
         $this->assertNull(ReportRule::where('key', 'examination_centre')->value('pending_question')); // Q15 answered
         $this->actingAs($this->principal->user)->get('/principal/report-rules')->assertOk()->assertSee('YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL');
 
-        $values = ['min_attendance_pct' => '80', 'days_absent_counts' => 'absent_and_excused', 'personality_shown' => 'final_report', 'supw_incomplete_blocks_promotion' => 'no'];
+        $values = ['min_attendance_pct' => '80', 'personality_shown' => 'final_report', 'supw_incomplete_blocks_promotion' => 'no', 'excused_absences' => 'count_as_absent', 'lates_per_absence' => '3', 'attendance_check_period' => 'year', 'max_subject_absence_pct' => '10', 'subject_attendance_source' => 'daily'];
         $this->actingAs($admin->user)->put('/admin/report-rules', ['values' => $values + ['examination_centre' => '  YANGON ADVENTIST SEMINARY ']])
             ->assertSessionHas('status');
         $this->assertSame('YANGON ADVENTIST SEMINARY', ReportRule::examinationCentre());

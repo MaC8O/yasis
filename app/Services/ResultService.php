@@ -146,9 +146,9 @@ class ResultService
      * $curriculumFor a grade level id to its curriculum rows (a freeze's copies; null for a level
      * the freeze has none for); by default each scheme's current rules and the current curriculum.
      */
-    public function liveSectionTerm(Section $section, Term $term, ?callable $rulesFor = null, bool $final = false, ?callable $curriculumFor = null): SectionResults
+    public function liveSectionTerm(Section $section, Term $term, ?callable $rulesFor = null, bool $final = false, ?callable $curriculumFor = null, ?array $attendanceRules = null): SectionResults
     {
-        $marks = $this->grades->sectionMarks($section, $term);
+        $marks = $this->grades->sectionMarks($section, $term, $attendanceRules);
 
         // Locking a term (final): a subject on the gradebook template with an empty Examinations
         // category has no final mark, so a student counting it has no overall result (phase 5).

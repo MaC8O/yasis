@@ -160,16 +160,24 @@ The policy fixes the composition of every subject's 100 marks:
 | Examinations | 60% |
 | Total | 100% |
 
-For KG-9 these five categories are school policy, not a teacher's choice. Required:
+These five categories are school policy, not a teacher's choice, for every grade (Q9, answered). Required:
 
-- When a gradebook is opened for a KG-9 section, it starts with these five categories and weights.
+- When a gradebook is opened for a section, it starts with these five categories and weights.
 - Teachers cannot rename, delete or reweight them. The Admin can change the template for the whole school.
 - Teachers still create their own items inside each category (several quizzes, several assignments, a midterm and a final exam), which fits the planned Moodle-style gradebook.
 - Within a category, the category score is the total marks earned divided by the total possible marks of its items.
 
-The attendance component. Default: it is calculated from the attendance records, not entered by the teacher. Attendance score = 10 x (days counted as attended / school days in the term). Present and Tardy count as attended. Absent does not. Excused days are left out of both the top and the bottom of the fraction, so an excused absence does not lower the mark. The teacher sees it read-only in the gradebook. See Q8.
+The attendance component is calculated from the attendance records, not entered by the teacher. Attendance score = 10 x (days counted as attended / days counted in the term). The school's answers (Q8):
 
-The composition applies to every grade (Q9, answered). Grade 10 already uses it. Grades 11-12 move onto it in phase 9b; until then their teachers keep their own weighting.
+- Present and Tardy (late) count as attended. Absent does not.
+- An excused absence counts as an absence (a report rule, `excused_absences`, flagged FQ1). The one rule covers the mark, "Days absent" and the 80% check, so they can't disagree. It can be set to leave Excused days out of both the attended and the counted days.
+- Three late arrivals count as one absence (a report rule, `lates_per_absence`). Only whole multiples count: 5 lates are one absence, 6 are two. For a term's figures (the mark and Days absent) the lates are counted per term, using the term's own late total. For the year's 80% check they are counted on the year's total.
+- Only the days on which the student has their own attendance record count. Section school days with no record for the student are flagged to the teacher.
+- The mark is per subject, per term, but ISMS records attendance once a day per section, so each subject uses the section's daily attendance (`subject_attendance_source` = daily, FQ2). A later subject-attendance feature can switch the setting.
+
+The teacher sees the attendance mark read-only in the gradebook, with the days ("41 of 45 days · 2 excused counted as absent · 6 late = 2 absences"). A freeze stores the attendance rules it used, so a locked term is worked out the same way if it is re-frozen.
+
+The composition applies to every grade (Q9, answered), Grades 11-12 included since phase 9b. Their open-term gradebooks move onto the template when they are opened. Categories whose names match become template categories at the template's weight. Items in categories that match nothing move by their name, then their type, and the emptied category is archived (kept). No grade is deleted. The teacher gets a one-time notice listing every item with its old and new category, and every weight that changed. Locked terms keep their own weights.
 
 ### 4.2 Pass and class of pass
 
@@ -375,13 +383,15 @@ Required: add `StatementOfMarks` as a document type in the existing document req
 
 ## 8. Attendance and exam eligibility
 
-The report card footnote states two different rules: more than 10% absence in a subject in a term, or less than 80% attendance. These are not the same threshold (90% versus 80%), see Q16.
+The report card footnote states two rules: more than 10% absence in a subject in a term, or less than 80% attendance. Both apply (Q16, answered): the 80% rule over the whole school year, and the 10% rule per subject, per term.
 
-Required:
+Rules, each a report rule the Admin edits and the Principal reads:
 
-- Store the minimum attendance percentage as a setting. Default 80%.
-- Attendance is recorded once a day per section, not per subject, so default: the rule is checked on the section's daily attendance for the term.
-- The system flags students below the threshold to the homeroom teacher, the VP and the Principal before the exam period. It never blocks a student automatically; a person decides.
+- **Minimum attendance:** 80% (`min_attendance_pct`), checked over the school year so far (`attendance_check_period` = year; it can be set to each term). A student's attendance is attended over counted days, with the excused and late-arrival rules of section 4.1. For the year, late arrivals are converted on the year's total.
+- **Absence in a subject:** more than 10% (`max_subject_absence_pct`) absent in a term. ISMS has no attendance per subject, so it uses the section's daily attendance and is the same for every subject (FQ2). Early in a term, when few days are recorded, a single absence can pass 10%.
+- **Days absent** on the report card: absent days, excused absences (by the same rule), and absences from late arrivals counted per term with the term's own lates. The Final column adds up the four terms.
+
+The system flags students on the homeroom teacher's Report Cards page, on the Attendance Check page (VP and Principal) and on the VP and Principal dashboards. It never blocks a student automatically; a person decides.
 
 ---
 
@@ -479,9 +489,9 @@ The school answered the first letter in November 2026 (`YASIS_School_Answers.md`
 - Q7. Grades 11-12: may a student mix optional subjects across slots (for example Biology with Accounting), or must they take a whole science or arts combination?
   - **Answered:** a whole track, no mixing (section 3). Built in 9a.
 - Q8. Attendance: does an excused absence count against the 10% attendance mark? Does it count in "Days absent" on the card and towards the 80% exam rule? Does Tardy count as present?
-  - **Answered:** excused absences count; three late arrivals are one absence. Read as an absence for the mark, days absent and the 80% rule (FQ1 confirms). Built in 9b.
+  - **Answered:** excused absences count; three late arrivals are one absence. Read as an absence for the mark, days absent and the 80% rule (FQ1 confirms). Built in 9b (sections 4.1 and 8).
 - Q9. Does the 10/10/10/10/60 mark composition apply to Grade 10 and Grades 11-12 as well, or only KG-9?
-  - **Answered:** every grade (section 4.1). Grades 11-12 move onto it in 9b.
+  - **Answered:** every grade (section 4.1). Grades 11-12 moved onto it in 9b.
 - Q10. How are marks rounded? For example, is 60.5 Third or Second, and is 84.5 a B or an A on the Grade 10 scale?
   - Not answered (the school pasted the policy text). Half up stays. Still open.
 - Q11. Grade 10: how should the system record DHSC eligibility and the external exam result, and does the school issue a Grade 10 Statement of Marks?
@@ -495,7 +505,7 @@ The school answered the first letter in November 2026 (`YASIS_School_Answers.md`
 - Q15. Which examination centre name should appear on statements: "Yangon Adventist Seminary International School" or "Yangon Adventist Seminary"?
   - **Answered:** "Yangon Adventist Seminary International School", the Grade 11-12 statement included. Flag cleared in 9a.
 - Q16. The exam eligibility rule says both "more than 10% absence" and "a minimum of 80% attendance". Which threshold applies?
-  - **Answered:** both: the 80% rule over the whole school year, and the 10%-absence rule per subject, per term. Built in 9b (FQ2 for subject attendance).
+  - **Answered:** both: the 80% rule over the whole school year, and the 10%-absence rule per subject, per term. Built in 9b (section 8; FQ2 for subject attendance).
 - Q17. Is Grade 9 tuition really 2,600,000 Ks (the same as Grades 11 and 12), and not 2,550,000 Ks like Grades 5-8?
   - **Answered:** yes, 2,600,000 Ks. The flag is cleared in the fee PR.
 - Q18. Which instalment includes the yearly fee and the refundable deposit, and are the four instalments equal?

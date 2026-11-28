@@ -15,8 +15,8 @@ Source of truth: [YASIS_Academic_and_Fee_Rules.md](YASIS_Academic_and_Fee_Rules.
 | 8a. Fee schedule (reference data only) | Merged | `fee-schedule`, PR #50 |
 | 8b-1. Sun Accounts ledger import: parser, import, validation, matching, overrides, re-import, revert, Treasurer screens | Merged | `sun-ledger-import`, PR #51 |
 | 8b-2. Family statements, reused codes (T3), guardian and student Fees pages, reports and dashboards, retiring the CSV upload, demo seeder | Merged | `sun-family-view`, PR #52 |
-| 9a. The school's answers: curriculum and results (KG-4 counting, SUPW words, Grade 10 and 11-12 tracks, Final column, dense ranking, Grade 10 G.P.A row, personality once a year, Statement of Marks) | PR open, awaiting review | `school-answers-results`, PR #53 |
-| 9b. The school's answers: the Grades 11-12 gradebook template and the attendance rules | Plan to be sent after 9a's PR | |
+| 9a. The school's answers: curriculum and results (KG-4 counting, SUPW words, Grade 10 and 11-12 tracks, Final column, dense ranking, Grade 10 G.P.A row, personality once a year, Statement of Marks) | Merged | `school-answers-results`, PR #53 |
+| 9b. The school's answers: the Grades 11-12 gradebook template and the attendance rules | PR open, awaiting review | `attendance-rules`, PR #54 |
 
 ## Phase 1: grade levels (merged)
 
@@ -638,7 +638,7 @@ On a fresh seed they roll back and reapply cleanly; the rollback puts the links 
 
 **Deploy (staging), when asked:** `php artisan migrate` (4 migrations) and an asset build. The demo ledger comes only with a fresh seed.
 
-## Phase 9a: the school's answers, curriculum and results (done, in review)
+## Phase 9a: the school's answers, curriculum and results (merged)
 
 Built on the school's answers (owner, 2026-11-28; `YASIS_School_Answers.md`, "Answers that change built code"). The rules file is updated to match: every answered question is marked, sections 2, 3, 4.2, 5, 6, 7 and 9 follow the answers, and the open list is follow-up questions FQ1-FQ9 plus Q19-Q21 (Q2 and Q10 are also still open).
 
@@ -727,6 +727,84 @@ Rolling back 2-4 is refused once the Registrar has set a track or a SUPW word ha
 
 **Deploy (staging), when asked:** `php artisan migrate` (7 migrations) and an asset build. Existing elective choices become tracks where they are all one track, and the Registrar sets the rest on Tracks. A fresh reset with the seeder is the alternative.
 
+## Phase 9b: the school's answers, gradebook and attendance (done, in review)
+
+Built on the school's answers to Q8, Q9 and Q16 (`YASIS_School_Answers.md`). Sections 4.1 and 8 of the rules file are rewritten to match.
+
+**Owner's decisions (2026-11-28):**
+1. One rule, `excused_absences`, covers the 10% mark, Days absent and the 80% check, so they can't disagree. The old "Days absent counts" rule is merged into it.
+2. Late arrivals are converted per term for term figures, and on the year's total for the 80% check.
+3. Absences from late arrivals count in Days absent on the card, per term, with the term's own lates. The Final column's Days absent adds up the four terms' figures.
+4. Moving existing Grade 11-12 items by name and type is fine for now. The teacher's notice lists each moved item with its old and new category.
+
+**Built:**
+- **Grades 11-12 on the template (Q9):**
+  - The Grade 11-12 scheme uses the five-category template, and Q9 is cleared from the Grade 10 and Grade 11-12 schemes.
+  - Open-term 11-12 gradebooks move onto it when opened, or by `gradebook:adopt-template`.
+    - A matching category becomes the template category at the template's weight.
+    - Items of other categories move by name, then type, and the emptied category is archived (kept).
+    - No grade is deleted, and locked terms keep their weights.
+  - Teachers can no longer add or reweight categories.
+  - **The teacher's one-time notice:** every item that changes category, now including the items of a category renamed into a template one ("Quiz" → "Class tests / quizzes"), with its old and new category, plus every weight that changed ("Exams 40% → Examinations 60%").
+- **Attendance rules (report rules the Admin edits, the Principal reads):**
+  - `excused_absences` = count as absent (FQ1) or leave out.
+  - `lates_per_absence` = 3. Whole multiples only; 0 turns it off.
+  - `attendance_check_period` = year (or term).
+  - `max_subject_absence_pct` = 10.
+  - `subject_attendance_source` = daily (FQ2): the only option until ISMS has attendance per subject.
+  - Q16 is cleared from the minimum. The template's Attendance row now waits on FQ1 and FQ2 instead of Q8.
+- **`AttendanceScoreService`** works out attended, counted, days absent, late absences and the percentage from the rules, per term or for the year to date.
+- **Where the rules apply:**
+  - The gradebook Attendance category and its read-only text ("41 of 45 days · 2 excused counted as absent · 6 late = 2 absences").
+  - Days absent on the report card, on the homeroom list and in frozen results.
+  - The 80% check, over the year so far.
+  - The new "more than 10% absent in a term" flag, shown on:
+    - the homeroom Report Cards page
+    - the Attendance Check page, now two lists, with the rules in force described
+    - the VP and Principal dashboards
+  - Nothing blocks a student.
+- **Frozen results keep their attendance rules:** each freeze stores them (`result_freezes.attendance_rules`). Existing freezes got the rules from before: Excused left out of the mark, no late conversion, and Days absent counting Excused as the old setting said. A re-freeze after a grade change, or a relock with the previous rules, uses them; "Recalculate with the current rules" picks up new ones.
+
+**Migrations (3):**
+1. Grades 11-12 use the template; Q9 is cleared.
+2. `result_freezes.attendance_rules`, filled for existing freezes.
+3. The attendance rules: `days_absent_counts` becomes `excused_absences` (`absent_and_excused` → count as absent, `absent_only` → leave out), the four new rules, and the Q16 and Q8 flags.
+
+On a fresh seed all three roll back (restoring the old rule, flags and scheme) and reapply cleanly.
+
+**Tests:**
+- `AttendanceRulesTest` (6):
+  - the one excused rule
+  - lates at 2, 3, 5 and 6, then 4 and 0
+  - the year check with lates converted on the year's total, against the term check
+  - the 10% flag, with exactly 10% not flagged
+  - frozen rules kept on a re-freeze
+  - the Admin rules page and the rules migration's rollback
+- `ReportCardTest`: Days absent with late arrivals per term and the Final column adding up the terms (new); the excused rule; the two attendance lists.
+- `AdoptTemplateTest`:
+  - the notice lists every moved item and weight change
+  - Grades 11-12 move onto the template, and a locked term keeps its weights (replaces "Grades 11 and 12 are left alone")
+- `GradebookTemplateTest`: Grade 11 uses the template; the excused rule in the Attendance mark.
+- `GradebookArchiveTest` runs on a scheme set off the template, since no scheme has its own categories any more.
+- `GradingSchemeTest`: the flags.
+- The full suite passes (574).
+
+**Checked in the browser (fresh seed, 1280 px and 390 px):**
+- **Grade 12-A maths teacher:** an open Term 2 gradebook with the teacher's own categories (Coursework 40, Tests 20, Exams 40) moved onto the template on opening. The notice listed each item with its old and new category, and "Weight changed: Exams 40% → Examinations 60%". The Attendance column shows the rule.
+- **Homeroom teacher (Grade 9-A):** with one student's Term 1 set to 8 absent, 6 late and 2 excused out of 45 days, both flags showed: 73.3% (33 of 45, 2 absences from lates) and 26.7% absent. Days absent showed 12.
+- **Admin:** the rules page, and the template page describing the rules in force.
+- **VP and Principal:** dashboard flags, Attendance Check (both lists, the rules described), the read-only rules page.
+- **Student and guardian:** the Attendance line ("41 of 45 days · 2 excused counted as absent"), and frozen Days absent on the card.
+
+**Notes:**
+- **The seed's current term has only 8 days of attendance**, so any absent or excused day is over 10%, and the dashboards flag 73 students for the subject rule. That is the rule working on very little data; real terms have about 45 days.
+- **Out of phase:** the homeroom Report Cards list shows Days absent and attendance % worked out live, even for a locked term, while the card shows the frozen figures. They differ only if attendance is edited after the lock. Not changed.
+
+**Deploy (staging), when asked:**
+1. `php artisan migrate` (3 migrations).
+2. `php artisan gradebook:adopt-template --actor=<admin email>`, or let teachers' first visits move their 11-12 gradebooks.
+3. An asset build.
+
 ## Defaults applied so far
 
 | Rule | Default | Question (rules file) | Where it lives |
@@ -752,16 +830,16 @@ Rolling back 2-4 is refused once the Registrar has set a track or a SUPW word ha
 | Pass/Fail subjects | PASS when the rounded mark reaches the scheme's pass mark (the lowest band that is not a fail band). | not asked | `ResultService::subject()` |
 | Grade 10 promotion | No automatic recommendation; the DHSC result decides. | Q11 | `ResultService::promotionRecommendations()` |
 | Failed students' position | Ranked together with those who passed (a Grade 12 student who failed Mathematics can be 2nd). The Admin can switch a scheme to rank failed students after all who passed. | Q20 (new) | `grading_schemes.failed_ranking`, flagged Q20 |
-| Attendance component | Present and Tardy count as attended, Absent counts against, Excused days are left out of both attended and counted days. Only the days the student has their own record count (missing days are flagged to the teacher). | Q8 | `gradebook_template_categories` (attendance row flagged Q8), `AttendanceScoreService` |
-| Where the fixed template applies | KG1 to Grade 10. Grades 11 and 12 keep free category weighting until 9b (the school says every grade). | Q9 (answered, 9b builds it) | `grading_schemes.uses_gradebook_template`, G10 and G11_12 flagged Q9 |
-| School days in the term | The dates with an attendance record for the section in that term. | Q8 | `AttendanceScoreService` |
+| Attendance component | Present and Tardy count as attended, Absent counts against. An excused absence counts as an absence (one rule for the mark, Days absent and the 80% check). Every 3 late arrivals count as one absence, whole multiples only, per term. Only the days the student has their own record count (missing days are flagged to the teacher). | Q8 (answered, 9b), FQ1 | `report_rules.excused_absences` (flagged FQ1), `lates_per_absence`, `AttendanceScoreService` |
+| Where the fixed template applies | Every grade, KG1 to Grade 12. | Q9 (answered, 9b) | `grading_schemes.uses_gradebook_template` |
+| School days in the term | The dates with an attendance record for the section in that term. Each subject uses the section's daily attendance (no attendance per subject). | Q8, FQ2 | `AttendanceScoreService`, `report_rules.subject_attendance_source` flagged FQ2 |
 | Empty categories | Left out of the weighting while the term is open. At lock, an empty Examinations category means no final mark for that subject (incomplete). | not asked (owner, 2026-11-27) | `ResultService::liveSectionTerm(final: true)` |
 | Report card "Final" column | The whole year: year marks, the year's G.P.A, position and class size, days absent of the four terms. Since 9a; it reverses phase 6's "Term 4's own result". | Q3 (answered, 9a) | `ReportCardService::build()` |
 | Report card "G.P.A" row | "G.P.A (AVERAGE %)" for KG1-9; "G.P.A" with the average for Grade 10 (the card's printed label, owner 2026-11-28); "G.P.A" for 11-12. | Q12 (answered, 9a) | `ReportCardService::build()` |
 | Report card position | The ranked position from the results (1, 2, 2, 3). | Q13 (answered, 9a) | `ResultService::rank()` |
-| Days absent | Absent plus Excused days in the term. The Admin can switch it to Absent only. | Q8 | `report_rules.days_absent_counts`, flagged Q8 |
+| Days absent | Absent days, excused absences (by the excused rule) and absences from late arrivals (per term, with the term's own lates). Final adds up the four terms. | Q8 (answered, 9b), FQ1 | `AttendanceScoreService::daysAbsent()` |
 | Personality record | Rated once a year on the last term, printed on the final report only. The rule can still be set to the latest rated term or the report's own term. | Q14 (answered, 9a) | `report_rules.personality_shown` = `final_report` |
-| Minimum attendance | 80% to sit the examinations, checked on the section's daily attendance (attended over counted days, Excused left out). Flagged, never blocked. | Q16 | `report_rules.min_attendance_pct`, flagged Q16 |
+| Minimum attendance | 80%, checked over the school year so far, late arrivals converted on the year's total. Also flagged: more than 10% absent in a term (per subject, from daily attendance). Flagged, never blocked. | Q16 (answered, 9b) | `report_rules.min_attendance_pct`, `attendance_check_period`, `max_subject_absence_pct` |
 | Examination centre | "YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL" on every statement; the Admin can change it. | Q15 (answered, 9a) | `report_rules.examination_centre` |
 | Grade 10 statement | None: MYUM's Education Department issues it. | Q11 (answered) | `grade_levels.statement_layout` null for Grade 10 |
 | SUPW on the statement | Its word (PASS, INCOMPLETE, COMPLETE): after the counted subjects for Grades 5-9, among the compulsory subjects with HRS "-" for 11-12. | Q5 (answered, 9a) | `StatementOfMarksService::content()` |
@@ -787,11 +865,11 @@ The school's answers are in [YASIS_School_Answers.md](YASIS_School_Answers.md). 
 - Changed the build: T3 (codes can be reused), T4 and T5 (families see every transaction, no netting), T7 (Student Control carries charges too).
 - Noted, no change: T8 (adjustments after printing are possible, so the opening balance warning stays), T9 (the ferry fee is still charged monthly; the transport category stays), T11 (not sure about the star; it is stored, with no special handling).
 
-**The academic answers (Q1, Q3-Q9, Q11-Q17):** applied in 9a, except the attendance answers (Q8, Q16) and the Grades 11-12 template (Q9), which are 9b, and Q17 and the instalments (Q18), which are the fee PR. Q10 (rounding) wasn't answered. The rules file's section 12 marks each one.
+**The academic answers (Q1, Q3-Q9, Q11-Q17):** applied in 9a, and the attendance answers (Q8, Q16) and the Grades 11-12 template (Q9) in 9b. Q17 and the instalments (Q18) are the fee PR. Q10 (rounding) wasn't answered. The rules file's section 12 marks each one.
 
 **Follow-up questions for the VP still open (numbered FQ1-FQ9 in the data):**
-- FQ1. Does an excused absence count as an absence for the 10% mark and the 80% rule? (9b default.)
-- FQ2. Does each subject teacher take attendance every lesson today? Would daily attendance be acceptable for the 10% subject attendance mark? (9b default.)
+- FQ1. Does an excused absence count as an absence for the 10% mark and the 80% rule? (Default yes: `report_rules.excused_absences`, flagged FQ1.)
+- FQ2. Does each subject teacher take attendance every lesson today? Would daily attendance be acceptable for the 10% subject attendance mark? (Default daily: `report_rules.subject_attendance_source`, flagged FQ2.)
 - FQ3. Does SUPW "Incomplete" stop a student being promoted? (Default no: `report_rules.supw_incomplete_blocks_promotion`, flagged FQ3.)
 - FQ4. Does Grade 10 Computer count? (Default no: the Grade 10 COMP curriculum row, flagged FQ4.)
 - FQ5. Is Pre KG the same as KG1, and is KG1 tuition 1,600,000 or 2,400,000? (Fee PR.)
