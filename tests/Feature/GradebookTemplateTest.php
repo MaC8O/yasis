@@ -138,16 +138,17 @@ class GradebookTemplateTest extends TestCase
         $this->assertSame('76.67', $this->mark($this->a));
     }
 
-    public function test_attendance_counts_present_and_tardy_and_leaves_excused_days_out(): void
+    public function test_attendance_counts_present_and_tardy_as_attended_and_an_excused_day_as_absent(): void
     {
         $this->adopt();
         $this->item('quizzes', 'Quiz 1', 10, [$this->a->id => 10]);
         $this->attend($this->a, ['Present', 'Present', 'Tardy', 'Absent', 'Excused']);
 
-        // Attendance 3 of 4 counted days = 75%; quizzes 100%: (100 x 10 + 75 x 10) / 20 = 87.50.
-        $this->assertSame('87.50', $this->mark($this->a));
+        // The school's answer (Q8, FQ1): an excused absence counts. Attendance 3 of 5 days = 60%;
+        // quizzes 100%: (100 x 10 + 60 x 10) / 20 = 80.00. One late arrival converts to nothing.
+        $this->assertSame('80.00', $this->mark($this->a));
         $row = collect(app(GradeService::class)->categoryBreakdown($this->section, $this->term(), $this->a)[$this->math])->firstWhere('name', 'Attendance');
-        $this->assertSame(['75', '3 of 4 days (1 excused not counted)'], [$row['avg'], $row['detail']]);
+        $this->assertSame(['60', '3 of 5 days · 1 excused counted as absent'], [$row['avg'], $row['detail']]);
     }
 
     public function test_a_term_without_attendance_records_leaves_attendance_out(): void
@@ -258,7 +259,7 @@ class GradebookTemplateTest extends TestCase
 
         $this->actingAs($principal->user)->get('/principal/gradebook-template')->assertOk()
             ->assertSee('Participation / obedience / Code of Conduct')->assertSee('60%')
-            ->assertSee('Q8 in the rules file')->assertSee('Needs confirmation from the school (Q9)')
+            ->assertSee('FQ1, FQ2 in the rules file')->assertDontSee('Needs confirmation from the school (Q9)')
             ->assertDontSee('Save template');
         $this->actingAs($principal->user)->put('/admin/gradebook-template', $this->templatePayload())->assertForbidden();
 
@@ -268,25 +269,22 @@ class GradebookTemplateTest extends TestCase
 
     // --- Grades 11-12 ------------------------------------------------------------------------------
 
-    public function test_grade_11_keeps_free_weighting(): void
+    public function test_grade_11_uses_the_template_too(): void
     {
+        // The school's answer to Q9: the 10/10/10/10/60 make-up applies to every grade.
         $eleven = $this->levelSection('Grade 11-A', '11');
         TeachingAssignment::create(['section_id' => $eleven->id, 'subject_id' => $this->math, 'teacher_id' => $this->teacher->id]);
-        $student = $this->pupil('Eleven Student', $eleven);
+        $this->pupil('Eleven Student', $eleven);
 
+        $this->actingAs($this->teacher->user)->get("/teacher/gradebook?section={$eleven->id}&subject={$this->math}&term={$this->term()->id}")->assertOk();
+        $this->assertSame(['assignments', 'attendance', 'examinations', 'participation', 'quizzes'],
+            AssessmentCategory::where('section_id', $eleven->id)->orderBy('template_key')->pluck('template_key')->all());
+
+        // A teacher can't add a category of their own any more.
         $this->actingAs($this->teacher->user)->post('/teacher/gradebook/categories', [
             'section_id' => $eleven->id, 'subject_id' => $this->math, 'term_id' => $this->term()->id, 'name' => 'Coursework', 'weight_pct' => 40,
-        ])->assertSessionHasNoErrors()->assertSessionMissing('warning');
-        $coursework = AssessmentCategory::where('section_id', $eleven->id)->sole();
-        $this->assertNull($coursework->template_key);
-        foreach ([[10, 8], [20, 15]] as $i => [$max, $score]) {
-            $item = Assessment::create(['category_id' => $coursework->id, 'name' => "Task {$i}", 'max_score' => $max]);
-            Grade::create(['assessment_id' => $item->id, 'student_id' => $student->id, 'score' => $score, 'entered_by' => $this->teacher->id]);
-        }
-
-        // The mean of 80% and 75%, as before; no fixed categories were created.
-        $this->assertSame('77.50', app(GradeService::class)->sectionMarks($eleven, $this->term())[$student->id][$this->math]);
-        $this->assertSame([], app(GradebookTemplateService::class)->adopt($eleven, $this->math, $this->term(), $this->admin->user)['created']);
+        ])->assertSessionHas('warning');
+        $this->assertSame(5, AssessmentCategory::where('section_id', $eleven->id)->count());
     }
 
     // --- Locking ---------------------------------------------------------------------------------

@@ -27,11 +27,22 @@
 
     @if ($below->isNotEmpty())
         <div class="rounded-xl border border-warning-line bg-warning-soft px-5 py-3 text-sm text-warning" data-below-minimum>
-            <p class="font-semibold">Below the {{ $minimum }}% attendance minimum in {{ $term->name }}</p>
+            <p class="font-semibold">Below the {{ $minimum }}% attendance minimum {{ $checksYear ? 'in the school year up to '.$term->name : 'in '.$term->name }}</p>
             <p class="mt-0.5">These students may be denied permission to sit the examinations. The system does not block anyone: a person decides.</p>
             <ul class="mt-1 list-disc pl-5">
                 @foreach ($below as $row)
                     <li>{{ $row['student'] }}: {{ $row['pct'] }}% ({{ $row['attended'] }} of {{ $row['counted'] }} days)</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+    @if ($aboveSubject->isNotEmpty())
+        <div class="rounded-xl border border-warning-line bg-warning-soft px-5 py-3 text-sm text-warning" data-above-subject-absence>
+            <p class="font-semibold">More than {{ $subjectLimit }}% absent in {{ $term->name }}</p>
+            <p class="mt-0.5">The rule is per subject; ISMS has no attendance per subject, so it uses the daily attendance and is the same for every subject. Flagged only.</p>
+            <ul class="mt-1 list-disc pl-5">
+                @foreach ($aboveSubject as $row)
+                    <li>{{ $row['student'] }}: {{ $row['absent_pct'] }}% absent ({{ $row['counted'] - $row['attended'] }} of {{ $row['counted'] }} days)</li>
                 @endforeach
             </ul>
         </div>
@@ -55,7 +66,7 @@
                         @php $att = $attendance[$student->id] ?? null; @endphp
                         <tr class="border-b border-neutral-100" data-student="{{ $student->id }}">
                             <td class="py-2 pr-3 font-medium">{{ $student->name }}</td>
-                            <td class="py-2 pr-3 {{ $below->has($student->id) ? 'text-warning font-semibold' : '' }}">{{ $att && $att['pct'] !== null ? round((float) $att['pct'], 1).'%' : '—' }}@if ($below->has($student->id)) · below {{ $minimum }}%@endif</td>
+                            <td class="py-2 pr-3 {{ $below->has($student->id) ? 'text-warning font-semibold' : '' }}">{{ $att && $att['pct'] !== null ? round((float) $att['pct'], 1).'%' : '—' }}@if ($below->has($student->id)) · below {{ $minimum }}%{{ $checksYear ? ' this year' : '' }}@endif</td>
                             <td class="py-2 pr-3">{{ \App\Services\AttendanceScoreService::daysAbsent($att) }}</td>
                             <td class="py-2 pr-3">{{ in_array($student->id, $confirmed) ? 'Confirmed' : '—' }}</td>
                             <td class="py-2 pr-3">{{ in_array($student->id, $guardianAcks) ? 'Acknowledged' : '—' }}</td>

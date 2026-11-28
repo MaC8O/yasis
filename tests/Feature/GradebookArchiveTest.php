@@ -6,6 +6,7 @@ use App\Models\Assessment;
 use App\Models\AssessmentCategory;
 use App\Models\AuditLog;
 use App\Models\Grade;
+use App\Models\GradingScheme;
 use App\Models\Section;
 use App\Models\StaffProfile;
 use App\Models\Student;
@@ -46,6 +47,9 @@ class GradebookArchiveTest extends TestCase
         $this->seedYearWithTerms();
         $this->teacher = $this->makeStaff('teacher', 'Teacher', 'teacher@test.local');
         $this->math = Subject::where('code', 'MATH')->whereNull('department_id')->value('id');
+        // Since 9b every grade uses the template; a scheme that doesn't (data the Admin can't change
+        // but a migration could) still lets teachers keep their own categories, archived by these rules.
+        GradingScheme::where('code', 'G11_12')->update(['uses_gradebook_template' => false]);
         $this->eleven = $this->levelSection('Grade 11-A', '11');
         TeachingAssignment::create(['section_id' => $this->eleven->id, 'subject_id' => $this->math, 'teacher_id' => $this->teacher->id]);
         $this->student = $this->pupil('Eleven Student', $this->eleven);

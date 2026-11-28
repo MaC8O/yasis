@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The fixed gradebook template (sdp_doc/YASIS_Academic_and_Fee_Rules.md §4.1) for the grade levels
- * whose grading scheme uses it (KG1 to Grade 10; Q9).
+ * whose grading scheme uses it (every grade since 9b: the school's answer to Q9).
  *
  * - adopt(): puts one gradebook (section, subject, term) on the template. Categories whose names
  *   match a template category become it; a second match is merged into the first; items in
@@ -45,6 +45,12 @@ class GradebookTemplateService
         $section->loadMissing('gradeLevel.gradingScheme');
 
         return (bool) $section->gradeLevel?->gradingScheme?->uses_gradebook_template;
+    }
+
+    /** "40" or "12.5" for a weight. */
+    private static function pct(BigDecimal $value): string
+    {
+        return rtrim(rtrim((string) $value->toScale(2), '0'), '.');
     }
 
     /** Template key a category name matches, or null. */
@@ -79,7 +85,7 @@ class GradebookTemplateService
      */
     public function adopt(Section $section, int $subjectId, Term $term, User $actor): array
     {
-        $report = ['renamed' => [], 'merged' => [], 'moved' => [], 'archived' => [], 'created' => []];
+        $report = ['renamed' => [], 'merged' => [], 'moved' => [], 'reweighted' => [], 'archived' => [], 'created' => []];
         if ($term->is_locked || ! $this->appliesTo($section)) {
             return $report;
         }
@@ -129,9 +135,19 @@ class GradebookTemplateService
                     }
                 } elseif ($key !== null && ! $targets->has($key)) {
                     $old = $category->name;
+                    $oldWeight = BigDecimal::of((string) $category->weight_pct);
                     $category->update(['template_key' => $key, 'name' => $template[$key]->name, 'weight_pct' => $template[$key]->weight_pct]);
                     $targets[$key] = $category;
                     $report['renamed'][] = $old.' → '.$template[$key]->name;
+                    // The items go with the category; list each when its category's name changes, so a wrong guess is easy to spot.
+                    if ($old !== $template[$key]->name) {
+                        foreach ($category->assessments as $item) {
+                            $report['moved'][] = ['item' => $item->name, 'from' => $old, 'to' => $template[$key]->name];
+                        }
+                    }
+                    if (! $oldWeight->isEqualTo((string) $template[$key]->weight_pct)) {
+                        $report['reweighted'][] = $old.' '.self::pct($oldWeight).'% → '.$template[$key]->name.' '.self::pct(BigDecimal::of((string) $template[$key]->weight_pct)).'%';
+                    }
                 } elseif ($key !== null) {
                     foreach ($category->assessments as $item) {
                         $move($item, $category, $key);
@@ -157,7 +173,7 @@ class GradebookTemplateService
                     'section' => $section->name, 'subject' => $subject?->code, 'term' => $term->name,
                 ] + $report);
 
-                if ($report['moved'] || array_filter($report['archived'], fn ($a) => str_contains($a, 'not counted'))) {
+                if ($report['moved'] || $report['reweighted'] || array_filter($report['archived'], fn ($a) => str_contains($a, 'not counted'))) {
                     $this->notifyTeachers($section, $subject, $term, $report);
                 }
             }
@@ -247,6 +263,9 @@ class GradebookTemplateService
     private function notifyTeachers(Section $section, ?Subject $subject, Term $term, array $report): void
     {
         $lines = array_map(fn ($m) => "“{$m['item']}” moved from {$m['from']} to {$m['to']}", $report['moved']);
+        foreach ($report['reweighted'] ?? [] as $weight) {
+            $lines[] = "Weight changed: {$weight}";
+        }
         foreach (array_filter($report['archived'], fn ($a) => str_contains($a, 'not counted')) as $archived) {
             $lines[] = "Archived: {$archived}";
         }

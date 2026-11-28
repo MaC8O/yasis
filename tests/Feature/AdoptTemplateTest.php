@@ -77,7 +77,8 @@ class AdoptTemplateTest extends TestCase
         $grades = Grade::orderBy('id')->get(['id', 'assessment_id', 'score'])->toArray();
 
         $this->assertSame(0, Artisan::call('gradebook:adopt-template', ['--actor' => 'admin@test.local']));
-        $this->assertStringContainsString('Moved 1 gradebook onto the template (3 items moved)', Artisan::output());
+        // 3 items moved out of other categories, and 4 whose category was renamed into a template one.
+        $this->assertStringContainsString('Moved 1 gradebook onto the template (7 items moved)', Artisan::output());
 
         // 1. A matching category becomes the template category, keeping its items.
         $this->assertSame(['quizzes', 'Class tests / quizzes', '10.00'], [$quiz->fresh()->template_key, $quiz->fresh()->name, (string) $quiz->fresh()->weight_pct]);
@@ -102,13 +103,19 @@ class AdoptTemplateTest extends TestCase
 
         $log = AuditLog::where('action', 'Moved gradebook onto the template')->sole();
         $this->assertSame('admin', $log->role);
-        $this->assertCount(3, $log->details['moved']);
+        $this->assertCount(7, $log->details['moved']);
         $this->assertContains('Test → Class tests / quizzes', $log->details['merged']);
 
-        // The teacher is told once which items moved.
-        $notice = $this->teacher->user->unreadNotifications()->sole();
-        $this->assertContains('“Final exam paper” moved from Misc to Examinations', $notice->data['lines']);
-        $this->assertContains('“Unit test” moved from Test to Class tests / quizzes', $notice->data['lines']);
+        // The teacher is told once about every item that changed category, with its old and new
+        // category, and every weight that changed.
+        $lines = $this->teacher->user->unreadNotifications()->sole()->data['lines'];
+        $this->assertContains('“Final exam paper” moved from Misc to Examinations', $lines);
+        $this->assertContains('“Unit test” moved from Test to Class tests / quizzes', $lines);
+        $this->assertContains('“Quiz 1” moved from Quiz to Class tests / quizzes', $lines);
+        $this->assertContains('“Worksheet” moved from Homework to Assignments', $lines);
+        $this->assertContains('“Mid-term” moved from Mid-term Exam to Examinations', $lines);
+        $this->assertContains('Weight changed: Quiz 20% → Class tests / quizzes 10%', $lines);
+        $this->assertContains('Weight changed: Mid-term Exam 30% → Examinations 60%', $lines);
     }
 
     public function test_it_is_safe_to_run_again_and_never_touches_a_locked_term(): void
@@ -126,15 +133,44 @@ class AdoptTemplateTest extends TestCase
         $this->assertSame(1, AssessmentCategory::where('term_id', $this->terms[1]->id)->count());
     }
 
-    public function test_grade_11_and_12_gradebooks_are_left_alone(): void
+    public function test_grade_11_and_12_gradebooks_move_onto_the_template_and_a_locked_term_keeps_its_weights(): void
     {
+        // The school's answer to Q9: the 10/10/10/10/60 make-up applies to Grades 11-12 too.
         $eleven = $this->levelSection('Grade 11-A', '11');
-        $own = AssessmentCategory::create(['section_id' => $eleven->id, 'subject_id' => $this->math, 'term_id' => $this->terms[0]->id, 'name' => 'Coursework', 'weight_pct' => 40]);
+        TeachingAssignment::create(['section_id' => $eleven->id, 'subject_id' => $this->math, 'teacher_id' => $this->teacher->id]);
+        $pupil = $this->pupil('Grade Eleven', $eleven);
+        $own = function (string $name, int $weight, array $items, int $term) use ($eleven, $pupil) {
+            $category = AssessmentCategory::create(['section_id' => $eleven->id, 'subject_id' => $this->math, 'term_id' => $this->terms[$term]->id, 'name' => $name, 'weight_pct' => $weight]);
+            foreach ($items as $itemName => [$type, $score]) {
+                $item = Assessment::create(['category_id' => $category->id, 'name' => $itemName, 'type' => $type, 'max_score' => 100]);
+                Grade::create(['assessment_id' => $item->id, 'student_id' => $pupil->id, 'score' => $score, 'entered_by' => $this->teacher->id]);
+            }
+
+            return $category;
+        };
+        $coursework = $own('Coursework', 40, ['Lab report' => ['assignment', 80], 'Chapter test' => ['test', 70]], 0);
+        $exams = $own('Examinations', 60, ['Mid-term exam' => ['test', 75]], 0);
+        $locked = $own('Coursework', 40, ['Old lab' => ['assignment', 90]], 1);
+        $this->terms[1]->update(['is_locked' => true]);
+        $grades = Grade::orderBy('id')->get(['id', 'assessment_id', 'score'])->toArray();
 
         Artisan::call('gradebook:adopt-template', ['--actor' => 'admin@test.local']);
 
-        $this->assertSame(['Coursework', null], [$own->fresh()->name, $own->fresh()->template_key]);
-        $this->assertSame(1, AssessmentCategory::where('section_id', $eleven->id)->count());
+        // Coursework matches nothing: its items move by type, and it is archived (kept).
+        $this->assertSame('assignments', $this->categoryOf('Lab report')->template_key);
+        $this->assertSame('quizzes', $this->categoryOf('Chapter test')->template_key);
+        $this->assertNotNull($coursework->fresh()->archived_at);
+        // Examinations matches and keeps its items at the template's 60%.
+        $this->assertSame(['examinations', '60.00'], [$exams->fresh()->template_key, (string) $exams->fresh()->weight_pct]);
+        $this->assertSame(5, AssessmentCategory::where('section_id', $eleven->id)->where('term_id', $this->terms[0]->id)->active()->count());
+        $this->assertSame($grades, Grade::orderBy('id')->get(['id', 'assessment_id', 'score'])->toArray());
+
+        $notice = $this->teacher->user->unreadNotifications()->get()->first(fn ($n) => $n->data['section_id'] === $eleven->id);
+        $this->assertContains('“Lab report” moved from Coursework to Assignments', $notice->data['lines']);
+        $this->assertContains('“Chapter test” moved from Coursework to Class tests / quizzes', $notice->data['lines']);
+
+        // The locked term keeps its own category and weight, as frozen.
+        $this->assertSame(['Coursework', null, null, '40.00'], [$locked->fresh()->name, $locked->fresh()->template_key, $locked->fresh()->archived_at, (string) $locked->fresh()->weight_pct]);
     }
 
     public function test_the_command_needs_an_admin_or_principal(): void

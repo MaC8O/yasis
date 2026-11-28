@@ -87,7 +87,8 @@ class ResultFreezeService
 
             $this->supersede($freeze, $section, $reason);
             $count = $this->store($freeze, $this->results->liveSectionTerm($section, $term, $this->snapshotResolver($freeze), final: true,
-                curriculumFor: $this->curriculumResolver($freeze)), $this->attendance->forSectionTerm($section, $term));
+                curriculumFor: $this->curriculumResolver($freeze), attendanceRules: $freeze->attendance_rules),
+                $this->attendance->forSectionTerm($section, $term, $freeze->attendance_rules));
 
             $year = ResultFreeze::active()->whereNull('term_id')->where('academic_year_id', $term->academic_year_id)->lockForUpdate()->first();
             if ($year) {
@@ -155,8 +156,8 @@ class ResultFreezeService
         $sections = Section::where('academic_year_id', $term->academic_year_id)->orderBy('id')->get();
         $students = 0;
         foreach ($sections as $section) {
-            $students += $this->store($freeze, $this->results->liveSectionTerm($section, $term, $resolver, final: true, curriculumFor: $curriculum),
-                $this->attendance->forSectionTerm($section, $term));
+            $students += $this->store($freeze, $this->results->liveSectionTerm($section, $term, $resolver, final: true, curriculumFor: $curriculum,
+                attendanceRules: $freeze->attendance_rules), $this->attendance->forSectionTerm($section, $term, $freeze->attendance_rules));
         }
 
         $details = [
@@ -195,6 +196,7 @@ class ResultFreezeService
             'rules' => $termFreeze->rules,
             'reason' => $termFreeze->reason,
             'curriculum' => $termFreeze->curriculum,
+            'attendance_rules' => $termFreeze->attendance_rules,
             'frozen_at' => now(),
             'frozen_by' => $actor->id,
         ]);
@@ -222,7 +224,8 @@ class ResultFreezeService
         foreach ($from?->curriculum ?? [] as $levelId => $rows) {
             $curriculum[$levelId] = $rows;
         }
-        $freeze->update(['curriculum' => $curriculum]);
+        // The attendance rules (excused days, late arrivals) the Attendance category is worked out with.
+        $freeze->update(['curriculum' => $curriculum, 'attendance_rules' => $from?->attendance_rules ?? AttendanceScoreService::rules()]);
 
         $previous = $from ? $from->schemes->keyBy('grading_scheme_id') : collect();
         foreach (GradingScheme::orderBy('id')->get() as $scheme) {

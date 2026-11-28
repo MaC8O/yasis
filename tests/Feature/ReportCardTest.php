@@ -275,34 +275,66 @@ class ReportCardTest extends TestCase
         $this->attend($this->student, ['Present', 'Absent', 'Excused', 'Tardy', 'Absent']);
         $this->assertSame('3', $this->card()['daysAbsentRow'][1]);
 
-        ReportRule::where('key', 'days_absent_counts')->update(['value' => 'absent_only']);
+        // The one excused rule (FQ1) covers Days absent too.
+        ReportRule::where('key', 'excused_absences')->update(['value' => 'leave_out']);
         $this->assertSame('2', $this->card()['daysAbsentRow'][1]);
-        ReportRule::where('key', 'days_absent_counts')->update(['value' => 'absent_and_excused']);
+        ReportRule::where('key', 'excused_absences')->update(['value' => 'count_as_absent']);
 
         $this->lock();
         AttendanceRecord::where('student_id', $this->student->id)->where('status', 'Absent')->update(['status' => 'Present']);
         $this->assertSame('3', $this->card()['daysAbsentRow'][1]); // frozen at lock
     }
 
+    public function test_days_absent_includes_the_terms_late_arrivals_three_to_an_absence_and_final_adds_the_terms(): void
+    {
+        // Per term, with the term's own late total: whole multiples of three only.
+        $this->attend($this->student, ['Tardy', 'Tardy', 'Tardy', 'Absent', 'Present'], 1); // 1 absent + 3 lates = 2
+        $this->attend($this->student, ['Tardy', 'Tardy', 'Tardy', 'Tardy', 'Tardy'], 2);    // 5 lates = 1
+        $this->attend($this->student, ['Tardy', 'Tardy', 'Present'], 3);                     // 2 lates = 0
+        $this->attend($this->student, ['Present'], 4);
+
+        $card = $this->card(term: 4);
+        // Final is the four terms added up: 2 + 1 + 0 + 0 = 3 (not the 10 lates of the year at once).
+        $this->assertSame(['2', '1', '0', '0'], [$card['daysAbsentRow'][1], $card['daysAbsentRow'][2], $card['daysAbsentRow'][3], '0']);
+        $this->assertSame('3', $card['daysAbsentRow'][4]);
+
+        // The attendance mark agrees: in Term 1, 3 lates count as one absence, so 3 of 5 days attended (60%).
+        $row = app(\App\Services\AttendanceScoreService::class)->forSectionTerm($this->section, $this->terms[0])['students'][$this->student->id];
+        $this->assertSame([1, 3, 5, 2, '60'], [$row['late_absences'], $row['attended'], $row['counted'], $row['days_absent'], (string) \Brick\Math\BigDecimal::of($row['pct'])->toScale(0)]);
+
+        // Turned off (0), late arrivals never count.
+        ReportRule::where('key', 'lates_per_absence')->update(['value' => '0']);
+        $this->assertSame(['1', '0', '1'], [$this->card(term: 4)['daysAbsentRow'][1], $this->card(term: 4)['daysAbsentRow'][2], $this->card(term: 4)['daysAbsentRow'][4]]);
+    }
+
     public function test_students_below_the_minimum_attendance_are_flagged_never_blocked(): void
     {
         $exactly = $this->pupil('Exactly Eighty', $this->section);
         $below = $this->pupil('Below Eighty', $this->section);
-        // 8 of 10 counted (Tardy attends, Excused left out) = 80%: not below.
-        $this->attend($exactly, ['Present', 'Present', 'Tardy', 'Present', 'Present', 'Present', 'Present', 'Present', 'Absent', 'Absent', 'Excused']);
+        // 8 of 10 counted (Tardy attends) = 80%: not below.
+        $this->attend($exactly, ['Present', 'Present', 'Tardy', 'Present', 'Present', 'Present', 'Present', 'Present', 'Absent', 'Absent']);
         // 7 of 9 = 77.8%: below.
         $this->attend($below, ['Present', 'Present', 'Present', 'Present', 'Present', 'Present', 'Tardy', 'Absent', 'Absent']);
 
         $vp = $this->makeStaff('vp_academic', 'VP_Academic', 'vp@test.local');
-        $this->actingAs($vp->user)->get('/report-cards/attendance')->assertOk()
-            ->assertSee('Below Eighty')->assertSee('77.8%')->assertDontSee('Exactly Eighty');
+        $page = $this->actingAs($vp->user)->get('/report-cards/attendance')->assertOk()->getContent();
+        $list = fn (string $marker) => preg_match('/'.$marker.'(.*?)<\/table>/s', $page, $m) ? strip_tags($m[1]) : '';
+        // Below 80% (the school year so far): only Below Eighty.
+        $this->assertStringContainsString('Below Eighty', $list('data-below-list'));
+        $this->assertStringContainsString('77.8%', $list('data-below-list'));
+        $this->assertStringNotContainsString('Exactly Eighty', $list('data-below-list'));
+        // More than 10% absent in the term: both (20% and 22.2%).
+        $this->assertStringContainsString('Exactly Eighty', $list('data-subject-absence-list'));
+        $this->assertStringContainsString('22.2%', $list('data-subject-absence-list'));
         $this->actingAs($vp->user)->get('/vp_academic/dashboard')->assertOk()->assertSee('1 student below 80% attendance');
         $this->actingAs($this->principal->user)->get('/principal/dashboard')->assertOk()->assertSee('1 student below 80% attendance');
         $this->actingAs($this->homeroom->user)->get("/report-cards?section={$this->section->id}&term={$this->terms[0]->id}")->assertOk()
             ->assertSee('Below the 80% attendance minimum')->assertSee('Below Eighty: 77.8%');
 
         ReportRule::where('key', 'min_attendance_pct')->update(['value' => '75']);
-        $this->actingAs($vp->user)->get('/report-cards/attendance')->assertOk()->assertDontSee('Below Eighty');
+        $page = $this->actingAs($vp->user)->get('/report-cards/attendance')->assertOk()->getContent();
+        $this->assertStringNotContainsString('Below Eighty', preg_match('/data-below-list(.*?)<\/table>/s', $page, $m) ? $m[1] : '');
+        $this->assertStringContainsString('No student is below the minimum.', $page);
 
         // Nothing blocks the student: the card and the result are still there.
         $this->assertSame('2', $this->card($below)['daysAbsentRow'][1]);
@@ -334,13 +366,13 @@ class ReportCardTest extends TestCase
     public function test_the_admin_edits_report_rules_and_the_principal_reads_them(): void
     {
         $admin = $this->makeStaff('admin', 'Admin', 'admin@test.local');
-        $values = ['min_attendance_pct' => '85', 'days_absent_counts' => 'absent_only', 'personality_shown' => 'latest_term',
+        $values = ['min_attendance_pct' => '85', 'excused_absences' => 'leave_out', 'personality_shown' => 'latest_term', 'lates_per_absence' => '3', 'attendance_check_period' => 'year', 'max_subject_absence_pct' => '10', 'subject_attendance_source' => 'daily',
             'examination_centre' => 'YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL', 'supw_incomplete_blocks_promotion' => 'no'];
 
         $this->actingAs($admin->user)->put('/admin/report-rules', ['values' => $values, 'confirmed' => ['min_attendance_pct']])->assertSessionHas('status');
         $this->assertSame(85, ReportRule::minAttendancePct());
         $this->assertNull(ReportRule::where('key', 'min_attendance_pct')->value('pending_question'));
-        $this->assertSame('Q8', ReportRule::where('key', 'days_absent_counts')->value('pending_question'));
+        $this->assertSame('FQ1', ReportRule::where('key', 'excused_absences')->value('pending_question'));
         $log = AuditLog::where('action', 'Updated report card rules')->sole();
         $this->assertSame(['from' => '80', 'to' => '85'], $log->details['changes']['min_attendance_pct']['value']);
 
