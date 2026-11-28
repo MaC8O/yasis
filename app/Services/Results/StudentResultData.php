@@ -33,6 +33,10 @@ final class StudentResultData
         public readonly ?string $recommendation,
         public readonly array $subjects,
         public readonly bool $frozen = false,
+        /** The average of the counted subjects where the result is a point total (Grade 10's G.P.A row and position). */
+        public readonly ?string $average = null,
+        /** The question the class of pass waits on (Grade 10, Q19): the total is shown, the class isn't decided. */
+        public readonly ?string $classPending = null,
     ) {}
 
     public function subject(string $code): ?SubjectResult
@@ -65,7 +69,25 @@ final class StudentResultData
     public function summary(): string
     {
         return $this->isComplete()
-            ? "{$this->resultLabel} {$this->value} · {$this->classLabel}"
+            ? "{$this->resultLabel} {$this->value} · ".$this->classText()
             : implode(' ', $this->reasons);
+    }
+
+    /** The class of pass as shown: "First", or "class pending school answer (Q19)". */
+    public function classText(): string
+    {
+        return $this->classPending ? "class pending school answer ({$this->classPending})" : (string) $this->classLabel;
+    }
+
+    /** SUPW's word ("PASS", "INCOMPLETE", "COMPLETE") when the student takes it and has one. */
+    public function completionWord(): ?string
+    {
+        foreach ($this->subjects as $subject) {
+            if ($subject->usesCompletion() && $subject->taken) {
+                return $subject->bandLabel;
+            }
+        }
+
+        return null;
     }
 }

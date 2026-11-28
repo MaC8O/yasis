@@ -102,10 +102,14 @@ class StatementOfMarksService
         ];
 
         if ($level->statement_layout === 'kg9') {
-            // Every counted subject, so the listed scores make up the accumulative score (Q21);
-            // the first four (Moral, Myanmar, English, Mathematics) in the left column, as on the samples.
+            // Every counted subject, so the listed scores make up the accumulative score (Q21), then
+            // SUPW with its word (Grades 5-9, Q5); the first four (Moral, Myanmar, English,
+            // Mathematics) in the left column, as on the samples.
             $rows = $subjects->filter(fn (SubjectResult $s) => $s->counted && $s->taken)
-                ->map(fn (SubjectResult $s) => ['label' => $s->label, 'score' => $s->roundedMark])->values();
+                ->map(fn (SubjectResult $s) => ['label' => $s->label, 'score' => $s->roundedMark])
+                ->merge($subjects->filter(fn (SubjectResult $s) => $s->usesCompletion() && $s->taken)
+                    ->map(fn (SubjectResult $s) => ['label' => $s->label, 'score' => $s->bandLabel ?? '—', 'completion' => true]))
+                ->values();
 
             return $content + ['left' => $rows->take(4)->all(), 'right' => $rows->slice(4)->values()->all(), 'accumulative' => $r->value];
         }
@@ -113,17 +117,49 @@ class StatementOfMarksService
         $row = fn (SubjectResult $s) => [
             'label' => $s->label,
             'score' => $s->taken ? ($s->bandLabel ?? '') : '-',
-            'hours' => $s->gradingMode === 'pass_fail' || $s->creditHours === null ? '-' : $this->number($s->creditHours),
-        ];
+            'hours' => in_array($s->gradingMode, ['pass_fail', 'completion'], true) || $s->creditHours === null ? '-' : $this->number($s->creditHours),
+        ] + ($s->usesCompletion() ? ['completion' => true] : []);
+        // Track subjects (or, in results frozen before tracks, slot subjects) are the optional ones.
+        $optional = fn (SubjectResult $s) => $s->track !== null || $s->slot !== null;
         $rules = $this->rulesFor($freeze, $r->schemeId);
 
         return $content + [
-            'compulsory' => $subjects->whereNull('slot')->map($row)->values()->all(),
-            'optional' => $subjects->whereNotNull('slot')->map($row)->values()->all(),
+            'compulsory' => $subjects->reject($optional)->map($row)->values()->all(),
+            'optional' => $subjects->filter($optional)->map($row)->values()->all(),
             'gpa' => $r->value,
             'conversion' => $this->conversion($rules),
             'classes' => $this->classes($rules),
         ];
+    }
+
+    /**
+     * SUPW completed after the year was frozen: the issued statements of that student and year show
+     * COMPLETE instead of INCOMPLETE, changed in place (nothing else on them depends on SUPW).
+     * Returns how many statements changed.
+     */
+    public function completeSupw(int $studentId, int $academicYearId): int
+    {
+        $changed = 0;
+        $statements = StatementOfMarks::where('academic_year_id', $academicYearId)->whereNotNull('issued_at')
+            ->whereHas('documentRequest', fn ($q) => $q->where('student_id', $studentId))->get();
+        foreach ($statements as $statement) {
+            $content = $statement->content;
+            $touched = false;
+            foreach (['left', 'right', 'compulsory', 'optional'] as $list) {
+                foreach ($content[$list] ?? [] as $i => $row) {
+                    if (($row['completion'] ?? false) && ($row['score'] ?? null) === 'INCOMPLETE') {
+                        $content[$list][$i]['score'] = 'COMPLETE';
+                        $touched = true;
+                    }
+                }
+            }
+            if ($touched) {
+                $statement->update(['content' => $content]);
+                $changed++;
+            }
+        }
+
+        return $changed;
     }
 
     /** Prepare a statement as a Draft, with the two dates the Registrar enters. Audited. */

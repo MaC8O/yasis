@@ -1,15 +1,18 @@
 @php
     $hrs = fn ($v) => $v === null ? null : rtrim(rtrim(number_format((float) $v, 1), '0'), '.');
     $active = $offerings->whereNull('archived_at');
-    // A student's credit-hour total: counted compulsory hours plus one subject from each slot.
+    // A student's credit-hour total: counted compulsory hours plus their track's counted hours.
     $compulsoryHours = $active->where('is_compulsory', true)->where('counts_in_result', true)->sum(fn ($o) => (float) $o->credit_hours);
-    $slotHours = $active->whereNotNull('elective_slot')->where('counts_in_result', true)->groupBy('elective_slot')->map(fn ($rows) => $rows->max(fn ($o) => (float) $o->credit_hours));
+    // What counts for one student: the counted compulsory rows plus one track's counted rows.
+    $countedCompulsory = $active->whereNull('track')->where('is_compulsory', true)->where('counts_in_result', true)->count();
+    $countedTrack = (int) $active->whereNotNull('track')->where('counts_in_result', true)->groupBy('track')->map->count()->max();
+    $trackHours = $active->whereNotNull('track')->where('counts_in_result', true)->groupBy('track')->map(fn ($rows) => $rows->sum(fn ($o) => (float) $o->credit_hours))->sortKeys();
     $flagged = $active->filter(fn ($o) => $o->pending_question);
     $questions = $flagged->flatMap(fn ($o) => $o->pendingQuestions())->unique()->sort(SORT_NATURAL)->values();
 @endphp
 <x-app-layout title="Curriculum" :subtitle="$readOnly
         ? 'The subjects taught at each grade level, in report-card order. Set by the Admin; shown here read-only.'
-        : 'The subjects taught at each grade level, in report-card order: what counts in the result, the Grade 11-12 elective slots and credit hours.'"
+        : 'The subjects taught at each grade level, in report-card order: what counts in the result, the Grade 10-12 tracks and credit hours.'"
     :badge="$readOnly ? 'Principal' : 'Admin'" :role="$portal">
 
     <x-card title="Grade level">
@@ -27,8 +30,9 @@
     </x-card>
 
     @if ($level)
-        <x-card :title="$level->name" :subtitle="$active->count().' '.Str::plural('subject', $active->count()).' · '.$active->where('counts_in_result', true)->count().' counted in the result'
-            .($compulsoryHours || $slotHours->isNotEmpty() ? ' · a student takes '.$hrs($compulsoryHours + $slotHours->sum()).' credit hours ('.$hrs($compulsoryHours).' compulsory'.($slotHours->isNotEmpty() ? ' + one subject from each of slots '.$slotHours->keys()->implode(', ') : '').')' : '')">
+        <x-card :title="$level->name" :subtitle="$active->count().' '.Str::plural('subject', $active->count()).' · '.($countedTrack ? ($countedCompulsory + $countedTrack).' counted per student ('.$countedCompulsory.' compulsory + '.$countedTrack.' from their track)' : $active->where('counts_in_result', true)->count().' counted in the result')
+            .($trackHours->isNotEmpty() ? ' · one track per student: '.$trackHours->keys()->implode(' or ') : '')
+            .($compulsoryHours && $trackHours->filter()->isNotEmpty() ? ' · a student takes '.$hrs($compulsoryHours + $trackHours->max()).' credit hours ('.$hrs($compulsoryHours).' compulsory + '.$hrs($trackHours->max()).' in their track)' : '')">
 
             @if ($flagged->isNotEmpty())
                 <div class="mb-4 rounded-xl border border-warning-line bg-warning-soft px-4 py-3 text-sm text-warning">
@@ -50,7 +54,7 @@
                                     <p class="font-semibold text-sm">{{ $o->report_label }}</p>
                                     <p class="text-xs text-neutral-500">{{ $o->subject->name }} · <code>{{ $o->subject->code }}</code></p>
                                     <div class="mt-1.5 flex flex-wrap gap-1.5 text-xs">
-                                        <span class="rounded-full bg-neutral-100 px-2.5 py-1">{{ $o->is_compulsory ? 'Compulsory' : 'Optional · slot '.$o->elective_slot }}</span>
+                                        <span class="rounded-full bg-neutral-100 px-2.5 py-1">{{ $o->is_compulsory ? 'Compulsory' : ($o->track ? 'Track · '.$o->track : 'Optional · slot '.$o->elective_slot) }}</span>
                                         <span class="rounded-full bg-neutral-100 px-2.5 py-1">{{ \App\Models\SubjectOffering::GRADING_MODES[$o->grading_mode] }}</span>
                                         <span class="rounded-full px-2.5 py-1 {{ $o->counts_in_result ? 'bg-tint-green text-tint-green-ink' : 'bg-neutral-100' }}">{{ $o->counts_in_result ? 'Counted' : 'Not counted' }}</span>
                                         @if ($o->credit_hours !== null) <span class="rounded-full bg-neutral-100 px-2.5 py-1">{{ $hrs($o->credit_hours) }} {{ Str::plural('hr', (float) $o->credit_hours) }}</span> @endif

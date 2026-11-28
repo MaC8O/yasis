@@ -100,7 +100,8 @@ class ReportCardTest extends TestCase
 
         $ten = $this->levelSection('Grade 10-A', '10');
         $c10 = $this->card($this->pupil('Ten', $ten));
-        $this->assertSame(['g10', 'yellow', 'G.P.A (POINT TOTAL)'], [$c10['layout'], $c10['accent'], $c10['gpaLabel']]);
+        // Grade 10 keeps the card's printed "G.P.A" label; the row holds the average (Q12).
+        $this->assertSame(['g10', 'yellow', 'G.P.A'], [$c10['layout'], $c10['accent'], $c10['gpaLabel']]);
         $this->assertCount(13, $c10['subjects']);
 
         $twelve = $this->levelSection('Grade 12-A', '12');
@@ -131,44 +132,66 @@ class ReportCardTest extends TestCase
         $this->assertStringNotContainsString('PROVISIONAL', view('report-cards.pdf', ['card' => $this->card()])->render());
     }
 
-    public function test_the_final_column_is_the_fourth_terms_own_result(): void
+    public function test_the_final_column_is_the_whole_year(): void
     {
         foreach ([2 => 70, 3 => 80, 4 => 60] as $term => $math) {
             $this->setMarks($this->student, $this->section, $this->terms[$term - 1], array_merge(self::KG_EXAMPLE, ['MATH' => $math]));
         }
+        $this->attend($this->student, ['Absent', 'Present'], 1);
+        $this->attend($this->student, ['Absent', 'Excused'], 2);
+        $this->attend($this->student, ['Present'], 3);
+        $this->attend($this->student, ['Absent'], 4);
 
         $second = $this->card(term: 2);
         $math = collect($second['subjects'])->firstWhere('label', 'MATHEMATICS');
         $this->assertSame([1 => '82', 2 => '70', 3 => '', 4 => ''], $math['cells']); // later terms blank
 
-        $final = collect($this->card(term: 4)['subjects'])->firstWhere('label', 'MATHEMATICS');
-        // Term 4's own mark (60), not the year average (73).
-        $this->assertSame([1 => '82', 2 => '70', 3 => '80', 4 => '60'], $final['cells']);
+        $card = $this->card(term: 4);
+        $final = collect($card['subjects'])->firstWhere('label', 'MATHEMATICS');
+        // The year mark (82 + 70 + 80 + 60) / 4 = 73, not Term 4's own 60 (the school's answer to Q3).
+        $this->assertSame([1 => '82', 2 => '70', 3 => '80', 4 => '73'], $final['cells']);
+        // The year's average: (89 + 90 + 91 + 73 + 94 + 94 + 90) / 7 = 88.71 -> 89; Term 4 alone would be 87.
+        $this->assertSame(['90', '89'], [$card['gpaRow'][1], $card['gpaRow'][4]]);
+        $this->assertSame(['1', '1'], [$card['positionRow'][4], $card['totalRow'][4]]);
+        // Days absent in the Final column: the four terms together (1 + 2 + 0 + 1).
+        $this->assertSame(['1', '2', '0', '4'], array_values($card['daysAbsentRow']));
+        $this->assertTrue($card['provisional']);
     }
 
     // --- Personality -------------------------------------------------------------------------------
 
-    public function test_the_homeroom_teacher_rates_personality_until_the_term_is_locked(): void
+    public function test_the_homeroom_teacher_rates_personality_once_a_year_until_the_last_term_is_locked(): void
     {
-        $url = "/report-cards/{$this->section->id}/{$this->terms[0]->id}/personality";
+        // Rated once a year, on the last term (Q14): an earlier term is refused.
+        $this->actingAs($this->homeroom->user)->put("/report-cards/{$this->section->id}/{$this->terms[0]->id}/personality",
+            ['ratings' => [$this->student->id => ['social' => 'A']]])->assertSessionHas('warning', 'Personality traits are rated once a year, on Final.');
+        $this->actingAs($this->homeroom->user)->get("/report-cards?section={$this->section->id}&term={$this->terms[0]->id}")->assertOk()
+            ->assertSee('Traits are rated once a year, on Final');
+
+        $url = "/report-cards/{$this->section->id}/{$this->terms[3]->id}/personality";
         $this->actingAs($this->homeroom->user)->put($url, ['ratings' => [$this->student->id => ['creative_thinking' => 'A', 'discipline' => 'B']]])
             ->assertSessionHas('status', 'Saved 2 ratings.');
-        $this->assertSame(['creative_thinking' => 'A', 'discipline' => 'B'], $this->card()['personality']['ratings']);
+        $this->assertSame(['creative_thinking' => 'A', 'discipline' => 'B'], $this->card(term: 4)['personality']['ratings']);
+        // Printed on the final report only: earlier cards leave the block blank.
+        $this->assertSame([null, []], [$this->card(term: 3)['personality']['term'], $this->card(term: 3)['personality']['ratings']]);
         $this->assertSame('teacher', AuditLog::where('action', 'Rated personality traits')->sole()->role);
 
         $this->actingAs($this->homeroom->user)->put($url, ['ratings' => [$this->student->id => ['creative_thinking' => 'D']]])->assertSessionHasErrors();
         $other = $this->makeStaff('teacher', 'Teacher', 'other@test.local');
         $this->actingAs($other->user)->put($url, ['ratings' => [$this->student->id => ['social' => 'C']]])->assertForbidden();
 
-        $this->lock();
+        $this->lock(4);
         $this->actingAs($this->homeroom->user)->put($url, ['ratings' => [$this->student->id => ['social' => 'C']]])->assertSessionHas('warning');
         $this->assertSame(2, PersonalityRating::count());
     }
 
-    public function test_the_card_prints_the_latest_rated_term_or_the_reports_own_term(): void
+    public function test_the_rule_can_still_print_the_latest_rated_term_or_the_reports_own_term(): void
     {
         PersonalityRating::create(['student_id' => $this->student->id, 'term_id' => $this->terms[0]->id, 'trait' => 'social', 'rating' => 'A', 'rated_by' => $this->homeroom->id]);
+        // By default (once a year) a Term 1 rating isn't printed anywhere.
+        $this->assertNull($this->card(term: 2)['personality']['term']);
 
+        ReportRule::where('key', 'personality_shown')->update(['value' => 'latest_term']);
         $card = $this->card(term: 2);
         $this->assertSame([$this->terms[0]->id, ['social' => 'A']], [$card['personality']['term']->id, $card['personality']['ratings']]);
 
@@ -284,7 +307,7 @@ class ReportCardTest extends TestCase
         // Nothing blocks the student: the card and the result are still there.
         $this->assertSame('2', $this->card($below)['daysAbsentRow'][1]);
         $this->actingAs($vp->user)->get("/report-cards/{$this->section->id}/{$this->terms[0]->id}/{$below->id}")->assertOk()->assertSee('Below Eighty');
-        $this->actingAs($this->homeroom->user)->put("/report-cards/{$this->section->id}/{$this->terms[0]->id}/personality", ['ratings' => [$below->id => ['social' => 'B']]])
+        $this->actingAs($this->homeroom->user)->put("/report-cards/{$this->section->id}/{$this->terms[3]->id}/personality", ['ratings' => [$below->id => ['social' => 'B']]])
             ->assertSessionHas('status');
     }
 
@@ -311,7 +334,8 @@ class ReportCardTest extends TestCase
     public function test_the_admin_edits_report_rules_and_the_principal_reads_them(): void
     {
         $admin = $this->makeStaff('admin', 'Admin', 'admin@test.local');
-        $values = ['min_attendance_pct' => '85', 'days_absent_counts' => 'absent_only', 'personality_shown' => 'latest_term', 'examination_centre' => 'YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL'];
+        $values = ['min_attendance_pct' => '85', 'days_absent_counts' => 'absent_only', 'personality_shown' => 'latest_term',
+            'examination_centre' => 'YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL', 'supw_incomplete_blocks_promotion' => 'no'];
 
         $this->actingAs($admin->user)->put('/admin/report-rules', ['values' => $values, 'confirmed' => ['min_attendance_pct']])->assertSessionHas('status');
         $this->assertSame(85, ReportRule::minAttendancePct());

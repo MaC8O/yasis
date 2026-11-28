@@ -9,7 +9,7 @@ class StudentSubjectResult extends Model
 {
     protected $fillable = [
         'student_result_id', 'subject_id', 'subject_offering_id', 'report_label', 'sort_order', 'in_curriculum',
-        'is_compulsory', 'elective_slot', 'taken', 'counts_in_result', 'grading_mode', 'credit_hours', 'mark',
+        'is_compulsory', 'elective_slot', 'track', 'taken', 'counts_in_result', 'grading_mode', 'credit_hours', 'mark',
         'rounded_mark', 'band_label', 'band_value', 'is_fail', 'pending_question',
     ];
 

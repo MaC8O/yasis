@@ -16,12 +16,12 @@ class ResultFreeze extends Model
     public const RULES_CURRENT = 'current';
 
     protected $fillable = [
-        'academic_year_id', 'term_id', 'rules', 'reason', 'frozen_at', 'frozen_by', 'lifted_at', 'lifted_by',
+        'academic_year_id', 'term_id', 'rules', 'reason', 'curriculum', 'frozen_at', 'frozen_by', 'lifted_at', 'lifted_by',
     ];
 
     protected function casts(): array
     {
-        return ['frozen_at' => 'datetime', 'lifted_at' => 'datetime'];
+        return ['frozen_at' => 'datetime', 'lifted_at' => 'datetime', 'curriculum' => 'array'];
     }
 
     public function scopeActive($query)

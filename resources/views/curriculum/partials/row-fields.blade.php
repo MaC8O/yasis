@@ -29,9 +29,10 @@
         Compulsory
     </label>
     <div>
-        <label for="{{ $prefix }}-slot" class="block text-sm font-semibold mb-1">Elective slot <span class="font-normal text-neutral-400">(optional subjects only)</span></label>
-        <input id="{{ $prefix }}-slot" type="text" name="elective_slot" maxlength="10" value="{{ $val('elective_slot', $row?->elective_slot) }}" placeholder="e.g. A"
-               class="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm uppercase">
+        <label for="{{ $prefix }}-track" class="block text-sm font-semibold mb-1">Track <span class="font-normal text-neutral-400">(optional subjects only)</span></label>
+        <input id="{{ $prefix }}-track" type="text" name="track" maxlength="20" value="{{ $val('track', $row?->track) }}" placeholder="science or arts" list="{{ $prefix }}-tracks"
+               class="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm lowercase">
+        <datalist id="{{ $prefix }}-tracks"><option value="science"><option value="arts"></datalist>
     </div>
     <label class="flex items-center gap-2 text-sm min-h-[44px] sm:col-span-2">
         <input type="hidden" name="counts_in_result" value="0">

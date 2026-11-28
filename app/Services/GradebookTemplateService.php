@@ -83,6 +83,11 @@ class GradebookTemplateService
         if ($term->is_locked || ! $this->appliesTo($section)) {
             return $report;
         }
+        // SUPW has a word, not a mark (Q5): it never gets the template's categories.
+        if (SubjectOffering::where('grade_level_id', $section->grade_level_id)->where('subject_id', $subjectId)
+            ->active()->where('grading_mode', 'completion')->exists()) {
+            return $report;
+        }
 
         DB::transaction(function () use ($section, $subjectId, $term, $actor, &$report) {
             $template = $this->template()->keyBy('key');
@@ -221,7 +226,8 @@ class GradebookTemplateService
 
         $list = [];
         foreach ($sections as $section) {
-            $subjects = SubjectOffering::with('subject')->where('grade_level_id', $section->grade_level_id)->active()->ordered()->get();
+            $subjects = SubjectOffering::with('subject')->where('grade_level_id', $section->grade_level_id)->active()
+                ->where('grading_mode', '!=', 'completion')->ordered()->get();
             $counts = AssessmentCategory::where('section_id', $section->id)->where('term_id', $term->id)->active()
                 ->whereNotNull('template_key')->withCount('activeAssessments')->get()
                 ->groupBy('subject_id')->map(fn ($cats) => $cats->pluck('active_assessments_count', 'template_key'));

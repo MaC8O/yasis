@@ -13,7 +13,7 @@ use App\Models\LeaveType;
 use App\Models\Section;
 use App\Models\StaffProfile;
 use App\Models\Student;
-use App\Models\StudentElective;
+use App\Models\StudentTrack;
 use App\Models\SubjectOffering;
 use App\Models\TeachingAssignment;
 use App\Models\Term;
@@ -267,28 +267,26 @@ class K12StructureSeeder extends Seeder
         }
 
         // ------------------------------------------------------------------
-        // Grades 11-12 elective choices: the first four students of each class
-        // with slots choose one subject per slot (science or arts side, mixed for
-        // one student); the fifth is left for the Registrar to set.
+        // Grade 10 and Grades 11-12 tracks: the first four students of each class
+        // with tracks alternate science and arts; the fifth is left for the
+        // Registrar to set.
         // ------------------------------------------------------------------
+        $registrar = User::where('email', 'registrar@yasis.edu')->value('id');
         foreach ($sections as $section) {
             if (! $section->grade_level_id) {
                 continue;
             }
-            $slots = SubjectOffering::active()->where('grade_level_id', $section->grade_level_id)
-                ->whereNotNull('elective_slot')->ordered()->get()->groupBy('elective_slot');
-            if ($slots->isEmpty()) {
+            $tracks = SubjectOffering::active()->where('grade_level_id', $section->grade_level_id)
+                ->whereNotNull('track')->distinct()->orderByDesc('track')->pluck('track')->values(); // science, arts
+            if ($tracks->isEmpty()) {
                 continue;
             }
             $studentIds = Enrollment::where('section_id', $section->id)->where('status', 'Active')->orderBy('student_id')->pluck('student_id');
             foreach ($studentIds->take(4)->values() as $i => $studentId) {
-                foreach ($slots as $slot => $options) {
-                    $pick = $i === 3 ? ($slot === 'A' ? 0 : 1) : $i % 2; // student 4 mixes sides (Q7 default allows it)
-                    StudentElective::firstOrCreate(
-                        ['student_id' => $studentId, 'academic_year_id' => $section->academic_year_id, 'elective_slot' => $slot],
-                        ['subject_offering_id' => $options[min($pick, $options->count() - 1)]->id]
-                    );
-                }
+                StudentTrack::firstOrCreate(
+                    ['student_id' => $studentId, 'academic_year_id' => $section->academic_year_id],
+                    ['track' => $tracks[$i % $tracks->count()], 'set_by' => $registrar]
+                );
             }
         }
     }

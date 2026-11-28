@@ -12,6 +12,8 @@ Source documents (provided by the school, November 2026):
 
 This file turns those documents into rules the system can implement. Where a document is unclear or two documents disagree, the rule below is marked as a default and the matching question is listed in section 12. Build with the defaults, keep every one of them configurable, and change them once the school answers.
 
+The school answered most of the questions in November 2026 (`YASIS_School_Answers.md`). Answered questions are marked in section 12 and the sections below follow the answers. A default that still waits on the school carries its question number: Q2, Q10 and Q19-Q21 from the first letter, and FQ1-FQ9 for the follow-up questions in section 12.
+
 How to use this file in Claude Code: read the whole file, then read the existing grading, gradebook, report card, promotion, curriculum and fee import code. Send a plan before writing code. Every migration needs approval. Follow the phases in section 11.
 
 ---
@@ -46,9 +48,9 @@ Default: the school's levels are KG1, KG2 and Grades 1 to 12. The current seed d
 
 - The school year has four terms of nine weeks. The report cards call them First, Second, Third and Final.
 - A progress report card goes to parents once per term.
-- The report card has a column per term. See Q3 for what the "Final" column means.
+- The report card has a column per term for the first three terms. The "Final" column is the whole-year result (Q3, answered).
 
-Default: the "Final" column is the fourth term's result, and the yearly result for each subject is the average of the four term results. The Statement of Marks (section 7) shows the yearly result.
+A subject's yearly mark is the simple average of its four term marks (Q3). The year's result (average, point total or GPA), class of pass and position are worked out from the yearly marks like a term's. The Final column, the Statement of Marks and the promotion recommendation all show this same year result. The fourth term's own result is not printed on the card.
 
 ---
 
@@ -62,9 +64,9 @@ Store the curriculum as data (one row per subject per grade level), not in code.
 | subject_id | links to `subjects` |
 | report_label | the label printed on the report card, e.g. `MORAL/VALUES EDU` |
 | is_compulsory | compulsory or optional |
-| elective_slot | null, or a slot name for Grade 11-12 choices (see below) |
+| track | null, or the track an optional subject belongs to (`science` or `arts`, Grades 10-12; see below) |
 | credit_hours | used only for the Grade 11-12 GPA |
-| grading_mode | `score` (0-100) or `pass_fail` |
+| grading_mode | `score` (0-100), `pass_fail`, or `completion` (Pass, Incomplete or Complete, no mark: SUPW) |
 | counts_in_result | whether it counts in the average, GPA or point total |
 | sort_order | order on the report card |
 
@@ -83,7 +85,7 @@ Report card rows, in order:
 
 All are scored out of 100.
 
-The KG-4 Statement of Marks sample lists only Moral, Myanmar, English, Mathematics, Science and MAPE, and its accumulative score (90) is the average of those six. Default: Character Building and Social Study appear on the report card but are not counted in the accumulative score. See Q4.
+Character Building counts in the accumulative score and Social Study doesn't (Q4, answered), so KG-4 averages seven subjects. Social Study stays on the report card. The KG-4 sample statement's six-subject average (90) is kept as an arithmetic test only.
 
 ### Grade 5 to Grade 9 (Green card)
 
@@ -98,7 +100,9 @@ The KG-4 Statement of Marks sample lists only Moral, Myanmar, English, Mathemati
 9. Music
 10. SUPW
 
-All scored out of 100, all compulsory, all counted in the average. SUPW is Socially Useful Productive Work. The Grade 5-9 statement lists SUPW with the compulsory subjects, so default: SUPW is scored out of 100 and counted. See Q5.
+All compulsory. SUPW (Socially Useful Productive Work) has no mark (Q5, answered): it is Pass or Incomplete, and Complete once the work is finished, with no Fail. Complete counts as Pass. SUPW is left out of every average and GPA, so Grades 5-9 average nine subjects. The report card and the Statement of Marks print the word. The other nine are scored out of 100 and counted.
+
+The SUPW teacher enters the word per student and term. Once a term is locked only Incomplete can still change, to Complete, because the school gives Complete when the work is finished later. The frozen word, and for the last term the year's word and any issued Statement of Marks, change in place. SUPW counts in no result, so nothing else is recalculated. The year's word is the last term's.
 
 ### Grade 10 (Yellow card)
 
@@ -116,7 +120,9 @@ All scored out of 100, all compulsory, all counted in the average. SUPW is Socia
 12. SUPW
 13. PE
 
-All scored out of 100. Grade 10 sits the external DHSC exam (section 5). Which subjects count towards the point total is unclear; see Q6.
+Counted subjects (Q6, answered): Moral, Myanmar, English and Mathematics, plus one track of three. The tracks are Science (Biology, Chemistry, Physics) or Arts (World History, World Geography, Music). Those seven count, for a maximum of 70 points. SUPW (a word, as in Grades 5-9) and PE are extras and don't count. Computer isn't mentioned in the answer, so by default it doesn't count; it is flagged FQ4. The card keeps its printed labels WORLD HISTORY and WORLD GEOGRAPHY and prints "-" for the other track's subjects.
+
+Each student has one track per school year, set by the Registrar, the same record as Grades 11-12. Grade 10 sits the external DHSC exam (section 5).
 
 ### Grade 11 and Grade 12 (Yellow card)
 
@@ -129,16 +135,13 @@ All scored out of 100. Grade 10 sits the external DHSC exam (section 5). Which s
 | Computer | 2 | Compulsory |
 | Music | 2 | Compulsory |
 | PE | 1 | Compulsory |
-| Biology or World History | 2 | Optional, slot A |
-| Chemistry or World Geography | 2 | Optional, slot B |
-| Physics or Accounting | 2 | Optional, slot C |
-| SUPW | none | Compulsory, Pass/Fail, not in the GPA |
+| Biology, Chemistry, Physics | 2 each | Science track |
+| World History, World Geography, Accounting | 2 each | Arts track |
+| SUPW | none | Compulsory, Pass / Incomplete / Complete, not in the GPA |
 
-The policy document pairs the optional subjects (Biology / World History, Chemistry / World Geography, Physics / Accounting), so each student takes one subject from each slot. A student's total is therefore always 23 credit hours (17 compulsory + 3 x 2 optional).
+Each student takes one whole track, with no mixing (Q7, answered). A student's total is always 23 credit hours (17 compulsory + 6 in the track).
 
-Required: a per-student, per-year record of the chosen subject in each slot (for example `student_electives`), set by the Registrar. The report card prints all optional subjects and shows `-` for the ones the student does not take, as in the sample statement.
-
-The sample student took Biology, Chemistry and Physics (a science combination). Whether students may mix slots (for example Biology with Accounting) is Q7. Default: each slot is chosen separately.
+Required: a per-student, per-year track (`student_tracks`), set by the Registrar on the Tracks page. Grade 10 uses the same record. The report card and the statement print every track subject and show `-` for the other track's subjects. Elective choices made per slot before the answer were moved into tracks when all three were from one track. Mixed choices were left for the Registrar to set. The old choices are kept for results frozen before the change.
 
 ---
 
@@ -166,12 +169,12 @@ For KG-9 these five categories are school policy, not a teacher's choice. Requir
 
 The attendance component. Default: it is calculated from the attendance records, not entered by the teacher. Attendance score = 10 x (days counted as attended / school days in the term). Present and Tardy count as attended. Absent does not. Excused days are left out of both the top and the bottom of the fraction, so an excused absence does not lower the mark. The teacher sees it read-only in the gradebook. See Q8.
 
-Whether this composition also applies to Grade 10 and Grades 11-12 is Q9. Default: it applies to Grade 10 (the policy says the school decides Grade 10 exam eligibility using section 3 of the policy, which is this composition). For Grades 11-12, teachers keep the current free weighting until the school confirms.
+The composition applies to every grade (Q9, answered). Grade 10 already uses it. Grades 11-12 move onto it in phase 9b; until then their teachers keep their own weighting.
 
 ### 4.2 Pass and class of pass
 
 - A student passes the year when every counted subject has a yearly mark of at least 40%.
-- The accumulative score is the average of the counted subjects' yearly marks.
+- The accumulative score is the average of the counted subjects' yearly marks: seven subjects for KG-4 (section 3), nine for Grades 5-9.
 - Class of pass comes from the accumulative score:
 
 | Accumulative score | Class of pass |
@@ -182,7 +185,7 @@ Whether this composition also applies to Grade 10 and Grades 11-12 is Q9. Defaul
 | 40 to 60 | Third |
 | below 40, or any counted subject below 40 | Fail |
 
-Rounding (default, see Q10): marks are stored with two decimals. Round the accumulative score half up to a whole number before looking up the class, so 60.5 becomes 61 (Second). Show whole numbers on the report card and statement, as the samples do.
+Rounding (default, see Q10, still open: the school sent the policy text instead of an answer): marks are stored with two decimals. Round the accumulative score half up to a whole number before looking up the class, so 60.5 becomes 61 (Second). Show whole numbers on the report card and statement, as the samples do.
 
 Worked example, from the KG-4 sample statement (Grade 2):
 
@@ -195,7 +198,9 @@ Worked example, from the KG-4 sample statement (Grade 2):
 | Science | 94 |
 | MAPE | 94 |
 
-Average = 540 / 6 = 90. Every subject is at least 40, so the result is PASS. 90 is in 81-94, so the class is FIRST. This matches the printed statement, so use it as a test fixture.
+Average = 540 / 6 = 90. Every subject is at least 40, so the result is PASS. 90 is in 81-94, so the class is FIRST. This matches the printed statement. Since Character Building counts (Q4), the sample's six subjects are kept as an arithmetic test only.
+
+Seven-subject example (the same student with Character Building 83): (540 + 83) / 7 = 89, PASS, FIRST.
 
 ---
 
@@ -225,9 +230,11 @@ Class of pass by total points:
 | 40-45 | Third |
 | below 40 | Fail (default; not in the document, see Q19) |
 
-The maximum of 70 means seven subjects at 10 points each count towards the total, but the Grade 10 report card has 13 subjects. Which seven count is Q6. Until the school answers, build the calculation so the counted subjects come from `counts_in_result`, and seed it with a clear placeholder that the Admin must confirm.
+The maximum of 70 is seven subjects at 10 points: the compulsory four and the student's track of three (section 3, Q6 answered).
 
-Default while Q19 is open: a counted subject below 40 fails the year, as in KG-9.
+While Q19 is open, the point total is still shown for every student, but the class of pass is decided only where Q19 doesn't apply. When all seven counted subjects are 40 or above and the total is 40 or above, the total and its class are shown. When a counted subject is below 40, or the total is 35 to 39 (seven D grades, every subject passed), the total is shown with "class pending school answer (Q19)". These are the cases in the bands flagged Q19.
+
+The card's G.P.A row holds the average of the seven counted subjects (Q12, answered), and Grade 10 ranks by that average. The point total still decides the class of pass.
 
 Default for promotion to Grade 11: the system records the school's eligibility decision and the external result entered by the Registrar. The system does not calculate a DHSC pass itself. See Q11.
 
@@ -256,7 +263,7 @@ GPA calculation, exactly as printed on the statement:
 1. Convert each subject's mark to a letter and grade value.
 2. Grade points for a subject = grade value x credit hours.
 3. GPA = total grade points / total credit hours.
-4. SUPW is Pass/Fail and is left out of the GPA.
+4. SUPW has a word (Pass, Incomplete, Complete), not a mark, and is left out of the GPA.
 5. Round the GPA to two decimals (half up).
 
 Class of pass by GPA:
@@ -269,7 +276,7 @@ Class of pass by GPA:
 | 2.00-2.67 | Third |
 | below 2.00 | Fail |
 
-Promotion rule: the student needs a GPA of at least 2.00, and must not fail (F) any compulsory subject. A GPA above 2.00 with a failed compulsory subject is still FAIL. Whether failing SUPW also fails the student is Q5.
+Promotion rule: the student needs a GPA of at least 2.00, and must not fail (F) any compulsory subject. A GPA above 2.00 with a failed compulsory subject is still FAIL. SUPW has no Fail (Q5). Whether SUPW Incomplete stops promotion is FQ3; by default it doesn't (section 9).
 
 Worked example, from the Grade 12 sample statement. Use it as a test fixture:
 
@@ -308,22 +315,22 @@ Front / header:
 
 Scholarship record (the marks table):
 
-- Header "MAX. MARKS (100)", then columns First, Second, Third, Final. The Grade 11-12 card adds an HRS column after the subject.
+- Header "MAX. MARKS (100)", then columns First, Second, Third, Final. The Grade 11-12 card adds an HRS column after the subject. Final is the whole year (section 2), filled on the last term's report.
 - One row per subject in the order in section 3.
 - Then the rows G.P.A, POSITION, TOTAL NUMBER IN CLASS, DAYS ABSENT.
 - Footnote, verbatim: "Any student who has more than ten per cent absence in a subject in a term may be denied permission to write the final examination. (Or) A minimum of 80% attendance is required to sit for any examination."
 
 What the summary rows contain:
 
-- G.P.A: for Grades 11-12, the credit-hour GPA. For KG-10 the cards also have a "G.P.A" row; default: show the term's average percentage there for KG-9 and the point total for Grade 10. See Q12.
-- POSITION: the student's rank in their section for that term, by average (KG-9), point total (Grade 10) or GPA (11-12). Default: tied students share a rank and the next rank is skipped (1, 2, 2, 4). See Q13. Default: students who failed are ranked together with those who passed; see Q20.
-- TOTAL NUMBER IN CLASS: students actively enrolled in the section on the last day of the term.
-- DAYS ABSENT: Absent plus Excused days in the term. See Q8.
+- G.P.A: for Grades 11-12, the credit-hour GPA. For KG-10 the row holds the average (Q12, answered): the term's average percentage for KG-9, and the average of the seven counted subjects for Grade 10. The Grade 10 card keeps its printed label "G.P.A".
+- POSITION: the student's rank in their section for that term, by average (KG-9 and Grade 10) or GPA (11-12). Tied students share a rank and the next rank isn't skipped: 1, 2, 2, 3 (Q13, answered). Results frozen before this answer keep the old 1, 2, 2, 4. Default: students who failed are ranked together with those who passed; see Q20.
+- TOTAL NUMBER IN CLASS: students actively enrolled in the section on the last day of the term; for Final, the year's class.
+- DAYS ABSENT: Absent plus Excused days in the term; for Final, the four terms together. The attendance answers (Q8, Q16) are built in phase 9b.
 
 Student's personality record:
 
 - Five traits, each rated A, B or C: Creative Thinking, Character, Discipline, Social, Responsibility.
-- Entered by the homeroom teacher. The card has one set of columns, so default: rated once per term, and the printed card shows the latest term's ratings. See Q14.
+- Rated once a year by the homeroom teacher, on the last term, and printed on the final report only (Q14, answered). Earlier cards leave the block blank.
 
 Acknowledgement signatures:
 
@@ -346,13 +353,13 @@ Header, verbatim:
 
 Fields: Name, Grade, Date of birth, Examination centre, Date of examination, Date of issue.
 
-- Examination centre is "YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL" on the KG-9 samples and "YANGON ADVENTIST SEMINARY" on the Grade 11-12 sample. Default: store it as a setting with the first wording, and ask (Q15).
+- Examination centre: "YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL" on every layout, the Grade 11-12 statement included (Q15, answered). It stays an Admin setting.
 - Date of examination and date of issue are entered by the Registrar when the statement is generated.
 
 Body:
 
 - KG-9: two columns of compulsory subjects with SCORE %, and the ACCUMULATIVE SCORE.
-- Grade 11-12: COMPULSORY subjects (Score letter, HRS) and OPTIONAL subjects (Score letter, HRS, `-` for subjects not taken), and the GPA.
+- Grade 11-12: COMPULSORY subjects (Score letter, HRS; SUPW's word with HRS "-") and OPTIONAL subjects (both tracks: Score letter, HRS, `-` for the other track's subjects), and the GPA.
 - RESULT (PASS or FAIL) and CLASS OF PASS (DISTINCTION, FIRST, SECOND, THIRD).
 - Signature lines for the Registrar and the Principal.
 
@@ -360,9 +367,9 @@ Footer for KG-9, verbatim: "These examinations are conducted by YAS, Myanmar Uni
 
 Footer for Grade 11-12: the explanation of how the GPA is calculated, and the conversion table from the sample. The system generates the table from the Grade 11-12 grading scheme's bands (letter, grade value, and points for 3 and 2 hours, D+ included) and prints the class-of-pass GPA ranges under it, because the sample's table placed D in Third and left out D+. The Note paragraph is printed word for word.
 
-Subjects: KG-9 lists every counted subject, so the listed scores make up the accumulative score (PE in Grades 5-9 included; see Q21). Labels are the curriculum's report labels.
+Subjects: KG-9 lists every counted subject, so the listed scores make up the accumulative score: Character Building for KG-4 (not Social Study), and PE in Grades 5-9 (see Q21). Grades 5-9 then list SUPW with its word. Labels are the curriculum's report labels.
 
-Required: add `StatementOfMarks` as a document type in the existing document request flow (Registrar prepares, Principal issues). It is generated from the year's final results. No Grade 10 statement was provided; see Q11.
+Required: add `StatementOfMarks` as a document type in the existing document request flow (Registrar prepares, Principal issues). It is generated from the year's final results. The school issues no Grade 10 statement: MYUM's Education Department keeps the DHSC marks and issues it (Q11, answered).
 
 ---
 
@@ -388,6 +395,8 @@ The existing promotion flow (Registrar prepares, VP and Principal approve) stays
 | Grade 10 | Show the recorded DHSC eligibility and result. No automatic recommendation. |
 | Grades 11 | Promote if GPA is at least 2.00 and no compulsory subject is F, otherwise Retain. |
 | Grade 12 | Graduate on the same rule, otherwise Retain. |
+
+SUPW Incomplete at the end of the year is shown next to the recommendation ("SUPW Incomplete"). By default it doesn't change the recommendation; a report rule can make it Retain (FQ3). A late Complete updates the year's recommendation only when that rule is on.
 
 The Registrar may choose a different decision than the recommendation, but must write a reason, and the audit entry records both.
 
@@ -445,6 +454,7 @@ Each phase is its own branch and PR, with tests, and needs approval before mergi
 6. Report cards. The four templates, personality ratings, acknowledgements, days absent and the attendance eligibility flag.
 7. Statement of Marks. The new document type and its two layouts.
 8. Fee schedule. The table, the Treasurer screen, the guardian view and the import check.
+9. The school's answers. 9a: curriculum and results (KG-4 counting, SUPW's words, Grade 10 and Grades 11-12 tracks, the Final column, dense ranking, the Grade 10 G.P.A row, personality once a year, the Statement of Marks). 9b: the gradebook and attendance (the Grades 11-12 template, and the attendance rules of Q8 and Q16).
 
 Rules that apply to every phase: every change writes an audit entry with the actor's role in the same transaction; validation in FormRequests and logic in services; nothing hard deleted; marks stored as DECIMAL(5,2), never float.
 
@@ -452,27 +462,63 @@ Rules that apply to every phase: every change writes an audit entry with the act
 
 ## 12. Questions for the school
 
-The defaults above let the build start, but each of these should be confirmed with the VP Academic or the Registrar.
+The school answered the first letter in November 2026 (`YASIS_School_Answers.md`; the letter skipped Q2, so the school's numbers are one lower from Q3). Each answered question is marked, with what changed.
 
 - Q1. The grading policy provided is dated 2023-2024, while the report cards are for 2025-2026. Is it still the current policy?
+  - **Answered:** yes, it is still current.
 - Q2. Is there a level below KG (Nursery / Pre-KG)? If so, how is it graded and which report card does it use?
-  - Decided while the school's answer is pending (November 2026): Kindergarten is two levels, KG1 and KG2 (see section 1). Nursery has no grade level for now. Both are data the Admin can change on the Grade Levels page.
+  - Not asked (the letter left it out). Decided while it is open (November 2026): Kindergarten is two levels, KG1 and KG2 (see section 1). Nursery has no grade level for now. Both are data the Admin can change on the Grade Levels page.
 - Q3. On the report card, is the "Final" column the fourth term's result, or the yearly result? How is a subject's yearly mark worked out from the four terms: a simple average, a weighted average, or the final exam only?
+  - **Answered:** the whole-year result, the simple average of the four terms (section 2). Built in 9a.
 - Q4. KG-4: do Character Building and Social Study count in the accumulative score? The sample statement leaves them out. Does Social Study start at a particular grade?
+  - **Answered:** Character Building counts, Social Study doesn't (section 3). Built in 9a.
 - Q5. SUPW: is it scored out of 100 for Grades 5-10 and Pass/Fail for Grades 11-12? Does failing SUPW mean the student fails the year?
+  - **Answered:** no mark: Pass or Incomplete, then Complete once the work is done; no Fail (section 3). Built in 9a. Whether Incomplete stops promotion is FQ3.
 - Q6. Grade 10: the class of pass goes up to 70 points, so seven subjects count, but the card has 13. Which seven count?
+  - **Answered:** Moral, Myanmar, English, Mathematics and one track of three (section 3). Built in 9a. Computer is FQ4.
 - Q7. Grades 11-12: may a student mix optional subjects across slots (for example Biology with Accounting), or must they take a whole science or arts combination?
+  - **Answered:** a whole track, no mixing (section 3). Built in 9a.
 - Q8. Attendance: does an excused absence count against the 10% attendance mark? Does it count in "Days absent" on the card and towards the 80% exam rule? Does Tardy count as present?
+  - **Answered:** excused absences count; three late arrivals are one absence. Read as an absence for the mark, days absent and the 80% rule (FQ1 confirms). Built in 9b.
 - Q9. Does the 10/10/10/10/60 mark composition apply to Grade 10 and Grades 11-12 as well, or only KG-9?
+  - **Answered:** every grade (section 4.1). Grades 11-12 move onto it in 9b.
 - Q10. How are marks rounded? For example, is 60.5 Third or Second, and is 84.5 a B or an A on the Grade 10 scale?
+  - Not answered (the school pasted the policy text). Half up stays. Still open.
 - Q11. Grade 10: how should the system record DHSC eligibility and the external exam result, and does the school issue a Grade 10 Statement of Marks?
+  - **Answered:** no school statement for Grade 10; MYUM's Education Department keeps the DHSC marks and issues it. As built.
 - Q12. What should the "G.P.A" row on the KG-10 report cards show, since those grades do not use a GPA?
+  - **Answered:** an average. Unchanged for KG-9; Grade 10 shows its average, not the point total (section 7.1). Built in 9a.
 - Q13. How are tied positions shown in class rank?
+  - **Answered:** tied students share a rank and the next isn't skipped: 1, 2, 2, 3 (section 7.1). Built in 9a.
 - Q14. Are the personality traits rated every term, or once a year?
+  - **Answered:** once a year, printed on the final report (section 7.1). Built in 9a.
 - Q15. Which examination centre name should appear on statements: "Yangon Adventist Seminary International School" or "Yangon Adventist Seminary"?
+  - **Answered:** "Yangon Adventist Seminary International School", the Grade 11-12 statement included. Flag cleared in 9a.
 - Q16. The exam eligibility rule says both "more than 10% absence" and "a minimum of 80% attendance". Which threshold applies?
+  - **Answered:** both: the 80% rule over the whole school year, and the 10%-absence rule per subject, per term. Built in 9b (FQ2 for subject attendance).
 - Q17. Is Grade 9 tuition really 2,600,000 Ks (the same as Grades 11 and 12), and not 2,550,000 Ks like Grades 5-8?
+  - **Answered:** yes, 2,600,000 Ks. The flag is cleared in the fee PR.
 - Q18. Which instalment includes the yearly fee and the refundable deposit, and are the four instalments equal?
+  - Partly answered by the fee documents: four instalments, not equal (June, August, October, January); the amounts are FQ6. Built in the fee PR.
 - Q19. Grade 10: what is the result when a subject is below 40 marks? And what is the class of pass when the point total is below 40? For example, a student with D (40-48) in all seven counted subjects passes every subject but has only 35 points.
+  - Not sent yet. Meanwhile the total is shown with "class pending school answer (Q19)" in those cases (section 5).
 - Q20. When ranking students for their position in class, are students who failed ranked together with those who passed, or are they placed after all passing students?
+  - Not sent yet.
 - Q21. The Grade 5-9 sample statement leaves out PE, but PE counts in the average. Should PE appear on the statement?
+  - Not sent yet.
+
+### Open questions
+
+Follow-up questions for the VP (numbered FQ1 to FQ9 in the data and the code):
+
+- FQ1. Does an excused absence count as an absence for the 10% mark and the 80% rule? (9b default: yes.)
+- FQ2. Does each subject teacher take attendance every lesson today? Would daily attendance be acceptable for the 10% subject attendance mark? (9b default: daily attendance.)
+- FQ3. Does SUPW "Incomplete" stop a student being promoted? (Default: no; a report rule, `supw_incomplete_blocks_promotion`.)
+- FQ4. Does Grade 10 Computer count? (Default: no; the curriculum row is flagged FQ4.)
+- FQ5. Is Pre KG the same as KG1, and is KG1 tuition 1,600,000 or 2,400,000? (Fee PR.)
+- FQ6. What are the four 2026-2027 instalment amounts for each grade? (Fee PR.)
+- FQ7. Is the earlier rule that SDA discounts aren't shown to families now withdrawn? (8b-2 follows the Treasurer: families see every line.)
+- FQ8. Should ISMS hold back report cards when fees are owing, or only warn the Registrar? (Not built.)
+- FQ9. Can a student's account code be given to a new student after they leave? (8b-2 handles either answer.)
+
+Still to send from the first letter: Q19, Q20 and Q21 (above). Q2 and Q10 are also still open.

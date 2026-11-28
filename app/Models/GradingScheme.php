@@ -38,7 +38,7 @@ class GradingScheme extends Model
 
     protected $fillable = [
         'code', 'name', 'result_basis', 'result_max', 'mark_decimals', 'result_decimals',
-        'rounding_mode', 'subject_fail_rule', 'failed_ranking', 'uses_gradebook_template', 'pending_question',
+        'rounding_mode', 'subject_fail_rule', 'failed_ranking', 'tie_ranking', 'rank_basis', 'uses_gradebook_template', 'pending_question',
     ];
 
     protected function casts(): array

@@ -16,8 +16,11 @@ use App\Services\Results\StudentResultData;
 /**
  * The student's progress report (sdp_doc/YASIS_Academic_and_Fee_Rules.md §7.1) for a term, as
  * the school's four cards lay it out. Every figure comes from ResultService: frozen for a locked
- * term, live and provisional for an open one. Columns First, Second, Third and Final are the four
- * terms (Final is the fourth term's own result, §2/Q3); terms after the report's term are blank.
+ * term, live and provisional for an open one. Columns First, Second and Third are those terms; the
+ * Final column is the whole year (the school's answer to Q3): each subject's year mark, the year's
+ * result, position and class size, and the days absent of the four terms together. It is filled on
+ * the last term's report only, from the year's freeze when every term is locked. Terms after the
+ * report's term are blank.
  */
 class ReportCardService
 {
@@ -37,11 +40,24 @@ class ReportCardService
         [$layoutTitle, $accent] = GradeLevel::REPORT_CARD_LAYOUTS[$layout] ?? GradeLevel::REPORT_CARD_LAYOUTS['g5_9'];
         $terms = Term::where('academic_year_id', $term->academic_year_id)->orderBy('sequence')->get();
 
-        // One column per term up to the report's term.
+        // One column per term up to the report's term; the last is the year (Final).
         $columns = [];
+        $lastSequence = $terms->max('sequence');
         foreach ($terms as $t) {
             if ($t->sequence > $term->sequence) {
-                $columns[$t->sequence] = ['term' => $t, 'shown' => false, 'frozen' => false, 'result' => null, 'total' => null, 'daysAbsent' => null];
+                $columns[$t->sequence] = ['term' => $t, 'shown' => false, 'frozen' => false, 'result' => null, 'total' => null, 'daysAbsent' => null, 'year' => false];
+
+                continue;
+            }
+            if ($t->sequence === $lastSequence) {
+                $year = $this->results->sectionYear($section);
+                $days = collect($columns)->pluck('daysAbsent')->push($this->daysAbsent($student, $section, $t,
+                    $this->results->sectionTerm($section, $t)->freeze?->id));
+                $columns[$t->sequence] = [
+                    'term' => $t, 'shown' => true, 'frozen' => $year->frozen, 'result' => $year->for($student),
+                    'total' => $year->students->count(), 'year' => true,
+                    'daysAbsent' => $days->containsStrict(null) ? null : (int) $days->sum(),
+                ];
 
                 continue;
             }
@@ -54,6 +70,7 @@ class ReportCardService
                 'result' => $result,
                 'total' => $sectionResults->students->count(),
                 'daysAbsent' => $this->daysAbsent($student, $section, $t, $sectionResults->freeze?->id),
+                'year' => false,
             ];
         }
 
@@ -82,9 +99,12 @@ class ReportCardService
             'columns' => $columns,
             'hasHours' => $hasHours,
             'subjects' => $subjects,
-            // Q12: what the card's "G.P.A" row holds at this grade.
-            'gpaLabel' => ['average' => 'G.P.A (AVERAGE %)', 'point_total' => 'G.P.A (POINT TOTAL)', 'gpa' => 'G.P.A'][$basis] ?? 'G.P.A',
-            'gpaRow' => collect($columns)->map(fn ($c) => $c['shown'] && $c['result']?->isComplete() ? $c['result']->value : '')->all(),
+            // Q12: the card's "G.P.A" row holds the average for KG1-10 (Grade 10's average of its counted
+            // subjects, though its point total decides the class) and the GPA for 11-12. Grade 10's card
+            // keeps its printed label "G.P.A".
+            'gpaLabel' => ['average' => 'G.P.A (AVERAGE %)', 'point_total' => 'G.P.A', 'gpa' => 'G.P.A'][$basis] ?? 'G.P.A',
+            'gpaRow' => collect($columns)->map(fn ($c) => $c['shown'] && $c['result']?->isComplete()
+                ? ($basis === 'point_total' ? (string) $c['result']->average : $c['result']->value) : '')->all(),
             'positionRow' => collect($columns)->map(fn ($c) => $c['shown'] && $c['result']?->position ? (string) $c['result']->position : '')->all(),
             'totalRow' => collect($columns)->map(fn ($c) => $c['shown'] ? (string) $c['total'] : '')->all(),
             'daysAbsentRow' => collect($columns)->map(fn ($c) => $c['shown'] && $c['daysAbsent'] !== null ? (string) $c['daysAbsent'] : '')->all(),
@@ -96,7 +116,7 @@ class ReportCardService
         ];
     }
 
-    /** A subject's cell: the mark as printed, PASS/FAIL for a pass/fail subject, "-" for an option not taken. */
+    /** A subject's cell: the mark as printed, PASS/FAIL or SUPW's word, "-" for another track's subject. */
     private function cell(?StudentResultData $result, string $code): string
     {
         $subject = $result?->subject($code);
@@ -106,7 +126,7 @@ class ReportCardService
         if (! $subject->taken) {
             return '-';
         }
-        if ($subject->gradingMode === 'pass_fail') {
+        if (in_array($subject->gradingMode, ['pass_fail', 'completion'], true)) {
             return $subject->bandLabel ?? '';
         }
 
@@ -132,20 +152,29 @@ class ReportCardService
     {
         $notes = [];
         foreach ($columns as $c) {
+            $name = $c['year'] ? 'Final (the year)' : $c['term']->name;
             if ($c['shown'] && $c['result'] && ! $c['result']->isComplete()) {
-                $notes[] = $c['term']->name.': '.implode(' ', $c['result']->reasons);
+                $notes[] = $name.': '.implode(' ', $c['result']->reasons);
+            } elseif ($c['shown'] && $c['result']?->classPending) {
+                $notes[] = $name.': '.$c['result']->resultLabel.' '.$c['result']->value.', '.$c['result']->classText().'.';
             }
         }
 
         return array_values(array_unique($notes));
     }
 
-    /** The ratings printed: the latest rated term up to the report's (Q14 default) or the report's own term. */
+    /**
+     * The ratings printed. Traits are rated once a year, on the last term, and printed on the final
+     * report only (the school's answer to Q14); earlier cards leave the block blank. The rule can
+     * still be set to the latest rated term or the report's own term.
+     */
     private function personality(Student $student, Term $term, $terms): array
     {
-        $candidates = ReportRule::value('personality_shown', 'latest_term') === 'report_term'
-            ? collect([$term])
-            : $terms->filter(fn ($t) => $t->sequence <= $term->sequence)->sortByDesc('sequence');
+        $candidates = match (ReportRule::value('personality_shown', 'final_report')) {
+            'final_report' => $term->sequence === $terms->max('sequence') ? collect([$term]) : collect(),
+            'report_term' => collect([$term]),
+            default => $terms->filter(fn ($t) => $t->sequence <= $term->sequence)->sortByDesc('sequence'),
+        };
 
         foreach ($candidates as $t) {
             $ratings = PersonalityRating::where('student_id', $student->id)->where('term_id', $t->id)->pluck('rating', 'trait');

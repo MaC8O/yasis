@@ -10,6 +10,7 @@ use App\Models\GradebookTemplateCategory;
 use App\Models\Section;
 use App\Models\StaffProfile;
 use App\Models\SubjectOffering;
+use App\Models\SubjectStatus;
 use App\Models\TeachingAssignment;
 use App\Models\Term;
 
@@ -43,6 +44,19 @@ trait SeedsTermResults
             $teacher = TeachingAssignment::where('section_id', $section->id)->where('subject_id', $offering->subject_id)->value('teacher_id')
                 ?? $section->homeroom_teacher_id ?? $fallbackTeacher;
             $base = ['section_id' => $section->id, 'subject_id' => $offering->subject_id, 'term_id' => $term->id];
+
+            // SUPW: a word, not a mark (Q5). Mostly Pass; about one student in seven Incomplete.
+            if ($offering->usesCompletion()) {
+                $userId = $teacher; // a staff profile's id is its user's id
+                foreach ($students as $studentId) {
+                    SubjectStatus::firstOrCreate(
+                        ['student_id' => $studentId, 'subject_id' => $offering->subject_id, 'term_id' => $term->id],
+                        ['section_id' => $section->id, 'status' => crc32("{$studentId}-supw{$salt}") % 7 === 0 ? 'Incomplete' : 'Pass', 'recorded_by' => $userId],
+                    );
+                }
+
+                continue;
+            }
 
             if ($usesTemplate) {
                 // Created directly, as the template defines them (the term may already be locked).

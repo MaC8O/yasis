@@ -66,6 +66,7 @@ class StatementOfMarksTest extends TestCase
         $student = $this->grade12Example($section, $this->terms[0], 'Hla Win Naing');
         foreach (array_slice($this->terms, 1) as $term) {
             $this->setMarks($student, $section, $term, self::G12_EXAMPLE);
+            $this->setWord($student, $section, $term, 'Pass');
         }
 
         return $student;
@@ -125,9 +126,10 @@ class StatementOfMarksTest extends TestCase
         $this->assertStringContainsString('THE DEPARTMENT OF EDUCATION Myanmar Union Mission of Seventh-day Adventists Yangon, MYANMAR STATEMENT OF MARKS', $text);
         $this->assertStringContainsString('NAME: MYA KYI PHYU GRADE: 2 DATE OF BIRTH: JAN 25, 2016', $text);
         $this->assertStringContainsString('EXAMINATION CENTRE: YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL DATE OF EXAMINATION: MARCH 2-5, 2027 DATE OF ISSUE: MARCH 26, 2027', $text);
-        // The first four subjects on the left, the rest on the right; the uncounted KG-4 subjects are left out (Q4).
-        $this->assertStringContainsString('COMPULSORY: COMPULSORY: 90 MORAL/VALUES EDU 89 SCIENCE 94 MYANMAR 90 MAPE 94 ENGLISH 91 MATHEMATICS 82', $text);
-        $this->assertStringNotContainsString('CHARACTER BUILDING', $text);
+        // The first four subjects on the left, the rest on the right: Character Building counts and is
+        // listed; Social Study doesn't count and isn't (Q4).
+        $this->assertStringContainsString('COMPULSORY: COMPULSORY: 90 MORAL/VALUES EDU 89 SCIENCE 94 MYANMAR 90 MAPE 94 ENGLISH 91 CHARACTER BUILDING 90 MATHEMATICS 82', $text);
+        $this->assertStringNotContainsString('SOCIAL STUDY', $text);
         $this->assertStringContainsString('RESULT PASS CLASS OF PASS FIRST', $text);
         $this->assertStringContainsString(self::KG_FOOTER, $text);
         $this->assertStringContainsString('Registrar Principal', $text);
@@ -288,13 +290,13 @@ class StatementOfMarksTest extends TestCase
             ->assertSessionHasErrors(['student_id_number', 'academic_year_id', 'examination_date', 'issue_date']);
     }
 
-    public function test_the_examination_centre_is_an_admin_rule_flagged_q15(): void
+    public function test_the_examination_centre_is_an_admin_rule_confirmed_by_the_school(): void
     {
         $admin = $this->makeStaff('admin', 'Admin', 'admin@test.local');
-        $this->assertSame('Q15', ReportRule::where('key', 'examination_centre')->value('pending_question'));
+        $this->assertNull(ReportRule::where('key', 'examination_centre')->value('pending_question')); // Q15 answered
         $this->actingAs($this->principal->user)->get('/principal/report-rules')->assertOk()->assertSee('YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL');
 
-        $values = ['min_attendance_pct' => '80', 'days_absent_counts' => 'absent_and_excused', 'personality_shown' => 'latest_term'];
+        $values = ['min_attendance_pct' => '80', 'days_absent_counts' => 'absent_and_excused', 'personality_shown' => 'final_report', 'supw_incomplete_blocks_promotion' => 'no'];
         $this->actingAs($admin->user)->put('/admin/report-rules', ['values' => $values + ['examination_centre' => '  YANGON ADVENTIST SEMINARY ']])
             ->assertSessionHas('status');
         $this->assertSame('YANGON ADVENTIST SEMINARY', ReportRule::examinationCentre());

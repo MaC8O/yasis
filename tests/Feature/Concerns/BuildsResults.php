@@ -11,9 +11,9 @@ use App\Models\Grade;
 use App\Models\GradeLevel;
 use App\Models\Section;
 use App\Models\Student;
-use App\Models\StudentElective;
+use App\Models\StudentTrack;
 use App\Models\Subject;
-use App\Models\SubjectOffering;
+use App\Models\SubjectStatus;
 use App\Models\Term;
 
 /**
@@ -36,11 +36,17 @@ trait BuildsResults
     /** The Grade 12 statement in the rules file, section 6. */
     protected const G12_EXAMPLE = [
         'MORAL' => 77, 'MYAN' => 66, 'ENG' => 87, 'MATH' => 67, 'COMP' => 95, 'MUSIC' => 86, 'PE' => 92,
-        'BIO' => 76, 'CHEM' => 72, 'PHYS' => 71, 'SUPW' => 80,
+        'BIO' => 76, 'CHEM' => 72, 'PHYS' => 71,
     ];
 
-    /** The KG-4 statement in the rules file, section 4.2 (a Grade 2 student). */
-    protected const KG_EXAMPLE = ['MORAL' => 89, 'MYAN' => 90, 'ENG' => 91, 'MATH' => 82, 'SCI' => 94, 'MAPE' => 94];
+    /**
+     * The KG-4 statement in the rules file, section 4.2 (a Grade 2 student), with Character Building,
+     * which counts since the school's answer to Q4: at 90 the average is still 90.
+     */
+    protected const KG_EXAMPLE = ['MORAL' => 89, 'MYAN' => 90, 'ENG' => 91, 'MATH' => 82, 'SCI' => 94, 'MAPE' => 94, 'CHAR' => 90];
+
+    /** The KG-4 counted subjects (Q4): the sample's six plus Character Building. */
+    protected const KG_CODES = ['MORAL', 'MYAN', 'ENG', 'MATH', 'SCI', 'MAPE', 'CHAR'];
 
     protected function seedYearWithTerms(int $count = 4): void
     {
@@ -111,25 +117,28 @@ trait BuildsResults
         }
     }
 
-    /** Record a Grade 11-12 student's elective choice for a slot. */
-    protected function choose(Student $student, string $levelCode, string $slot, string $subjectCode): void
+    /** Set a Grade 10-12 student's track (science or arts) for the fixture year. */
+    protected function setTrack(Student $student, string $track): void
     {
-        $offering = SubjectOffering::whereHas('gradeLevel', fn ($q) => $q->where('code', $levelCode))
-            ->whereHas('subject', fn ($q) => $q->where('code', $subjectCode))->sole();
-        StudentElective::updateOrCreate(
-            ['student_id' => $student->id, 'academic_year_id' => $this->year->id, 'elective_slot' => $slot],
-            ['subject_offering_id' => $offering->id],
+        StudentTrack::updateOrCreate(['student_id' => $student->id, 'academic_year_id' => $this->year->id], ['track' => $track]);
+    }
+
+    /** SUPW's word for a term: Pass, Incomplete or Complete. */
+    protected function setWord(Student $student, Section $section, Term $term, string $word, string $subjectCode = 'SUPW'): void
+    {
+        SubjectStatus::updateOrCreate(
+            ['student_id' => $student->id, 'subject_id' => Subject::where('code', $subjectCode)->whereNull('department_id')->value('id'), 'term_id' => $term->id],
+            ['section_id' => $section->id, 'status' => $word],
         );
     }
 
-    /** A Grade 12 student with the section 6 sample marks and a science combination. */
+    /** A Grade 12 student with the section 6 sample marks, the science track and SUPW Pass. */
     protected function grade12Example(Section $section, Term $term, string $name = 'Sample Twelve', array $overrides = []): Student
     {
         $student = $this->pupil($name, $section);
-        foreach (['A' => 'BIO', 'B' => 'CHEM', 'C' => 'PHYS'] as $slot => $code) {
-            $this->choose($student, '12', $slot, $code);
-        }
+        $this->setTrack($student, 'science');
         $this->setMarks($student, $section, $term, array_merge(self::G12_EXAMPLE, $overrides));
+        $this->setWord($student, $section, $term, 'Pass');
 
         return $student;
     }

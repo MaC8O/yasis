@@ -49,7 +49,7 @@ use App\Http\Controllers\GradebookTemplateController;
 use App\Http\Controllers\ReportCardController;
 use App\Http\Controllers\ReportRulesController;
 use App\Http\Controllers\Registrar\DocumentRequestController;
-use App\Http\Controllers\Registrar\ElectiveController;
+use App\Http\Controllers\Registrar\TrackController;
 use App\Http\Controllers\Registrar\GuardianController;
 use App\Http\Controllers\Registrar\PromotionBatchController;
 use App\Http\Controllers\Registrar\RegistrarAnnouncementController;
@@ -302,9 +302,12 @@ Route::middleware(['auth', 'role:registrar'])->prefix('registrar')->name('regist
     Route::post('/guardians/{guardian}/links/{student}/primary', [GuardianController::class, 'setPrimary'])->name('guardians.set-primary');
     Route::post('/guardians/{guardian}/resend-invite', [GuardianController::class, 'resendInvite'])->name('guardians.resend-invite');
 
-    Route::get('/electives', [ElectiveController::class, 'index'])->name('electives.index');
-    Route::get('/electives/{section}', [ElectiveController::class, 'show'])->name('electives.show');
-    Route::put('/electives/{section}', [ElectiveController::class, 'update'])->name('electives.update');
+    Route::get('/tracks', [TrackController::class, 'index'])->name('tracks.index');
+    Route::get('/tracks/{section}', [TrackController::class, 'show'])->name('tracks.show');
+    Route::put('/tracks/{section}', [TrackController::class, 'update'])->name('tracks.update');
+    // The per-slot elective choices became one track per student (the school's answer to Q7).
+    Route::redirect('/electives', '/registrar/tracks')->name('electives.index');
+    Route::get('/electives/{section}', fn ($section) => redirect()->route('registrar.tracks.show', $section))->name('electives.show');
 
     Route::get('/sections', [SectionController::class, 'index'])->name('sections.index');
     Route::post('/sections', [SectionController::class, 'store'])->name('sections.store');
@@ -373,6 +376,7 @@ Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')
     Route::post('/gradebook/assessments/{assessment}/scores-import', [TeacherGradebookController::class, 'importScores'])->name('gradebook.assessments.scores-import');
     Route::post('/gradebook/scores', [TeacherGradebookController::class, 'saveScores'])->name('gradebook.scores.store');
     Route::post('/gradebook/comments', [TeacherGradebookController::class, 'saveComment'])->name('gradebook.comments.store');
+    Route::put('/gradebook/words', [TeacherGradebookController::class, 'saveWords'])->name('gradebook.words.save');
     Route::post('/gradebook/change-requests', [GradeChangeRequestController::class, 'store'])->name('gradebook.change-requests.store');
     Route::post('/gradebook/change-requests/{gradeChangeRequest}/cancel', [GradeChangeRequestController::class, 'cancel'])->name('gradebook.change-requests.cancel');
 

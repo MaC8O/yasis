@@ -62,10 +62,10 @@ class GradeLevel extends Model
         return $this->hasMany(SubjectOffering::class);
     }
 
-    /** The elective slots this level's active curriculum offers, e.g. ['A', 'B', 'C']. */
-    public function electiveSlots(): array
+    /** The tracks this level's active curriculum offers, e.g. ['arts', 'science'] (Grade 10, Grades 11-12). */
+    public function tracks(): array
     {
-        return $this->offerings()->active()->whereNotNull('elective_slot')
-            ->orderBy('elective_slot')->distinct()->pluck('elective_slot')->all();
+        return $this->offerings()->active()->whereNotNull('track')
+            ->orderBy('track')->distinct()->pluck('track')->all();
     }
 }

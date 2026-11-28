@@ -15,7 +15,7 @@
 
 <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
     <x-stat-tile :label="'Term '.($report->resultLabel() === 'GPA' ? 'GPA' : mb_strtolower($report->resultLabel()))" color="blue">{{ $report->resultDisplay() ?? '—' }}</x-stat-tile>
-    <x-stat-tile label="Class of pass" color="green">{{ $result?->isComplete() ? $result->classLabel : '—' }}</x-stat-tile>
+    <x-stat-tile label="Class of pass" color="green">{{ $result?->isComplete() ? ($result->classPending ? 'Pending ('.$result->classPending.')' : $result->classLabel) : '—' }}</x-stat-tile>
     <x-stat-tile label="Subjects" color="yellow">{{ count($subjects) }}</x-stat-tile>
 </div>
 
@@ -45,8 +45,13 @@
                     @endforeach
                 </div>
                 <div class="text-right shrink-0">
+                    @if ($subject->usesCompletion())
+                        {{-- SUPW: a word, no mark (Pass, Incomplete, Complete) --}}
+                        <p class="text-sm font-bold {{ $subject->bandLabel === 'INCOMPLETE' ? 'text-warning' : '' }}" data-mark>{{ $subject->bandLabel ? ucfirst(mb_strtolower($subject->bandLabel)) : '—' }}</p>
+                    @else
                     <p class="text-xl font-bold" data-mark>{{ $subject->roundedMark ?? '—' }}</p>
-                    @if ($subject->bandLabel)
+                    @endif
+                    @if ($subject->bandLabel && ! $subject->usesCompletion())
                         <x-badge :color="$subject->isFail ? 'pink' : 'green'" data-band>{{ $report->bandText($subject) }}</x-badge>
                     @endif
                 </div>

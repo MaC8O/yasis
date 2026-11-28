@@ -98,10 +98,14 @@ class FamilyResultsTest extends TestCase
         return $rows;
     }
 
-    /** The page's [label, mark, letter] rows as the card prints them: the mark, or PASS/FAIL for a pass/fail subject. */
+    /** The page's [label, mark, letter] rows as the card prints them: the mark, PASS/FAIL, or SUPW's word in capitals. */
     private function asCardCells(array $pageRows): array
     {
-        return array_map(fn ($r) => [$r[0], in_array($r[2], ['PASS', 'FAIL'], true) ? $r[2] : $r[1]], $pageRows);
+        return array_map(fn ($r) => [$r[0], match (true) {
+            in_array($r[2], ['PASS', 'FAIL'], true) => $r[2],
+            in_array($r[1], ['Pass', 'Incomplete', 'Complete'], true) => mb_strtoupper($r[1]),
+            default => $r[1],
+        }], $pageRows);
     }
 
     private function xpath(string $html): DOMXPath
@@ -140,7 +144,7 @@ class FamilyResultsTest extends TestCase
 
         $expected = $this->pageSubjects($studentPage);
         $this->assertContains(['MYANMAR', '66', 'C+ · 2.33'], $expected);
-        $this->assertContains(['SUPW', '80', 'PASS'], $expected);
+        $this->assertContains(['SUPW', 'Pass', '—'], $expected); // a word, not a mark (Q5)
         $this->assertNotContains('WORLD HISTORY', array_column($expected, 0)); // an option not taken is not listed
         $this->assertCount(11, $expected);
 
@@ -185,23 +189,26 @@ class FamilyResultsTest extends TestCase
         $this->assertContains(['MYANMAR', '66'], $this->pdfSubjects($pdf));
     }
 
-    public function test_grade_10_shows_each_subjects_mark_and_letter_with_the_reason_there_is_no_point_total(): void
+    public function test_grade_10_shows_the_point_total_with_the_class_pending_when_a_subject_is_below_40(): void
     {
         $ten = $this->levelSection('Grade 10-A', '10');
         $pupil = $this->pupil('Grade Ten Pupil', $ten);
+        $this->setTrack($pupil, 'science');
         $this->setMarks($pupil, $ten, $this->terms[0], ['MORAL' => 90, 'MYAN' => 77, 'ENG' => 50, 'MATH' => 30, 'COMP' => 88, 'BIO' => 60, 'CHEM' => 70,
-            'PHYS' => 80, 'WHIST' => 65, 'WGEO' => 45, 'MUSIC' => 85, 'SUPW' => 92, 'PE' => 68]);
+            'PHYS' => 80, 'WHIST' => 65, 'WGEO' => 45, 'MUSIC' => 85, 'PE' => 68]);
+        $this->setWord($pupil, $ten, $this->terms[0], 'Pass');
         [$user] = $this->familyAccounts($pupil);
 
+        // 10 + 9 + 6 + 0 + 7 + 8 + 9 = 49 points; Mathematics below 40 is a Q19 case, so the class waits.
         $page = $this->actingAs($user)->get("/student/grades?term={$this->terms[0]->id}")->assertOk()
             ->assertSee('Term point total')
-            ->assertSee('No point total or class of pass yet')
-            ->assertSee('Q6')->assertSee('Q19');
+            ->assertSee('Pending (Q19)');
+        $this->assertMatchesRegularExpression('/Term point total.*?49/s', $page->getContent());
         $subjects = $this->pageSubjects($page->getContent());
-        $this->assertCount(13, $subjects);
+        $this->assertCount(10, $subjects); // the arts track's three aren't listed
         $this->assertContains(['MATHEMATICS', '30', 'Fail · 0 points'], $subjects);
         $this->assertContains(['MYANMAR', '77', 'B · 9 points'], $subjects);
-        $this->assertMatchesRegularExpression('/Term point total.*?—/s', $page->getContent());
+        $this->assertNotContains('WORLD HISTORY', array_column($subjects, 0));
     }
 
     public function test_a_kg_to_9_average_is_shown_as_a_percentage(): void
