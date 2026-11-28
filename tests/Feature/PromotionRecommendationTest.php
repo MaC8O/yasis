@@ -63,7 +63,7 @@ class PromotionRecommendationTest extends TestCase
     {
         $this->actingAs($this->registrar->user)->get("/registrar/promotions/{$this->section->id}/create")->assertOk()
             ->assertSee('Recommendation')
-            ->assertSeeInOrder(['Failing Pupil', 'Retain', 'Average 80', 'Fail', 'provisional'])
+            ->assertSeeInOrder(['Failing Pupil', 'Retain', 'Average 81', 'Fail', 'provisional'])
             ->assertSeeInOrder(['Passing Pupil', 'Promote', 'Average 90', 'First', 'provisional'])
             ->assertSee('<option value="Retain" selected>', false);
     }

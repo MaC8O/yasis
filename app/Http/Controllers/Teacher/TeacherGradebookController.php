@@ -17,11 +17,13 @@ use App\Models\StaffProfile;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\SubjectOffering;
+use App\Models\SubjectStatus;
 use App\Models\Term;
 use App\Services\AttendanceScoreService;
 use App\Services\AuditService;
 use App\Services\GradebookTemplateService;
 use App\Services\ResultService;
+use App\Services\SubjectStatusService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -81,6 +83,21 @@ class TeacherGradebookController extends Controller
         $terms = $activeYear?->terms()->orderBy('sequence')->get() ?? collect();
         $term = $terms->firstWhere('id', $request->integer('term')) ?? $terms->first();
 
+        // SUPW (Grades 5-12) has a word per student, not a mark: no categories, no template (Q5).
+        $section->loadMissing('gradeLevel');
+        $offering = $section->gradeLevel
+            ? SubjectOffering::where('grade_level_id', $section->grade_level_id)->where('subject_id', $subject->id)->active()->first()
+            : null;
+        if ($offering?->usesCompletion()) {
+            $roster = $section->enrollments()->with('student')->where('status', 'Active')->get()->pluck('student')->sortBy('name')->values();
+
+            return view('teacher.gradebook.completion', [
+                'assignments' => $assignments, 'section' => $section, 'subject' => $subject, 'terms' => $terms, 'term' => $term,
+                'offering' => $offering, 'roster' => $roster,
+                'words' => $term ? app(SubjectStatusService::class)->words($section, $subject->id, $term) : [],
+            ]);
+        }
+
         // KG1 to Grade 10: an open term's gradebook is put on the school's fixed template first (§4.1).
         $usesTemplate = $templates->appliesTo($section);
         if ($usesTemplate && $term && ! $term->is_locked) {
@@ -134,10 +151,6 @@ class TeacherGradebookController extends Controller
 
         // The section's grading scheme, so the grid can preview the letter as scores are typed, with the
         // same rounding and bands ResultService uses. A subject outside the curriculum has no letter.
-        $section->loadMissing('gradeLevel');
-        $offering = $section->gradeLevel
-            ? SubjectOffering::where('grade_level_id', $section->grade_level_id)->where('subject_id', $subject->id)->active()->first()
-            : null;
         $scheme = $section->gradeLevel?->grading_scheme_id ? GradingScheme::find($section->gradeLevel->grading_scheme_id) : null;
         $previewRules = $scheme && $offering ? $resultService->rules($scheme) : null;
 
@@ -168,6 +181,35 @@ class TeacherGradebookController extends Controller
                 'passFail' => $offering->grading_mode === 'pass_fail',
             ] : null,
         ]);
+    }
+
+    /**
+     * SUPW's words for a term (Pass, Incomplete, Complete). Once the term is locked only Incomplete
+     * can still become Complete; the service refuses anything else.
+     */
+    public function saveWords(Request $request, SubjectStatusService $statuses)
+    {
+        $data = $request->validate([
+            'section_id' => ['required', 'exists:sections,id'],
+            'subject_id' => ['required', 'exists:subjects,id'],
+            'term_id' => ['required', 'exists:terms,id'],
+            'words' => ['array'],
+            'words.*' => ['nullable', 'in:'.implode(',', SubjectStatus::STATUSES)],
+        ], ['words.*.in' => 'SUPW is Pass, Incomplete or Complete.']);
+        $this->assertTeaches($request, (int) $data['section_id'], (int) $data['subject_id']);
+        $section = Section::with('gradeLevel')->findOrFail($data['section_id']);
+        $offering = SubjectOffering::where('grade_level_id', $section->grade_level_id)->where('subject_id', $data['subject_id'])->active()->first();
+        abort_unless($offering?->usesCompletion(), 404);
+        $term = Term::findOrFail($data['term_id']);
+        abort_unless($term->academic_year_id === $section->academic_year_id, 404);
+
+        try {
+            $changed = $statuses->save($section, Subject::findOrFail($data['subject_id']), $term, $data['words'] ?? [], $request->user());
+        } catch (ActionRefused $e) {
+            return back()->with('warning', $e->getMessage());
+        }
+
+        return back()->with('status', $changed ? "Saved {$changed} ".str('word')->plural($changed).'.' : 'Nothing changed.');
     }
 
     public function storeCategory(Request $request, AuditService $audit, GradebookTemplateService $templates)

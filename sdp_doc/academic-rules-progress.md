@@ -14,7 +14,9 @@ Source of truth: [YASIS_Academic_and_Fee_Rules.md](YASIS_Academic_and_Fee_Rules.
 | 7. Statement of Marks | Merged | `statement-of-marks`, PR #49 |
 | 8a. Fee schedule (reference data only) | Merged | `fee-schedule`, PR #50 |
 | 8b-1. Sun Accounts ledger import: parser, import, validation, matching, overrides, re-import, revert, Treasurer screens | Merged | `sun-ledger-import`, PR #51 |
-| 8b-2. Family statements, reused codes (T3), guardian and student Fees pages, reports and dashboards, retiring the CSV upload, demo seeder | PR open, awaiting review | `sun-family-view`, PR #52 |
+| 8b-2. Family statements, reused codes (T3), guardian and student Fees pages, reports and dashboards, retiring the CSV upload, demo seeder | Merged | `sun-family-view`, PR #52 |
+| 9a. The school's answers: curriculum and results (KG-4 counting, SUPW words, Grade 10 and 11-12 tracks, Final column, dense ranking, Grade 10 G.P.A row, personality once a year, Statement of Marks) | PR open, awaiting review | `school-answers-results`, PR #53 |
+| 9b. The school's answers: the Grades 11-12 gradebook template and the attendance rules | Plan to be sent after 9a's PR | |
 
 ## Phase 1: grade levels (merged)
 
@@ -579,7 +581,7 @@ Between the two years: 887 accounts carried over, 134 new, 16 opening balances d
 
 The upload limit must allow 10 MB.
 
-## Phase 8b-2: family statements, reused codes, reports, retiring the CSV upload (done, in review)
+## Phase 8b-2: family statements, reused codes, reports, retiring the CSV upload (merged)
 
 Built on the Treasurer's answers (owner, 2026-11-28; the answers are in [YASIS_School_Answers.md](YASIS_School_Answers.md)). Section 6, 7 and 8 of the local Sun file were updated to match.
 
@@ -636,42 +638,133 @@ On a fresh seed they roll back and reapply cleanly; the rollback puts the links 
 
 **Deploy (staging), when asked:** `php artisan migrate` (4 migrations) and an asset build. The demo ledger comes only with a fresh seed.
 
+## Phase 9a: the school's answers, curriculum and results (done, in review)
+
+Built on the school's answers (owner, 2026-11-28; `YASIS_School_Answers.md`, "Answers that change built code"). The rules file is updated to match: every answered question is marked, sections 2, 3, 4.2, 5, 6, 7 and 9 follow the answers, and the open list is follow-up questions FQ1-FQ9 plus Q19-Q21 (Q2 and Q10 are also still open).
+
+**Owner's decisions (2026-11-28):**
+1. The Final column's result rows hold the year result as already built (from the subjects' year marks), so the card, the statement and the recommendation agree.
+2. The year's SUPW word is the last term's. Incomplete can become Complete on a locked term, in that direction only: the SUPW teacher enters it, it is audited, and the frozen word and the issued statements change in place. Nothing else is recalculated; the recommendation changes only if the FQ3 rule is on.
+3. Grade 10 keeps the card's WORLD HISTORY and WORLD GEOGRAPHY, and its printed row label "G.P.A" with the average in it.
+4. Grade 10's point total and class aren't held back for everyone while Q19 is open (see below).
+5. KG-4's locked Term 1 keeps excluding Character Building while the later terms include it: accepted, since there is no real school data yet and the Principal can recalculate a locked term with the current rules.
+
+**Built:**
+- **Curriculum (Q4-Q7):**
+  - KG-4 counts Character Building, not Social Study (seven subjects).
+  - SUPW, Grades 5-12, uses the new `completion` grading mode: no mark, in no average or GPA. Grades 5-9 average nine subjects.
+  - Grade 10 counts Moral, Myanmar, English, Mathematics and one track of three: Science (Biology, Chemistry, Physics) or Arts (World History, World Geography, Music). Computer isn't counted, flagged **FQ4**. PE and SUPW are extras.
+  - Grades 11-12 have one track per student: Science (Biology, Chemistry, Physics) or Arts (World History, World Geography, Accounting).
+  - `subject_offerings.track` replaces the elective slot, and the Admin's Curriculum page edits it. A level's tracks are the tracks on its rows.
+- **Tracks (`student_tracks`):**
+  - One per student per year, set by the Registrar on **Tracks** (replaces Electives; `/registrar/electives` redirects). Grade 10 uses the same record.
+  - Each change is audited. A track can be changed but not cleared.
+  - No track means an incomplete result, with the reason. The other track's subjects print "-".
+- **SUPW words (`subject_statuses`):**
+  - The SUPW teacher's gradebook for SUPW shows one Pass / Incomplete / Complete per student, with no categories; the template is never applied to it.
+  - On a locked term only Incomplete → Complete is accepted. The term's frozen word changes in place; for the last term, so do the year's frozen word and the issued Statements of Marks.
+  - Audited as "Recorded SUPW words" or "Completed SUPW after the term was locked".
+- **Results:**
+  - Ties are dense: 1, 2, 2, 3 (`grading_schemes.tie_ranking`; freezes made before read as the old 1, 2, 2, 4).
+  - Grade 10 ranks by the average of its seven counted subjects (`rank_basis`), stored as `student_results.average_value`.
+- **Q19 no longer blocks Grade 10.** The point total is shown for everyone. The class is decided unless a counted subject or the total falls in a band flagged Q19 (a subject below 40, or 35-39 points); then it shows "class pending school answer (Q19)" (`student_results.class_pending`, `ResultService::CLASS_QUESTIONS`). Q6 stays a blocking question in the code for frozen results that waited on it.
+- **Frozen results keep their curriculum:** each freeze stores the curriculum it used (`result_freezes.curriculum`; existing freezes got theirs from their frozen subject rows). A re-freeze after a grade change, or a relock with the previous rules, uses it. Only "Recalculate with the current rules" picks up a changed curriculum. Before 9a, both used the live curriculum.
+- **Report cards:**
+  - Final is the whole year: the subjects' year marks, the year's G.P.A, position and class size, and Days absent as the four terms added up. It's provisional until the year is frozen.
+  - The Grade 10 G.P.A row holds its average, under the label "G.P.A".
+  - SUPW prints its word.
+- **Personality traits:** rated once a year by the homeroom teacher, on the last term, and printed on the final report only (`report_rules.personality_shown` = `final_report`, Q14 cleared). Earlier terms show where to rate, and their cards leave the block blank. Ratings already given for earlier terms are kept, not printed.
+- **Statement of Marks:** KG-4 lists Character Building. Grades 5-9 list SUPW's word after the counted subjects. Grades 11-12 split compulsory and optional by track. Q15 is cleared.
+- **Promotion:** "SUPW Incomplete" is shown next to the recommendation. The new report rule `supw_incomplete_blocks_promotion` (default no, flagged **FQ3**) makes it Retain when set.
+- **Seeders:** tracks instead of elective choices; SUPW words (about one in seven Incomplete) instead of marks; last year's Term 4 personality ratings; no Term 1 ratings this year.
+
+**Migrations (7):**
+1. `subject_offerings.track`, the `completion` grading mode, `student_subject_results.track`.
+2. `student_tracks`.
+3. The curriculum answers, moving one-track elective choices into tracks (mixed ones get none) and clearing Q4-Q7. Rollback restores the seeded rows.
+4. `subject_statuses`.
+5. `grading_schemes.tie_ranking` and `rank_basis`, and `student_results.average_value` and `class_pending`.
+6. `result_freezes.curriculum`, filled for existing freezes.
+7. The report rules: the FQ3 rule, `personality_shown` = `final_report`, and the Q14 and Q15 flags cleared.
+
+Rolling back 2-4 is refused once the Registrar has set a track or a SUPW word has been entered. On a fresh seed the refusal works; with the seeded words and tracks cleared, all seven roll back and reapply.
+
+**Tests:**
+- `SchoolAnswersResultsTest` (6):
+  - SUPW words and access.
+  - Incomplete → Complete after the year is locked, with the frozen words, the issued statement and the card.
+  - The FQ3 rule.
+  - A re-freeze keeping the frozen curriculum.
+  - The migration moving elective choices into tracks.
+  - The Grade 10 card.
+- `StudentTrackTest` (7) replaces `StudentElectiveTest`.
+- `ResultServiceTest`:
+  - The six-subject KG worked example kept as an arithmetic test, and a seven-subject example (Character Building 83 → 89).
+  - Arts and science tracks.
+  - SUPW words.
+  - Grade 10 with seven subjects, and the Q19 pending cases.
+  - Dense ties.
+- Also updated: `CurriculumTest`, `ReportCardTest` (the Final column as the year), `FamilyResultsTest`, `StatementOfMarksTest`, `ResultFreezeTest`, `PromotionRecommendationTest`.
+- The full suite passes (567).
+- **Test-run fix (out of phase, tests only):** `SunLedgerImporter` (8b-1) calls `set_time_limit(120)` for web requests. In a test run that limit stayed on for the rest of the PHPUnit process, and one full run died with "Maximum execution time of 120 seconds exceeded" once the remaining tests took longer than that. `tests/TestCase.php` now resets the limit before each test; the app code is unchanged.
+
+**Checked in the browser (fresh seed, 1280 px and 390 px):**
+- **SUPW teacher (Grade 12-A, locked Term 1):** Pass rows read-only, Incomplete → Complete saved, and the frozen card then showed COMPLETE.
+- **Homeroom teacher:** Term 3 shows "rated once a year, on Term 4"; ratings saved on Term 4 and printed on the Term 4 card.
+- **Registrar:**
+  - Tracks list and section page; set a missing track.
+  - Read-only cards.
+  - A Statement of Marks prepared for last year's Grade 8-A: nine scores, then SUPW's word.
+- **Admin:** Curriculum for Grade 10 (tracks, FQ4) and Grade 11; the Report Card Rules options.
+- **Principal and VP:** Grade 10-A cards read-only, with averages in the G.P.A row and dense positions.
+- **Student and guardian:** last year's final card (year marks in Final, SUPW's word, days absent summed, personality printed); the SUPW word on the grade page.
+- **Screenshots:** they stopped working partway through (Chrome's capture timed out). The Admin rules page, the Principal, VP, student and guardian were checked by reading the rendered pages and measuring the 390 px frame, not visually.
+
+**Not in 9a:**
+- The Grades 11-12 gradebook template and the attendance rules (9b).
+- The fee documents (instalment amounts, KG1 tuition).
+- The teacher-scope fix.
+
+**Deploy (staging), when asked:** `php artisan migrate` (7 migrations) and an asset build. Existing elective choices become tracks where they are all one track, and the Registrar sets the rest on Tracks. A fresh reset with the seeder is the alternative.
+
 ## Defaults applied so far
 
 | Rule | Default | Question (rules file) | Where it lives |
 |---|---|---|---|
 | Levels | KG1, KG2, 1 to 12. Nursery has no level and no curriculum. | Q2 | `grade_levels` |
-| KG-4 counting | Character Building and Social Study appear on the KG-4 card but are not counted in the accumulative score. This applies from KG1 to Grade 4. | Q4 | `subject_offerings.counts_in_result`, flagged Q4 |
-| SUPW | Scored out of 100 and counted for Grades 5-9. Scored for Grade 10, whose counting is covered by the next row. Pass/Fail and not counted (not in the GPA) for Grades 11-12. | Q5 | `grading_mode`, `counts_in_result`, flagged Q5 |
-| Grade 10 counted subjects | None counted until the school confirms which seven count. | Q6 | `counts_in_result` = false, all 13 rows flagged Q6 |
-| Grade 11-12 options | Each slot is chosen separately, so mixing (for example Biology with Accounting) is allowed. Slot A: Biology / World History. Slot B: Chemistry / World Geography. Slot C: Physics / Accounting. | Q7 | `elective_slot`, `student_electives`, flagged Q7 |
+| KG-4 counting | Character Building counts, Social Study doesn't (seven subjects). | Q4 (answered, 9a) | `subject_offerings.counts_in_result` |
+| SUPW | No mark, Grades 5-12: Pass, Incomplete or Complete; in no average or GPA. The year's word is the last term's. | Q5 (answered, 9a) | `grading_mode` = `completion`, `subject_statuses` |
+| SUPW Incomplete and promotion | Shown beside the recommendation; doesn't change it. | FQ3 | `report_rules.supw_incomplete_blocks_promotion` = no, flagged FQ3 |
+| Grade 10 counted subjects | Moral, Myanmar, English, Mathematics and one track of three. | Q6 (answered, 9a) | `subject_offerings.track`, `student_tracks` |
+| Grade 10 Computer | Not counted. | FQ4 | Grade 10 COMP row flagged FQ4 |
+| Grade 11-12 options | One whole track per student: Science (Biology, Chemistry, Physics) or Arts (World History, World Geography, Accounting). | Q7 (answered, 9a) | `subject_offerings.track`, `student_tracks` |
 | Grade 11-12 report order | Compulsory subjects, then Biology, Chemistry, Physics, World History, World Geography, Accounting, then SUPW. | not asked | `sort_order` |
 | Report labels | The card's capitals, for example `MORAL/VALUES EDU`. | not asked | `report_label` |
 | Rounding | Marks, averages and point totals are rounded to whole numbers, half up, before the band lookup (60.5 is Second). The GPA is rounded to two decimals, half up. | Q10 | `grading_schemes` rounding columns, flagged Q10 |
-| Grade 10 below 40 | A subject below 40 is Fail with 0 points; a point total below 40 is Fail; one failed counted subject fails the year. | Q19 (new) | Grade 10 Fail bands and `subject_fail_rule`, flagged Q19 |
+| Grade 10 below 40 | The bands stay (Fail 0 points; below 40 points Fail), flagged Q19. Since 9a a student in a flagged band gets the point total with "class pending school answer (Q19)"; everyone else gets the total and the class. | Q19 (new, not sent) | Grade 10 Fail bands flagged Q19, `ResultService::CLASS_QUESTIONS` |
 | Grade 11-12 failed subject | A failed compulsory subject fails the year, whatever the GPA. | not asked (rules file section 6) | `subject_fail_rule` = `any_compulsory` |
-| Year mark | A subject's year mark is the simple average of its four rounded term marks, and there is none until every term has a mark. | Q3 | `ResultService::liveSectionYear()` |
+| Year mark | A subject's year mark is the simple average of its four rounded term marks, and there is none until every term has a mark. | Q3 (answered) | `ResultService::liveSectionYear()` |
 | Building the result | The average, point total and GPA use the rounded subject marks, the figures printed on the card. | Q10 | `ResultService::combine()` |
-| "G.P.A" row | It shows the average for KG1-9, the point total for Grade 10 and the GPA for 11-12, labelled that way on every page (from 4b). | Q12 | `StudentResultData::resultLabel` |
-| Position | Ranked by the printed figure. Ties share a position and the next is skipped (1, 2, 2, 4). Only complete results are ranked. | Q13 | `ResultService::rank()` |
-| SUPW (11-12) | Failing SUPW does not fail the year, because it is not counted. | Q5 | `any_compulsory` applies to counted compulsory subjects |
-| Grade 10 result | No point total, class or position while any Grade 10 curriculum row is flagged Q6 or the scheme or its bands are flagged Q19. The page says why. | Q6, Q19 | `ResultService::BLOCKING_QUESTIONS` |
+| "G.P.A" row | The average for KG1-10 (Grade 10: of its seven counted subjects) and the GPA for 11-12. The family pages still label Grade 10's result "Point total". | Q12 (answered, 9a) | `StudentResultData::average` |
+| Position | Ranked by the printed figure (Grade 10 by its average). Ties share a position and the next follows on (1, 2, 2, 3). Only complete results are ranked. Freezes made before 9a keep 1, 2, 2, 4. | Q13 (answered, 9a) | `grading_schemes.tie_ranking`, `rank_basis` |
+| SUPW (11-12) | No Fail; it counts in nothing. | Q5 (answered) | `completion` grading mode |
+| Grade 10 result | A point total, position and (outside the Q19 cases) class for every student with a track. | Q6 (answered), Q19 | `ResultService` |
 | Pass/Fail subjects | PASS when the rounded mark reaches the scheme's pass mark (the lowest band that is not a fail band). | not asked | `ResultService::subject()` |
 | Grade 10 promotion | No automatic recommendation; the DHSC result decides. | Q11 | `ResultService::promotionRecommendations()` |
 | Failed students' position | Ranked together with those who passed (a Grade 12 student who failed Mathematics can be 2nd). The Admin can switch a scheme to rank failed students after all who passed. | Q20 (new) | `grading_schemes.failed_ranking`, flagged Q20 |
 | Attendance component | Present and Tardy count as attended, Absent counts against, Excused days are left out of both attended and counted days. Only the days the student has their own record count (missing days are flagged to the teacher). | Q8 | `gradebook_template_categories` (attendance row flagged Q8), `AttendanceScoreService` |
-| Where the fixed template applies | KG1 to Grade 10. Grades 11 and 12 keep free category weighting. | Q9 | `grading_schemes.uses_gradebook_template`, G10 and G11_12 flagged Q9 |
+| Where the fixed template applies | KG1 to Grade 10. Grades 11 and 12 keep free category weighting until 9b (the school says every grade). | Q9 (answered, 9b builds it) | `grading_schemes.uses_gradebook_template`, G10 and G11_12 flagged Q9 |
 | School days in the term | The dates with an attendance record for the section in that term. | Q8 | `AttendanceScoreService` |
 | Empty categories | Left out of the weighting while the term is open. At lock, an empty Examinations category means no final mark for that subject (incomplete). | not asked (owner, 2026-11-27) | `ResultService::liveSectionTerm(final: true)` |
-| Report card "Final" column | Term 4's own result (subject marks, G.P.A row, position), like the other three columns. The year result is not on the report card; it goes on the Statement of Marks (phase 7). This replaces the earlier assumption that the Final column held the year result. | Q3 | `ReportCardService` (no rule row) |
-| Report card "G.P.A" row | Labelled per scheme on the card: "G.P.A (AVERAGE %)" for KG1-9, "G.P.A (POINT TOTAL)" for Grade 10, "G.P.A" for 11-12. | Q12 | `ReportCardService::build()` |
-| Report card position | The ranked position from the results, so ties share a position (1, 2, 2, 4). | Q13 | `ResultService::rank()` |
+| Report card "Final" column | The whole year: year marks, the year's G.P.A, position and class size, days absent of the four terms. Since 9a; it reverses phase 6's "Term 4's own result". | Q3 (answered, 9a) | `ReportCardService::build()` |
+| Report card "G.P.A" row | "G.P.A (AVERAGE %)" for KG1-9; "G.P.A" with the average for Grade 10 (the card's printed label, owner 2026-11-28); "G.P.A" for 11-12. | Q12 (answered, 9a) | `ReportCardService::build()` |
+| Report card position | The ranked position from the results (1, 2, 2, 3). | Q13 (answered, 9a) | `ResultService::rank()` |
 | Days absent | Absent plus Excused days in the term. The Admin can switch it to Absent only. | Q8 | `report_rules.days_absent_counts`, flagged Q8 |
-| Personality record | Rated every term; the card prints the latest rated term. The Admin can switch it to the report's own term. | Q14 | `report_rules.personality_shown`, flagged Q14 |
+| Personality record | Rated once a year on the last term, printed on the final report only. The rule can still be set to the latest rated term or the report's own term. | Q14 (answered, 9a) | `report_rules.personality_shown` = `final_report` |
 | Minimum attendance | 80% to sit the examinations, checked on the section's daily attendance (attended over counted days, Excused left out). Flagged, never blocked. | Q16 | `report_rules.min_attendance_pct`, flagged Q16 |
-| Examination centre | "YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL" on every statement; the Admin can change it. | Q15 | `report_rules.examination_centre`, flagged Q15 |
-| Grade 10 statement | None until the school answers; the Registrar sees why. | Q11 | `grade_levels.statement_layout` null for Grade 10 |
-| SUPW on the statement | A score for Grades 5-9 (counted), PASS or FAIL for 11-12, as the curriculum says. | Q5 | `StatementOfMarksService::content()` |
+| Examination centre | "YANGON ADVENTIST SEMINARY INTERNATIONAL SCHOOL" on every statement; the Admin can change it. | Q15 (answered, 9a) | `report_rules.examination_centre` |
+| Grade 10 statement | None: MYUM's Education Department issues it. | Q11 (answered) | `grade_levels.statement_layout` null for Grade 10 |
+| SUPW on the statement | Its word (PASS, INCOMPLETE, COMPLETE): after the counted subjects for Grades 5-9, among the compulsory subjects with HRS "-" for 11-12. | Q5 (answered, 9a) | `StatementOfMarksService::content()` |
 | PE on the Grade 5-9 statement | Listed, because PE counts in the average; the sample leaves it out. | Q21 (new) | KG-9 lists every counted subject |
 | No statement | An incomplete or blocked year result gets no statement, with the reason. | not asked | `StatementOfMarksService::source()` |
 | Failed students | Issued with RESULT FAIL and CLASS OF PASS "—". | not asked (owner, 2026-11-27) | `StatementOfMarksService::content()` |
@@ -694,9 +787,20 @@ The school's answers are in [YASIS_School_Answers.md](YASIS_School_Answers.md). 
 - Changed the build: T3 (codes can be reused), T4 and T5 (families see every transaction, no netting), T7 (Student Control carries charges too).
 - Noted, no change: T8 (adjustments after printing are possible, so the opening balance warning stays), T9 (the ferry fee is still charged monthly; the transport category stays), T11 (not sure about the star; it is stored, with no special handling).
 
-**Follow-up questions for the VP still open (numbers from the answers file):**
-- 7. Is the earlier rule that SDA discounts aren't shown to families now withdrawn? (8b-2 follows the Treasurer: families see every line.)
-- 9. Can a student's account code be given to a new student after they leave? (8b-2 handles either answer.)
+**The academic answers (Q1, Q3-Q9, Q11-Q17):** applied in 9a, except the attendance answers (Q8, Q16) and the Grades 11-12 template (Q9), which are 9b, and Q17 and the instalments (Q18), which are the fee PR. Q10 (rounding) wasn't answered. The rules file's section 12 marks each one.
+
+**Follow-up questions for the VP still open (numbered FQ1-FQ9 in the data):**
+- FQ1. Does an excused absence count as an absence for the 10% mark and the 80% rule? (9b default.)
+- FQ2. Does each subject teacher take attendance every lesson today? Would daily attendance be acceptable for the 10% subject attendance mark? (9b default.)
+- FQ3. Does SUPW "Incomplete" stop a student being promoted? (Default no: `report_rules.supw_incomplete_blocks_promotion`, flagged FQ3.)
+- FQ4. Does Grade 10 Computer count? (Default no: the Grade 10 COMP curriculum row, flagged FQ4.)
+- FQ5. Is Pre KG the same as KG1, and is KG1 tuition 1,600,000 or 2,400,000? (Fee PR.)
+- FQ6. What are the four 2026-2027 instalment amounts for each grade? (Fee PR.)
+- FQ7. Is the earlier rule that SDA discounts aren't shown to families now withdrawn? (8b-2 follows the Treasurer: families see every line.)
+- FQ8. Should ISMS hold back report cards when fees are owing, or only warn the Registrar? (Not built.)
+- FQ9. Can a student's account code be given to a new student after they leave? (8b-2 handles either answer.)
+
+**Not sent yet:** Q19, Q20, Q21. **Still open:** Q2 (never asked) and Q10.
 
 ### Question numbers: letter to the school vs rules file
 The letter sent to the school left out Q2 (Nursery), so from Q2 onwards each letter number is one less than the rules file's number. **The rules file's numbers are the ones used in the code, the data (`pending_question`) and this file.**
@@ -745,7 +849,10 @@ The letter sent to the school left out Q2 (Nursery), so from Q2 onwards each let
 - **The old department grade scale is retired (4b):** everything that read it now reads `ResultService`, and its hard-deleting Admin page is gone. Only the `grade_scale_bands` table, its rows, the `GradeScaleBand` model, `Department::gradeScaleBands()` and its `AuditLog` category remain, for past records.
 - **Out of phase:** the Principal and VP dashboards average raw `Grade` scores without any scale; they read neither the old nor the new results.
 - **Fixed in phase 8b-2 (found in 8b-1):** the Admin's Data & Backup page showed the heading `Data retention &amp; erasure` with a literal `&amp;`.
-- **Treasurer questions:** all of T1 to T11 are answered (see Open questions). Follow-up questions 7 and 9 are still open.
+- **Treasurer questions:** all of T1 to T11 are answered (see Open questions). Follow-up questions FQ7 and FQ9 are still open.
+- **KG-4's locked Term 1 (2026-2027) was frozen before Character Building counted** (accepted, owner 2026-11-28): its First column averages six subjects, the later terms and the Final seven. There is no real school data yet, and the Principal can recalculate a locked term with the current rules (Setup & Controls, with a reason).
+- **Old SUPW marks:** SUPW items and marks entered before 9a stay in the gradebook tables but aren't read. Frozen results keep the SUPW score or PASS/FAIL they were frozen with.
+- **A late SUPW Complete** can only be entered for the active school year's terms (the gradebook lists those). A Complete for an earlier year would need a manual correction.
 - **Old CSV fee tables:** `imported_fee_records` and `import_batches` keep their rows, but nothing reads them since 8b-2. Dropping them can be a later clean-up PR, after a backup.
 - **Out of phase (found in phase 7):** the teacher's Dashboard, My Classes and Attendance pages list the teacher's homeroom sections of every school year (`StaffProfile::homeroomSections` has no year filter), so after a year rollover last year's class shows beside this year's. Not fixed; the past-year seeder leaves its sections without a homeroom teacher so the demo isn't affected.
 - **Phase 6 and the report card:** the year result is not on the report card (Q3, option B). Phase 7's Statement of Marks is where `ResultService::sectionYear()` is printed.

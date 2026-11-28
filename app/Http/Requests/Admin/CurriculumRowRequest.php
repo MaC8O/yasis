@@ -20,7 +20,7 @@ class CurriculumRowRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $slot = strtoupper(trim((string) $this->input('elective_slot')));
+        $track = strtolower(trim((string) $this->input('track')));
         $hours = trim((string) $this->input('credit_hours'));
 
         $this->merge([
@@ -28,7 +28,7 @@ class CurriculumRowRequest extends FormRequest
             'is_compulsory' => $this->boolean('is_compulsory'),
             'counts_in_result' => $this->boolean('counts_in_result'),
             'confirmed' => $this->boolean('confirmed'),
-            'elective_slot' => $slot === '' ? null : $slot,
+            'track' => $track === '' ? null : $track,
             'credit_hours' => $hours === '' ? null : $hours,
         ]);
     }
@@ -43,7 +43,7 @@ class CurriculumRowRequest extends FormRequest
                 : ['prohibited'],
             'report_label' => ['required', 'string', 'max:60'],
             'is_compulsory' => ['boolean'],
-            'elective_slot' => ['nullable', 'string', 'max:10', 'regex:/^[A-Z0-9]+$/'],
+            'track' => ['nullable', 'string', 'max:20', 'regex:/^[a-z][a-z_]*$/'],
             'credit_hours' => ['nullable', 'regex:/^\d{1,2}(\.\d)?$/'],
             'grading_mode' => ['required', Rule::in(array_keys(SubjectOffering::GRADING_MODES))],
             'counts_in_result' => ['boolean'],
@@ -54,11 +54,11 @@ class CurriculumRowRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator) {
-            if ($this->input('is_compulsory') && $this->input('elective_slot') !== null) {
-                $validator->errors()->add('elective_slot', 'A compulsory subject has no elective slot. Clear the slot, or make the subject optional.');
+            if ($this->input('is_compulsory') && $this->input('track') !== null) {
+                $validator->errors()->add('track', 'A compulsory subject belongs to no track. Clear the track, or make the subject optional.');
             }
-            if (! $this->input('is_compulsory') && $this->input('elective_slot') === null) {
-                $validator->errors()->add('elective_slot', 'An optional subject needs the elective slot students choose it in (for example A).');
+            if (! $this->input('is_compulsory') && $this->input('track') === null) {
+                $validator->errors()->add('track', 'An optional subject needs the track it belongs to (for example science or arts).');
             }
         }];
     }
@@ -67,7 +67,7 @@ class CurriculumRowRequest extends FormRequest
     {
         return [
             'subject_id.unique' => 'This subject is already in this grade level\'s curriculum. If it was retired, restore it instead.',
-            'elective_slot.regex' => 'Use letters or digits for the slot, for example A.',
+            'track.regex' => 'Use a single lower-case word for the track, for example science or arts.',
             'credit_hours.regex' => 'Credit hours must be a number such as 2 or 1.5.',
         ];
     }

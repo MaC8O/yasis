@@ -31,6 +31,8 @@ final class SchemeRules
         public readonly array $markBands,
         public readonly array $resultBands,
         public readonly string $failedRanking = 'together',
+        public readonly string $tieRanking = 'dense',
+        public readonly string $rankBasis = 'result',
     ) {}
 
     public static function fromScheme(GradingScheme $scheme): self
@@ -48,6 +50,7 @@ final class SchemeRules
             $scheme->id, $scheme->code, $scheme->name, $scheme->result_basis, (string) $scheme->result_max,
             $scheme->mark_decimals, $scheme->result_decimals, $scheme->rounding_mode, $scheme->subject_fail_rule,
             $scheme->pending_question, $bands('mark'), $bands('result'), $scheme->failed_ranking ?? 'together',
+            $scheme->tie_ranking ?? 'dense', $scheme->rank_basis ?? 'result',
         );
     }
 
@@ -61,6 +64,10 @@ final class SchemeRules
             $s['pending_question'], $snapshot->mark_bands, $snapshot->result_bands,
             // Freezes made before Q20 existed ranked everyone together.
             $s['failed_ranking'] ?? 'together',
+            // Freezes made before the school's answers (Q13, Q12) skipped the rank after a tie and
+            // ranked by the result.
+            $s['tie_ranking'] ?? 'standard',
+            $s['rank_basis'] ?? 'result',
         );
     }
 
@@ -78,6 +85,8 @@ final class SchemeRules
                 'rounding_mode' => $this->roundingMode,
                 'subject_fail_rule' => $this->subjectFailRule,
                 'failed_ranking' => $this->failedRanking,
+                'tie_ranking' => $this->tieRanking,
+                'rank_basis' => $this->rankBasis,
                 'pending_question' => $this->pendingQuestion,
             ],
             'mark_bands' => $this->markBands,

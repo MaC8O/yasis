@@ -5,13 +5,16 @@ namespace App\Services;
 use App\Models\Enrollment;
 use App\Models\GradeLevel;
 use App\Models\GradingScheme;
+use App\Models\ReportRule;
 use App\Models\ResultFreeze;
 use App\Models\Section;
 use App\Models\Student;
 use App\Models\StudentElective;
 use App\Models\StudentResult;
+use App\Models\StudentTrack;
 use App\Models\Subject;
 use App\Models\SubjectOffering;
+use App\Models\SubjectStatus;
 use App\Models\Term;
 use App\Services\Results\SchemeRules;
 use App\Services\Results\SectionResults;
@@ -31,19 +34,33 @@ use Illuminate\Support\Collection;
  * A locked term (or a year whose terms are all locked) is read from its freeze and never
  * recalculated; anything else is calculated live.
  *
- * Defaults awaiting the school: a subject's year mark is the average of its four rounded term
- * marks (Q3); the average, point total and GPA are built from the rounded subject marks (Q10);
- * ties share a position by the printed figure (Q13); a blocking question (Q6, Q19) stops the
- * level's result until the school confirms it.
+ * A subject's year mark is the average of its four rounded term marks, and the year result is
+ * worked out from those year marks like a term's (Q3, the school's "Final"). The average, point
+ * total and GPA are built from the rounded subject marks (Q10, still open). Tied students share a
+ * position by the printed figure, densely by default (1, 2, 2, 3; Q13). Grade 10 and Grades 11-12
+ * students take the compulsory subjects plus their track's (Q6, Q7). SUPW has a word, not a mark,
+ * and counts in nothing (Q5). A blocking question on the curriculum stops the level's result; a
+ * band flagged with a class question (Q19) shows the result with its class pending.
+ *
+ * Frozen results are recalculated (a re-freeze after a grade change, a relock with the previous
+ * rules) with the rules and the curriculum stored in their freeze.
  */
 class ResultService
 {
     /**
      * Defaults that decide the result itself: while one is flagged on a level's curriculum or
-     * scheme, no result is calculated for that level. Q6: which Grade 10 subjects count. Q19:
-     * Grade 10 below 40 marks or 40 points.
+     * scheme, no result is calculated for that level. Q6 (which Grade 10 subjects count) is
+     * answered; the list stays so frozen results that waited on it still read the same.
      */
-    public const BLOCKING_QUESTIONS = ['Q6', 'Q19'];
+    public const BLOCKING_QUESTIONS = ['Q6'];
+
+    /**
+     * Questions that leave only the class of pass undecided: a student whose subject mark or
+     * result falls in a band flagged with one gets their result and position, with the class
+     * "pending school answer". Q19: Grade 10 with a counted subject below 40 marks, or a point
+     * total below 40.
+     */
+    public const CLASS_QUESTIONS = ['Q19'];
 
     /** Decimal places kept in intermediate steps. */
     private const SCALE = 10;
@@ -79,14 +96,15 @@ class ResultService
     /**
      * Round a result (average, point total or GPA) and find its class of pass.
      *
-     * @return array{value: string, label: ?string, is_fail: bool}
+     * @return array{value: string, label: ?string, is_fail: bool, question: ?string}
      */
     public function classify(SchemeRules $rules, string $unrounded): array
     {
         $value = $this->round($unrounded, $rules->resultDecimals, $rules->roundingMode);
         $band = $this->band($rules->resultBands, $value);
 
-        return ['value' => $value, 'label' => $band['label'] ?? null, 'is_fail' => (bool) ($band['is_fail'] ?? true)];
+        return ['value' => $value, 'label' => $band['label'] ?? null, 'is_fail' => (bool) ($band['is_fail'] ?? true),
+            'question' => $this->classQuestion($band['pending_question'] ?? null)];
     }
 
     // --- Terms -------------------------------------------------------------------------------------
@@ -124,10 +142,11 @@ class ResultService
     }
 
     /**
-     * Calculate a section's term results now. $rulesFor maps a scheme id to the rules to use (a
-     * freeze's copy); by default each scheme's current rules.
+     * Calculate a section's term results now. $rulesFor maps a scheme id to the rules to use, and
+     * $curriculumFor a grade level id to its curriculum rows (a freeze's copies; null for a level
+     * the freeze has none for); by default each scheme's current rules and the current curriculum.
      */
-    public function liveSectionTerm(Section $section, Term $term, ?callable $rulesFor = null, bool $final = false): SectionResults
+    public function liveSectionTerm(Section $section, Term $term, ?callable $rulesFor = null, bool $final = false, ?callable $curriculumFor = null): SectionResults
     {
         $marks = $this->grades->sectionMarks($section, $term);
 
@@ -143,7 +162,24 @@ class ResultService
             }
         }
 
-        return $this->calculate($section, $term->academic_year_id, $marks, $rulesFor, false, $noExam);
+        return $this->calculate($section, $term->academic_year_id, $marks, $rulesFor, false, $noExam, $curriculumFor, $this->words($section, $term));
+    }
+
+    /**
+     * The words of the `completion` subjects (SUPW) for a term: student id => subject id => Pass,
+     * Incomplete or Complete.
+     *
+     * @return array<int, array<int, string>>
+     */
+    public function words(Section $section, Term $term): array
+    {
+        $roster = Enrollment::where('section_id', $section->id)->where('status', '!=', 'Withdrawn')->pluck('student_id');
+        $words = [];
+        foreach (SubjectStatus::where('term_id', $term->id)->whereIn('student_id', $roster)->get() as $row) {
+            $words[$row->student_id][$row->subject_id] = $row->status;
+        }
+
+        return $words;
     }
 
     // --- The year ----------------------------------------------------------------------------------
@@ -165,9 +201,9 @@ class ResultService
     /**
      * Calculate a section's year results now. A subject's year mark is the simple average of its
      * rounded term marks (Q3); it has none until every term of the year has a mark. Each term's
-     * marks come from that term's freeze when it has one.
+     * marks come from that term's freeze when it has one. SUPW's year word is the last term's.
      */
-    public function liveSectionYear(Section $section, ?callable $rulesFor = null): SectionResults
+    public function liveSectionYear(Section $section, ?callable $rulesFor = null, ?callable $curriculumFor = null): SectionResults
     {
         $terms = Term::where('academic_year_id', $section->academic_year_id)->orderBy('sequence')->get();
         $termMarks = []; // student id => subject id => list of rounded term marks
@@ -191,7 +227,10 @@ class ResultService
             }
         }
 
-        return $this->calculate($section, $section->academic_year_id, $marks, $rulesFor, true);
+        $last = $terms->last();
+
+        return $this->calculate($section, $section->academic_year_id, $marks, $rulesFor, true, [], $curriculumFor,
+            $last ? $this->words($section, $last) : []);
     }
 
     /**
@@ -236,7 +275,10 @@ class ResultService
                 return [$studentId => ['action' => null, 'basis' => 'No recommendation: '.implode(' ', $r->reasons)]];
             }
 
-            return [$studentId => ['action' => $r->recommendation, 'basis' => $r->summary().($year->frozen ? '' : ' · provisional')]];
+            // SUPW Incomplete is shown beside the recommendation; it changes it only when the FQ3 rule says so.
+            $supw = $r->completionWord() === 'INCOMPLETE' ? ' · SUPW Incomplete' : '';
+
+            return [$studentId => ['action' => $r->recommendation, 'basis' => $r->summary().$supw.($year->frozen ? '' : ' · provisional')]];
         })->all();
     }
 
@@ -244,10 +286,13 @@ class ResultService
 
     /**
      * @param  array<int, array<int, string>>  $marks  student id => subject id => mark (two decimals)
+     * @param  list<int>  $noExam  subjects with no final mark because their Examinations category is empty
+     * @param  array<int, array<int, string>>  $words  student id => subject id => SUPW word
      */
-    /** @param  list<int>  $noExam  subjects with no final mark because their Examinations category is empty */
-    private function calculate(Section $section, int $yearId, array $marks, ?callable $rulesFor, bool $isYear, array $noExam = []): SectionResults
-    {
+    private function calculate(
+        Section $section, int $yearId, array $marks, ?callable $rulesFor, bool $isYear, array $noExam = [],
+        ?callable $curriculumFor = null, array $words = [],
+    ): SectionResults {
         $section->loadMissing('gradeLevel');
         $level = $section->gradeLevel;
         $rules = null;
@@ -255,15 +300,16 @@ class ResultService
             $rules = $rulesFor ? $rulesFor($level->grading_scheme_id) : $this->rules(GradingScheme::findOrFail($level->grading_scheme_id));
         }
 
-        $offerings = $level
-            ? SubjectOffering::with('subject')->where('grade_level_id', $level->id)->active()->ordered()->get()
-            : collect();
+        $offerings = $level ? ($curriculumFor ? $curriculumFor($level->id) : null) ?? $this->curriculum($level->id) : collect();
         $slots = $offerings->whereNotNull('elective_slot')->pluck('elective_slot')->unique()->sort()->values();
+        $hasTracks = $offerings->whereNotNull('track')->isNotEmpty();
 
         $roster = Enrollment::where('section_id', $section->id)->where('status', '!=', 'Withdrawn')
             ->orderBy('id')->pluck('student_id')->unique()->values();
         $choices = StudentElective::where('academic_year_id', $yearId)->whereIn('student_id', $roster)->get()
             ->groupBy('student_id')->map(fn ($rows) => $rows->pluck('subject_offering_id', 'elective_slot'));
+        $tracks = StudentTrack::where('academic_year_id', $yearId)->whereIn('student_id', $roster)->pluck('track', 'student_id');
+        $supwBlocks = $isYear && ReportRule::value('supw_incomplete_blocks_promotion', 'no') === 'yes';
 
         $blockers = $this->blockers($level, $rules, $offerings);
         $extraSubjects = Subject::whereIn('id', collect($marks)->flatMap(fn ($m) => array_keys($m))->unique()
@@ -272,12 +318,19 @@ class ResultService
 
         $students = $roster->mapWithKeys(fn ($studentId) => [$studentId => $this->student(
             $studentId, $section, $level, $rules, $offerings, $slots, $choices->get($studentId, collect()),
-            $marks[$studentId] ?? [], $extraSubjects, $blockers, $isYear, $isTopLevel, $noExam,
+            $hasTracks, $tracks->get($studentId), $marks[$studentId] ?? [], $words[$studentId] ?? [],
+            $extraSubjects, $blockers, $isYear, $isTopLevel, $noExam, $supwBlocks,
         )]);
 
         $this->rank($students, $rules);
 
         return new SectionResults($students);
+    }
+
+    /** A grade level's active curriculum rows, in report order. */
+    public function curriculum(int $gradeLevelId): Collection
+    {
+        return SubjectOffering::with('subject')->where('grade_level_id', $gradeLevelId)->active()->ordered()->get();
     }
 
     /** Why no result can be calculated for this level at all, if anything stops it. */
@@ -304,15 +357,21 @@ class ResultService
 
     private function student(
         int $studentId, Section $section, ?GradeLevel $level, ?SchemeRules $rules, Collection $offerings,
-        Collection $slots, Collection $choices, array $marks, Collection $extraSubjects, array $blockers,
-        bool $isYear, bool $isTopLevel, array $noExam = [],
+        Collection $slots, Collection $choices, bool $hasTracks, ?string $track, array $marks, array $words,
+        Collection $extraSubjects, array $blockers, bool $isYear, bool $isTopLevel, array $noExam, bool $supwBlocks,
     ): StudentResultData {
         $subjects = [];
         foreach ($offerings as $o) {
-            $taken = $o->is_compulsory || (int) $choices->get($o->elective_slot) === $o->id;
-            $mark = $taken ? ($marks[$o->subject_id] ?? null) : null;
+            $taken = match (true) {
+                $o->track !== null => $track === $o->track,
+                $o->elective_slot !== null => (int) $choices->get($o->elective_slot) === $o->id,
+                default => (bool) $o->is_compulsory,
+            };
+            $completion = $o->grading_mode === 'completion';
+            $mark = $taken && ! $completion ? ($marks[$o->subject_id] ?? null) : null;
+            $word = $taken && $completion ? ($words[$o->subject_id] ?? null) : null;
             $subjects[] = $this->subject($o->subject_id, $o->subject->code, $o->subject->name, $o->report_label, $o->sort_order, $o,
-                $taken, $taken && $o->counts_in_result, $mark, $rules);
+                $taken, $taken && $o->counts_in_result && ! $completion, $mark, $rules, $word);
         }
         foreach ($extraSubjects as $i => $subject) {
             if (isset($marks[$subject->id])) {
@@ -331,6 +390,9 @@ class ResultService
         }
 
         $missing = [];
+        if ($hasTracks && $track === null) {
+            $missing[] = 'No track chosen (science or arts). The Registrar sets it on Tracks.';
+        }
         foreach ($slots as $slot) {
             if (! $choices->has($slot)) {
                 $missing[] = "No elective chosen for slot {$slot}.";
@@ -363,6 +425,21 @@ class ResultService
         }
 
         $class = $this->classify($rules, (string) $unrounded);
+        $average = match ($rules->resultBasis) {
+            'average' => $class['value'],
+            'point_total' => $this->round((string) $this->mean($counted), $rules->resultDecimals, $rules->roundingMode),
+            default => null,
+        };
+
+        // Q19: a counted subject or the result in a band whose meaning the school hasn't confirmed.
+        $pending = collect($counted)->pluck('bandQuestion')->push($class['question'])->filter()->unique()->values();
+        if ($pending->isNotEmpty()) {
+            return new StudentResultData(...$base, status: 'complete', reasons: [], value: $class['value'],
+                unrounded: (string) $unrounded->toScale(4, RoundingMode::HALF_UP), classLabel: null, passed: null,
+                position: null, rankedCount: null, recommendation: null, subjects: $subjects,
+                average: $average, classPending: $pending->implode(', '));
+        }
+
         $subjectFails = match ($rules->subjectFailRule) {
             'any_counted' => collect($counted)->contains(fn ($s) => $s->isFail),
             'any_compulsory' => collect($counted)->contains(fn ($s) => $s->isFail && $s->compulsory),
@@ -374,18 +451,24 @@ class ResultService
         $recommendation = null;
         if ($isYear && $rules->resultBasis !== 'point_total') { // Grade 10: the DHSC decides (Q11)
             $recommendation = $passed ? ($isTopLevel ? 'Graduate' : 'Promote') : 'Retain';
+            // FQ3: SUPW Incomplete stops promotion only when the Admin's rule says so (default no).
+            $supw = collect($subjects)->first(fn (SubjectResult $s) => $s->usesCompletion() && $s->taken);
+            if ($supwBlocks && $passed && $supw?->bandLabel === 'INCOMPLETE') {
+                $recommendation = 'Retain';
+            }
         }
 
         return new StudentResultData(...$base, status: 'complete', reasons: [], value: $class['value'],
             unrounded: (string) $unrounded->toScale(4, RoundingMode::HALF_UP), classLabel: $classLabel, passed: $passed,
-            position: null, rankedCount: null, recommendation: $recommendation, subjects: $subjects);
+            position: null, rankedCount: null, recommendation: $recommendation, subjects: $subjects, average: $average);
     }
 
     private function subject(
         int $subjectId, string $code, string $name, string $label, int $sortOrder, ?SubjectOffering $offering,
-        bool $taken, bool $counted, ?string $mark, ?SchemeRules $rules,
+        bool $taken, bool $counted, ?string $mark, ?SchemeRules $rules, ?string $word = null,
     ): SubjectResult {
-        $rounded = $mark !== null && $rules ? $this->round($mark, $rules->markDecimals, $rules->roundingMode) : null;
+        $completion = $offering?->grading_mode === 'completion';
+        $rounded = $mark !== null && $rules && ! $completion ? $this->round($mark, $rules->markDecimals, $rules->roundingMode) : null;
         $band = $rounded !== null && $offering ? $this->band($rules->markBands, $rounded) : null;
         $passFail = $offering?->grading_mode === 'pass_fail';
 
@@ -394,12 +477,34 @@ class ResultService
             offeringId: $offering?->id, inCurriculum: $offering !== null, compulsory: (bool) ($offering?->is_compulsory ?? false),
             slot: $offering?->elective_slot, taken: $taken, counted: $counted, gradingMode: $offering?->grading_mode,
             creditHours: $offering?->credit_hours === null ? null : (string) $offering->credit_hours,
-            mark: $mark, roundedMark: $rounded,
-            bandLabel: $band ? ($passFail ? ($band['is_fail'] ? 'FAIL' : 'PASS') : $band['label']) : null,
+            mark: $completion ? null : $mark, roundedMark: $rounded,
+            bandLabel: $completion ? ($word === null ? null : mb_strtoupper($word))
+                : ($band ? ($passFail ? ($band['is_fail'] ? 'FAIL' : 'PASS') : $band['label']) : null),
             bandValue: $band && ! $passFail && $rules->usesBandValues() ? $band['value'] : null,
-            isFail: $band ? (bool) $band['is_fail'] : null,
+            isFail: $completion ? ($word === null ? null : false) : ($band ? (bool) $band['is_fail'] : null),
             pendingQuestion: $offering?->pending_question,
+            track: $offering?->track,
+            bandQuestion: $this->classQuestion($band['pending_question'] ?? null),
         );
+    }
+
+    /** The class question (Q19) in a band's flags, if any. */
+    private function classQuestion(?string $flags): ?string
+    {
+        $found = array_values(array_intersect(self::CLASS_QUESTIONS, array_map('trim', explode(',', (string) $flags))));
+
+        return $found[0] ?? null;
+    }
+
+    /** The plain average of the counted subjects' rounded marks. @param  list<SubjectResult>  $counted */
+    private function mean(array $counted): BigDecimal
+    {
+        $sum = BigDecimal::zero();
+        foreach ($counted as $s) {
+            $sum = $sum->plus($s->roundedMark);
+        }
+
+        return $sum->dividedBy(count($counted), self::SCALE, RoundingMode::HALF_UP);
     }
 
     /**
@@ -410,15 +515,11 @@ class ResultService
      */
     private function combine(SchemeRules $rules, array $counted): ?BigDecimal
     {
-        $sum = BigDecimal::zero();
         if ($rules->resultBasis === 'average') {
-            foreach ($counted as $s) {
-                $sum = $sum->plus($s->roundedMark);
-            }
-
-            return $sum->dividedBy(count($counted), self::SCALE, RoundingMode::HALF_UP);
+            return $this->mean($counted);
         }
 
+        $sum = BigDecimal::zero();
         if ($rules->resultBasis === 'point_total') {
             foreach ($counted as $s) {
                 if ($s->bandValue === null) {
@@ -443,28 +544,33 @@ class ResultService
     }
 
     /**
-     * Positions by the printed figure: tied students share a position and the next is skipped
-     * (Q13). With the scheme's `failed_last` ranking (Q20), every student who failed comes after
-     * all who passed; by default everyone is ranked together.
+     * Positions by the printed figure, or by the printed average where the scheme ranks by it
+     * (Grade 10). Tied students share a position; with `dense` ties (the school's answer, Q13) the
+     * next position follows on (1, 2, 2, 3), with `standard` it is skipped (1, 2, 2, 4; freezes
+     * made before). With the scheme's `failed_last` ranking (Q20), every student who failed comes
+     * after all who passed; by default everyone is ranked together.
      */
     private function rank(Collection $students, ?SchemeRules $rules): void
     {
         $failedLast = $rules?->failedRanking === 'failed_last';
-        $key = fn (StudentResultData $r) => ($failedLast ? ($r->passed ? '1' : '0').'|' : '').$r->value;
-        $ranked = $students->filter(fn (StudentResultData $r) => $r->isComplete())
-            ->sort(function ($a, $b) use ($failedLast) {
-                if ($failedLast && $a->passed !== $b->passed) {
-                    return $a->passed ? -1 : 1;
+        $dense = ($rules?->tieRanking ?? 'dense') === 'dense';
+        $figure = fn (StudentResultData $r) => $rules?->rankBasis === 'average' ? $r->average : $r->value;
+        $ok = fn (StudentResultData $r) => $r->passed !== false;
+        $key = fn (StudentResultData $r) => ($failedLast ? ($ok($r) ? '1' : '0').'|' : '').$figure($r);
+        $ranked = $students->filter(fn (StudentResultData $r) => $r->isComplete() && $figure($r) !== null)
+            ->sort(function ($a, $b) use ($failedLast, $figure, $ok) {
+                if ($failedLast && $ok($a) !== $ok($b)) {
+                    return $ok($a) ? -1 : 1;
                 }
 
-                return BigDecimal::of($b->value)->compareTo($a->value);
+                return BigDecimal::of($figure($b))->compareTo($figure($a));
             })->values();
 
         $position = 0;
         $previous = null;
         foreach ($ranked as $i => $result) {
             if ($previous === null || $key($result) !== $previous) {
-                $position = $i + 1;
+                $position = $dense ? $position + 1 : $i + 1;
                 $previous = $key($result);
             }
             $result->position = $position;
@@ -506,6 +612,8 @@ class ResultService
             unrounded: $r->result_unrounded === null ? null : (string) $r->result_unrounded,
             classLabel: $r->class_label, passed: $r->passed, position: $r->position, rankedCount: $r->ranked_count,
             recommendation: $r->recommendation,
+            average: $r->average_value === null ? null : $this->trimTo((string) $r->average_value, $this->decimals($freeze, $r->grading_scheme_id, 'result')),
+            classPending: $r->class_pending,
             subjects: $r->subjects->map(fn ($s) => new SubjectResult(
                 subjectId: $s->subject_id, code: $s->subject->code, name: $s->subject->name, label: $s->report_label,
                 sortOrder: $s->sort_order, offeringId: $s->subject_offering_id, inCurriculum: $s->in_curriculum,
@@ -514,7 +622,7 @@ class ResultService
                 mark: $s->mark === null ? null : (string) $s->mark,
                 roundedMark: $s->rounded_mark === null ? null : $this->trimTo((string) $s->rounded_mark, $this->decimals($freeze, $r->grading_scheme_id, 'mark')),
                 bandLabel: $s->band_label, bandValue: $s->band_value === null ? null : (string) $s->band_value,
-                isFail: $s->is_fail, pendingQuestion: $s->pending_question,
+                isFail: $s->is_fail, pendingQuestion: $s->pending_question, track: $s->track,
             ))->all(),
             frozen: true,
         )]);

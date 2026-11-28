@@ -75,7 +75,7 @@ return [
             ['label' => 'Students', 'route' => 'registrar.students.index', 'icon' => 'student'],
             ['label' => 'Guardians', 'route' => 'registrar.guardians.index', 'icon' => 'users'],
             ['label' => 'Sections', 'route' => 'registrar.sections.index', 'icon' => 'layers'],
-            ['label' => 'Electives', 'route' => 'registrar.electives.index', 'icon' => 'check-square'],
+            ['label' => 'Tracks', 'route' => 'registrar.tracks.index', 'icon' => 'check-square'],
             ['label' => 'Transcripts', 'route' => 'registrar.documents.index', 'icon' => 'document'],
             ['label' => 'Fee Records', 'route' => 'registrar.fees.index', 'icon' => 'money'],
             ['label' => 'Fee Schedule', 'route' => 'registrar.fee-schedule.index', 'icon' => 'list'],

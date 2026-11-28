@@ -6,7 +6,6 @@ use App\Models\AcademicYear;
 use App\Models\Enrollment;
 use App\Models\Grade;
 use App\Models\Guardian;
-use App\Models\PersonalityRating;
 use App\Models\ReportAcknowledgement;
 use App\Models\Section;
 use App\Models\StaffProfile;
@@ -49,20 +48,14 @@ class Term1ResultsSeeder extends Seeder
     }
 
     /**
-     * The Term 1 report cards' personality ratings and signatures: the class teacher's
+     * The Term 1 report cards' signatures: the class teacher's
      * confirmation, the Principal's sign-off (Term 1 is released) and each student's first
      * guardian's acknowledgement.
      */
     private function reportCard(Section $section, Term $term, $students, int $teacherId): void
     {
-        $traits = array_keys(PersonalityRating::TRAITS);
+        // Personality traits are rated once a year, on the last term (Q14), so Term 1 has none.
         foreach ($students as $studentId) {
-            foreach ($traits as $i => $trait) {
-                PersonalityRating::firstOrCreate(
-                    ['student_id' => $studentId, 'term_id' => $term->id, 'trait' => $trait],
-                    ['rating' => PersonalityRating::RATINGS[($studentId + $i) % 5 === 0 ? 1 : (($studentId * 3 + $i) % 7 === 0 ? 2 : 0)], 'rated_by' => $teacherId],
-                );
-            }
             ReportAcknowledgement::firstOrCreate(
                 ['term_id' => $term->id, 'student_id' => $studentId, 'role' => ReportAcknowledgement::CLASS_TEACHER],
                 ['section_id' => $section->id, 'user_id' => $teacherId, 'acknowledged_at' => $term->end_date->copy()->addDays(3)->setTime(15, 0)],

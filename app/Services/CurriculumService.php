@@ -17,11 +17,9 @@ use Illuminate\Support\Facades\DB;
 class CurriculumService
 {
     /** Fields the Admin edits on a row. */
-    private const FIELDS = ['report_label', 'is_compulsory', 'elective_slot', 'credit_hours', 'grading_mode', 'counts_in_result'];
+    private const FIELDS = ['report_label', 'is_compulsory', 'track', 'credit_hours', 'grading_mode', 'counts_in_result'];
 
-    public function __construct(protected AuditService $audit)
-    {
-    }
+    public function __construct(protected AuditService $audit) {}
 
     public function add(GradeLevel $level, array $data, User $actor): SubjectOffering
     {
@@ -139,12 +137,12 @@ class CurriculumService
         });
     }
 
-    /** A compulsory row has no slot; credit hours are stored with one decimal or not at all. */
+    /** A compulsory row has no track; credit hours are stored with one decimal or not at all. */
     private function normalise(array $data): array
     {
         $values = array_intersect_key($data, array_flip(self::FIELDS));
         if (array_key_exists('is_compulsory', $values) && $values['is_compulsory']) {
-            $values['elective_slot'] = null;
+            $values['track'] = null;
         }
         if (array_key_exists('credit_hours', $values)) {
             // Validated as a plain decimal string ("2" or "1.5"); stored as DECIMAL(3,1), no float.

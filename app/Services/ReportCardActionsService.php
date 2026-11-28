@@ -41,6 +41,11 @@ class ReportCardActionsService
         if ($term->is_locked) {
             throw new ActionRefused("{$term->name} is locked, so its personality ratings can no longer change.");
         }
+        // Q14: rated once a year, on the last term.
+        $last = Term::where('academic_year_id', $term->academic_year_id)->orderByDesc('sequence')->first();
+        if (ReportRule::personalityOncePerYear() && $last && $last->id !== $term->id) {
+            throw new ActionRefused("Personality traits are rated once a year, on {$last->name}.");
+        }
 
         return DB::transaction(function () use ($section, $term, $ratings, $actor) {
             $roster = $this->roster($section)->all();

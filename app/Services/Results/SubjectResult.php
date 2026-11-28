@@ -28,5 +28,14 @@ final class SubjectResult
         public readonly ?string $bandValue,
         public readonly ?bool $isFail,
         public readonly ?string $pendingQuestion,
+        public readonly ?string $track = null,
+        /** The question the subject's mark band waits on (Grade 10 below 40 marks: Q19), if any. */
+        public readonly ?string $bandQuestion = null,
     ) {}
+
+    /** SUPW: a word (Pass, Incomplete, Complete) instead of a mark. */
+    public function usesCompletion(): bool
+    {
+        return $this->gradingMode === 'completion';
+    }
 }

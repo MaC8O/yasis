@@ -18,11 +18,22 @@ class ReportRule extends Model
             'absent_only' => 'Absent days only',
         ]],
         'personality_shown' => ['The personality record prints', [
+            'final_report' => 'On the final report only (traits are rated once a year, on the last term)',
             'latest_term' => 'The latest term with ratings (traits are rated every term)',
             'report_term' => 'The ratings of the report\'s own term',
         ]],
         'examination_centre' => ['Examination centre on the Statement of Marks', 'text'],
+        'supw_incomplete_blocks_promotion' => ['SUPW Incomplete at the end of the year', [
+            'no' => 'Is shown beside the promotion recommendation, and does not change it',
+            'yes' => 'Makes the recommendation Retain',
+        ]],
     ];
+
+    /** Q14: traits are rated once a year and printed on the final report only. */
+    public static function personalityOncePerYear(): bool
+    {
+        return static::value('personality_shown', 'final_report') === 'final_report';
+    }
 
     protected $fillable = ['key', 'value', 'pending_question'];
 

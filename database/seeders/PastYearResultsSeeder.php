@@ -5,10 +5,10 @@ namespace Database\Seeders;
 use App\Models\AcademicYear;
 use App\Models\Enrollment;
 use App\Models\GradeLevel;
+use App\Models\PersonalityRating;
 use App\Models\Section;
 use App\Models\StaffProfile;
-use App\Models\StudentElective;
-use App\Models\SubjectOffering;
+use App\Models\StudentTrack;
 use App\Models\Term;
 use App\Models\User;
 use App\Services\ResultFreezeService;
@@ -65,12 +65,13 @@ class PastYearResultsSeeder extends Seeder
             foreach ($students as $studentId) {
                 Enrollment::firstOrCreate(['student_id' => $studentId, 'section_id' => $section->id], ['status' => 'Completed']);
             }
-            $this->copyElectives($students, $current, $year, $level);
+            $this->copyTracks($students, $current, $year);
 
             foreach ($terms as $term) {
                 $this->seedAttendance($section, $term, $students, $now->homeroom_teacher_id ?? $fallbackTeacher);
                 $this->seedGradebook($section, $term, $students, "-{$year->year_label}-{$term->sequence}");
             }
+            $this->rateTraits($students, $terms->last(), $now->homeroom_teacher_id ?? $fallbackTeacher);
         }
 
         // Lock every term as the Principal: each term is frozen, and the year with the last one.
@@ -82,17 +83,23 @@ class PastYearResultsSeeder extends Seeder
         }
     }
 
-    /** Last year's option choices: the same subject in the same slot of last year's level. */
-    private function copyElectives($students, AcademicYear $current, AcademicYear $year, GradeLevel $level): void
+    /** Last year's tracks: the same as this year's (Grade 11 then 12). */
+    private function copyTracks($students, AcademicYear $current, AcademicYear $year): void
     {
-        $offerings = SubjectOffering::where('grade_level_id', $level->id)->whereNotNull('elective_slot')->active()->get();
-        foreach (StudentElective::with('offering')->where('academic_year_id', $current->id)->whereIn('student_id', $students)->get() as $choice) {
-            $match = $offerings->first(fn ($o) => $o->elective_slot === $choice->elective_slot && $o->subject_id === $choice->offering?->subject_id);
-            if ($match) {
-                StudentElective::firstOrCreate(
-                    ['student_id' => $choice->student_id, 'academic_year_id' => $year->id, 'elective_slot' => $choice->elective_slot],
-                    ['subject_offering_id' => $match->id],
-                );
+        foreach (StudentTrack::where('academic_year_id', $current->id)->whereIn('student_id', $students)->get() as $track) {
+            StudentTrack::firstOrCreate(['student_id' => $track->student_id, 'academic_year_id' => $year->id],
+                ['track' => $track->track, 'set_by' => $track->set_by]);
+        }
+    }
+
+    /** Last year's personality ratings: once a year, on the last term (Q14), so the final card prints them. */
+    private function rateTraits($students, Term $last, int $teacherId): void
+    {
+        $userId = $teacherId; // a staff profile's id is its user's id
+        foreach ($students as $studentId) {
+            foreach (array_keys(PersonalityRating::TRAITS) as $i => $trait) {
+                PersonalityRating::firstOrCreate(['student_id' => $studentId, 'term_id' => $last->id, 'trait' => $trait],
+                    ['rating' => PersonalityRating::RATINGS[($studentId + $i) % 4 === 0 ? 1 : 0], 'rated_by' => $userId]);
             }
         }
     }

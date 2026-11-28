@@ -50,7 +50,7 @@ class ResultFreezeTest extends TestCase
         $this->principal = $this->makeStaff('principal', 'Principal');
         $this->admin = $this->makeStaff('admin', 'Admin', 'admin@test.local');
 
-        $codes = ['MORAL', 'MYAN', 'ENG', 'MATH', 'SCI', 'MAPE'];
+        $codes = self::KG_CODES;
         $this->section = $this->levelSection('Grade 2-A', '2');
         // Average 81: First under today's bands (81-94).
         $this->first = $this->pupil('Eighty One', $this->section);
@@ -210,7 +210,7 @@ class ResultFreezeTest extends TestCase
 
     public function test_the_year_is_frozen_when_its_last_term_is_locked_and_lifted_with_any_term(): void
     {
-        $codes = ['MORAL', 'MYAN', 'ENG', 'MATH', 'SCI', 'MAPE'];
+        $codes = self::KG_CODES;
         foreach (array_slice($this->terms, 1) as $term) {
             $this->setMarks($this->first, $this->section, $term, array_fill_keys($codes, 81));
             $this->setMarks($this->second, $this->section, $term, array_fill_keys($codes, 70));

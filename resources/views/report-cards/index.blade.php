@@ -86,7 +86,16 @@
             </form>
         </x-card>
 
-        <x-card title="Personality record · {{ $term->name }}" :subtitle="$term->is_locked ? 'Locked: these ratings can no longer change.' : 'Rate each trait A, B or C. Saved ratings print on the card.'">
+        @php $onceAYear = \App\Models\ReportRule::personalityOncePerYear(); $lastTerm = $terms->last(); @endphp
+        @if ($onceAYear && $term->id !== $lastTerm?->id)
+        <x-card title="Personality record" data-personality-once>
+            <p class="text-sm text-neutral-500">Traits are rated once a year, on {{ $lastTerm?->name }}, and printed on the final report. Earlier reports leave the block blank.</p>
+            @if ($lastTerm)
+                <a href="{{ route('report-cards.index', ['section' => $section->id, 'term' => $lastTerm->id]) }}" class="mt-3 inline-flex items-center min-h-[44px] px-4 rounded-lg border border-neutral-200 text-sm font-semibold hover:bg-neutral-50">Rate on {{ $lastTerm->name }}</a>
+            @endif
+        </x-card>
+        @else
+        <x-card :title="'Personality record · '.($onceAYear ? 'the year' : $term->name)" :subtitle="$term->is_locked ? 'Locked: these ratings can no longer change.' : ($onceAYear ? 'Rated once a year. Rate each trait A, B or C; the ratings print on the final report.' : 'Rate each trait A, B or C. Saved ratings print on the card.')">
             <form method="POST" action="{{ route('report-cards.personality', [$section, $term]) }}">
                 @csrf @method('PUT')
                 <div class="space-y-4">
@@ -116,5 +125,6 @@
                 @endunless
             </form>
         </x-card>
+        @endif
     @endif
 </x-app-layout>

@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\AuditLog;
 use App\Models\Department;
-use App\Models\Enrollment;
 use App\Models\GradeLevel;
 use App\Models\Section;
 use App\Models\StaffProfile;
@@ -20,8 +19,9 @@ use Tests\TestCase;
 
 /**
  * Phase 2 of the academic rules (sdp_doc/YASIS_Academic_and_Fee_Rules.md §3): the curriculum as
- * data, seeded with the school's subject lists and the defaults awaiting Q4-Q7, edited by the
- * Admin, shown read-only to the Principal, and driving the expected-subjects count.
+ * data, seeded with the school's subject lists and, since 9a, the school's answers to Q4-Q7 (one
+ * Grade 10 default left, Computer, flagged FQ4), edited by the Admin, shown read-only to the
+ * Principal, and driving the expected-subjects count.
  */
 class CurriculumTest extends TestCase
 {
@@ -63,7 +63,7 @@ class CurriculumTest extends TestCase
         return array_merge([
             'report_label' => $row->report_label,
             'is_compulsory' => $row->is_compulsory ? '1' : '0',
-            'elective_slot' => $row->elective_slot,
+            'track' => $row->track,
             'credit_hours' => $row->credit_hours,
             'grading_mode' => $row->grading_mode,
             'counts_in_result' => $row->counts_in_result ? '1' : '0',
@@ -82,38 +82,45 @@ class CurriculumTest extends TestCase
         $this->assertSame(139, SubjectOffering::count());
     }
 
-    public function test_kg1_to_grade_4_have_the_blue_card_subjects_with_two_uncounted(): void
+    public function test_kg1_to_grade_4_count_character_building_and_not_social_study(): void
     {
         foreach (['KG1', 'KG2', '1', '2', '3', '4'] as $level) {
             $rows = $this->rows($level);
             $this->assertSame(['MORAL/VALUES EDU', 'MYANMAR', 'ENGLISH', 'MATHEMATICS', 'SCIENCE', 'MAPE', 'CHARACTER BUILDING', 'SOCIAL STUDY'], $rows->pluck('report_label')->all(), $level);
-            $this->assertSame(['MORAL', 'MYAN', 'ENG', 'MATH', 'SCI', 'MAPE'], $rows->where('counts_in_result', true)->pluck('subject.code')->values()->all(), $level);
-            $this->assertSame(['CHAR' => 'Q4', 'SOCST' => 'Q4'], $rows->whereNotNull('pending_question')->mapWithKeys(fn ($r) => [$r->subject->code => $r->pending_question])->all(), $level);
-            $this->assertTrue($rows->every(fn ($r) => $r->is_compulsory && $r->grading_mode === 'score' && $r->credit_hours === null && $r->elective_slot === null));
+            $this->assertSame(['MORAL', 'MYAN', 'ENG', 'MATH', 'SCI', 'MAPE', 'CHAR'], $rows->where('counts_in_result', true)->pluck('subject.code')->values()->all(), $level);
+            $this->assertSame(0, $rows->whereNotNull('pending_question')->count(), $level); // Q4 answered
+            $this->assertTrue($rows->every(fn ($r) => $r->is_compulsory && $r->grading_mode === 'score' && $r->credit_hours === null && $r->track === null));
         }
     }
 
-    public function test_grades_5_to_9_count_all_ten_with_supw_scored_and_flagged(): void
+    public function test_grades_5_to_9_count_nine_subjects_and_supw_has_a_word(): void
     {
         foreach (['5', '6', '7', '8', '9'] as $level) {
             $rows = $this->rows($level);
             $this->assertSame(['MORAL/VALUES EDU', 'MYANMAR', 'ENGLISH', 'MATHEMATICS', 'SCIENCE', 'SOCIAL STUDY', 'COMPUTER', 'PE', 'MUSIC', 'SUPW'], $rows->pluck('report_label')->all(), $level);
-            $this->assertTrue($rows->every(fn ($r) => $r->is_compulsory && $r->counts_in_result && $r->grading_mode === 'score'));
-            $this->assertSame(['SUPW' => 'Q5'], $rows->whereNotNull('pending_question')->mapWithKeys(fn ($r) => [$r->subject->code => $r->pending_question])->all());
+            $this->assertSame(9, $rows->where('counts_in_result', true)->count(), $level);
+            $this->assertSame(['completion', false], [$this->row($level, 'SUPW')->grading_mode, $this->row($level, 'SUPW')->counts_in_result]);
+            $this->assertSame(0, $rows->whereNotNull('pending_question')->count()); // Q5 answered
         }
     }
 
-    public function test_grade_10_has_thirteen_subjects_none_counted_until_the_school_confirms(): void
+    public function test_grade_10_counts_the_compulsory_four_and_one_track_of_three(): void
     {
         $rows = $this->rows('10');
 
         $this->assertSame(['MORAL/VALUES EDU', 'MYANMAR', 'ENGLISH', 'MATHEMATICS', 'COMPUTER', 'BIOLOGY', 'CHEMISTRY', 'PHYSICS', 'WORLD HISTORY', 'WORLD GEOGRAPHY', 'MUSIC', 'SUPW', 'PE'], $rows->pluck('report_label')->all());
-        $this->assertSame(0, $rows->where('counts_in_result', true)->count());
-        $this->assertTrue($rows->every(fn ($r) => in_array('Q6', $r->pendingQuestions(), true) && $r->grading_mode === 'score'));
-        $this->assertSame(['Q5', 'Q6'], $this->row('10', 'SUPW')->pendingQuestions());
+        $this->assertSame(['MORAL', 'MYAN', 'ENG', 'MATH'], $rows->where('is_compulsory', true)->where('counts_in_result', true)->pluck('subject.code')->values()->all());
+        $tracks = $rows->whereNotNull('track')->groupBy('track')->map(fn ($g) => $g->pluck('subject.code')->all())->sortKeys()->all();
+        $this->assertSame(['arts' => ['WHIST', 'WGEO', 'MUSIC'], 'science' => ['BIO', 'CHEM', 'PHYS']], $tracks);
+        $this->assertTrue($rows->whereNotNull('track')->every(fn ($r) => $r->counts_in_result && ! $r->is_compulsory));
+        // Extras: SUPW and PE. Computer isn't counted by default: follow-up question 4.
+        $this->assertSame([false, 'completion'], [$this->row('10', 'SUPW')->counts_in_result, $this->row('10', 'SUPW')->grading_mode]);
+        $this->assertFalse($this->row('10', 'PE')->counts_in_result);
+        $this->assertSame([false, 'FQ4'], [$this->row('10', 'COMP')->counts_in_result, $this->row('10', 'COMP')->pending_question]);
+        $this->assertSame(['COMP'], $rows->whereNotNull('pending_question')->pluck('subject.code')->values()->all()); // Q6 answered
     }
 
-    public function test_grades_11_and_12_have_credit_hours_slots_and_a_pass_fail_supw(): void
+    public function test_grades_11_and_12_have_credit_hours_a_track_and_supw_with_a_word(): void
     {
         foreach (['11', '12'] as $level) {
             $rows = $this->rows($level);
@@ -122,17 +129,18 @@ class CurriculumTest extends TestCase
                 $compulsory->mapWithKeys(fn ($r) => [$r->subject->code => $r->credit_hours])->all());
             $this->assertSame('17.0', number_format($compulsory->sum(fn ($r) => (float) $r->credit_hours), 1));
 
-            $slots = $rows->whereNotNull('elective_slot')->groupBy('elective_slot')->map(fn ($g) => $g->pluck('subject.code')->sort()->values()->all())->sortKeys()->all();
-            $this->assertSame(['A' => ['BIO', 'WHIST'], 'B' => ['CHEM', 'WGEO'], 'C' => ['ACCT', 'PHYS']], $slots);
-            $optional = $rows->whereNotNull('elective_slot');
-            $this->assertTrue($optional->every(fn ($r) => ! $r->is_compulsory && $r->credit_hours === '2.0' && $r->counts_in_result && $r->pending_question === 'Q7'));
+            $tracks = $rows->whereNotNull('track')->groupBy('track')->map(fn ($g) => $g->pluck('subject.code')->all())->sortKeys()->all();
+            $this->assertSame(['arts' => ['WHIST', 'WGEO', 'ACCT'], 'science' => ['BIO', 'CHEM', 'PHYS']], $tracks);
+            $optional = $rows->whereNotNull('track');
+            $this->assertTrue($optional->every(fn ($r) => ! $r->is_compulsory && $r->credit_hours === '2.0' && $r->counts_in_result && $r->pending_question === null && $r->elective_slot === null));
 
             $supw = $this->row($level, 'SUPW');
-            $this->assertSame(['pass_fail', false, null, 'Q5'], [$supw->grading_mode, $supw->counts_in_result, $supw->credit_hours, $supw->pending_question]);
+            $this->assertSame(['completion', false, null, null], [$supw->grading_mode, $supw->counts_in_result, $supw->credit_hours, $supw->pending_question]);
         }
 
         $this->asAdmin()->get('/admin/curriculum?level=11')->assertOk()
-            ->assertSee('a student takes 23 credit hours (17 compulsory + one subject from each of slots A, B, C)');
+            ->assertSee('one track per student: arts or science')
+            ->assertSee('a student takes 23 credit hours (17 compulsory + 6 in their track)');
     }
 
     public function test_rolling_back_the_seed_is_refused_once_a_curriculum_subject_is_in_use(): void
@@ -160,18 +168,20 @@ class CurriculumTest extends TestCase
         $this->asAdmin()->get('/admin/curriculum')->assertOk()
             ->assertSee('Kindergarten 1')
             ->assertSeeInOrder(['MORAL/VALUES EDU', 'MYANMAR', 'ENGLISH', 'MATHEMATICS', 'SCIENCE', 'MAPE', 'CHARACTER BUILDING', 'SOCIAL STUDY'])
-            ->assertSee('Needs confirmation from the school (Q4)')
-            ->assertSee('2 rows use a default that', false)
+            ->assertSee('7 counted in the result')
+            ->assertDontSee('Needs confirmation from the school')
             ->assertSee('Curriculum'); // navigation
 
         $this->asAdmin()->get('/admin/curriculum?level=10')->assertOk()
-            ->assertSee('0 counted in the result')
-            ->assertSee('Needs confirmation from the school (Q5, Q6)');
+            ->assertSee('7 counted per student (4 compulsory + 3 from their track)')
+            ->assertSee('Track · science')
+            ->assertSee('Needs confirmation from the school (FQ4)')
+            ->assertSee('1 row uses a default that', false);
     }
 
     public function test_the_admin_edits_a_row_and_confirms_it(): void
     {
-        $row = $this->row('10', 'MATH');
+        $row = $this->row('10', 'COMP');
 
         $this->asAdmin()->put("/admin/curriculum/rows/{$row->id}", $this->rowPayload($row, ['counts_in_result' => '1', 'confirmed' => '1']))
             ->assertSessionHasNoErrors()->assertSessionHas('status');
@@ -182,9 +192,9 @@ class CurriculumTest extends TestCase
         $log = AuditLog::where('action', 'Updated curriculum row')->sole();
         $this->assertSame('admin', $log->role);
         $this->assertSame('10', $log->details['grade_level']);
-        $this->assertSame('MATH', $log->details['subject']);
+        $this->assertSame('COMP', $log->details['subject']);
         $this->assertSame(['from' => false, 'to' => true], $log->details['changes']['counts_in_result']);
-        $this->assertSame(['from' => 'Q6', 'to' => null], $log->details['changes']['pending_question']);
+        $this->assertSame(['from' => 'FQ4', 'to' => null], $log->details['changes']['pending_question']);
 
         // Saving the same values again changes nothing.
         $this->asAdmin()->put("/admin/curriculum/rows/{$row->id}", $this->rowPayload($row))->assertSessionHas('warning', 'Nothing was changed.');
@@ -193,12 +203,12 @@ class CurriculumTest extends TestCase
 
     public function test_editing_without_the_confirmed_tick_keeps_the_flag(): void
     {
-        $row = $this->row('KG1', 'CHAR');
+        $row = $this->row('10', 'COMP');
 
-        $this->asAdmin()->put("/admin/curriculum/rows/{$row->id}", $this->rowPayload($row, ['report_label' => 'CHARACTER']))->assertSessionHasNoErrors();
+        $this->asAdmin()->put("/admin/curriculum/rows/{$row->id}", $this->rowPayload($row, ['report_label' => 'COMPUTER STUDIES']))->assertSessionHasNoErrors();
 
-        $this->assertSame('CHARACTER', $row->fresh()->report_label);
-        $this->assertSame('Q4', $row->fresh()->pending_question);
+        $this->assertSame('COMPUTER STUDIES', $row->fresh()->report_label);
+        $this->assertSame('FQ4', $row->fresh()->pending_question);
     }
 
     public function test_a_row_must_be_consistent(): void
@@ -206,17 +216,18 @@ class CurriculumTest extends TestCase
         $compulsory = $this->row('11', 'MATH');
         $optional = $this->row('11', 'BIO');
 
-        $this->asAdmin()->put("/admin/curriculum/rows/{$compulsory->id}", $this->rowPayload($compulsory, ['elective_slot' => 'A']))
-            ->assertSessionHasErrors(['elective_slot' => 'A compulsory subject has no elective slot. Clear the slot, or make the subject optional.']);
-        $this->asAdmin()->put("/admin/curriculum/rows/{$optional->id}", $this->rowPayload($optional, ['elective_slot' => '']))
-            ->assertSessionHasErrors(['elective_slot' => 'An optional subject needs the elective slot students choose it in (for example A).']);
+        $this->asAdmin()->put("/admin/curriculum/rows/{$compulsory->id}", $this->rowPayload($compulsory, ['track' => 'science']))
+            ->assertSessionHasErrors(['track' => 'A compulsory subject belongs to no track. Clear the track, or make the subject optional.']);
+        $this->asAdmin()->put("/admin/curriculum/rows/{$optional->id}", $this->rowPayload($optional, ['track' => '']))
+            ->assertSessionHasErrors(['track' => 'An optional subject needs the track it belongs to (for example science or arts).']);
+        $this->asAdmin()->put("/admin/curriculum/rows/{$optional->id}", $this->rowPayload($optional, ['track' => 'Science 2']))->assertSessionHasErrors('track');
         $this->asAdmin()->put("/admin/curriculum/rows/{$compulsory->id}", $this->rowPayload($compulsory, ['credit_hours' => '2.25']))->assertSessionHasErrors('credit_hours');
         $this->asAdmin()->put("/admin/curriculum/rows/{$compulsory->id}", $this->rowPayload($compulsory, ['credit_hours' => '-1']))->assertSessionHasErrors('credit_hours');
         $this->asAdmin()->put("/admin/curriculum/rows/{$compulsory->id}", $this->rowPayload($compulsory, ['grading_mode' => 'letters']))->assertSessionHasErrors('grading_mode');
         $this->asAdmin()->put("/admin/curriculum/rows/{$compulsory->id}", $this->rowPayload($compulsory, ['report_label' => '']))->assertSessionHasErrors('report_label');
 
         $this->assertSame('3.0', $compulsory->fresh()->credit_hours);
-        $this->assertNull($compulsory->fresh()->elective_slot);
+        $this->assertNull($compulsory->fresh()->track);
         $this->assertSame(0, AuditLog::where('action', 'Updated curriculum row')->count());
     }
 
@@ -304,9 +315,9 @@ class CurriculumTest extends TestCase
     {
         $principal = $this->makeStaff('principal', 'Principal', 'principal@test.local');
 
-        $this->actingAs($principal->user)->get('/principal/curriculum?level=11')->assertOk()
+        $this->actingAs($principal->user)->get('/principal/curriculum?level=10')->assertOk()
             ->assertSeeInOrder(['MORAL/VALUES EDU', 'MYANMAR', 'ENGLISH'])
-            ->assertSee('Needs confirmation from the school (Q7)')
+            ->assertSee('Needs confirmation from the school (FQ4)')
             ->assertSee('Curriculum') // navigation
             ->assertDontSee('/admin/curriculum/rows', false)
             ->assertDontSee('Add a subject to')

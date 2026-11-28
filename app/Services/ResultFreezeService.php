@@ -9,6 +9,8 @@ use App\Models\ResultFreezeScheme;
 use App\Models\Section;
 use App\Models\StudentResult;
 use App\Models\StudentSubjectResult;
+use App\Models\Subject;
+use App\Models\SubjectOffering;
 use App\Models\Term;
 use App\Models\User;
 use App\Services\Results\SchemeRules;
@@ -84,13 +86,13 @@ class ResultFreezeService
             }
 
             $this->supersede($freeze, $section, $reason);
-            $count = $this->store($freeze, $this->results->liveSectionTerm($section, $term, $this->snapshotResolver($freeze), final: true),
-                $this->attendance->forSectionTerm($section, $term));
+            $count = $this->store($freeze, $this->results->liveSectionTerm($section, $term, $this->snapshotResolver($freeze), final: true,
+                curriculumFor: $this->curriculumResolver($freeze)), $this->attendance->forSectionTerm($section, $term));
 
             $year = ResultFreeze::active()->whereNull('term_id')->where('academic_year_id', $term->academic_year_id)->lockForUpdate()->first();
             if ($year) {
                 $this->supersede($year, $section, $reason);
-                $this->store($year, $this->results->liveSectionYear($section, $this->snapshotResolver($year)));
+                $this->store($year, $this->results->liveSectionYear($section, $this->snapshotResolver($year), $this->curriculumResolver($year)));
             }
 
             $this->audit->log($actor, 'Re-froze section results', 'Term', $term->id, [
@@ -149,10 +151,11 @@ class ResultFreezeService
         $this->copyRules($freeze, $source === ResultFreeze::RULES_PREVIOUS ? $previous : null);
 
         $resolver = $this->snapshotResolver($freeze);
+        $curriculum = $this->curriculumResolver($freeze);
         $sections = Section::where('academic_year_id', $term->academic_year_id)->orderBy('id')->get();
         $students = 0;
         foreach ($sections as $section) {
-            $students += $this->store($freeze, $this->results->liveSectionTerm($section, $term, $resolver, final: true),
+            $students += $this->store($freeze, $this->results->liveSectionTerm($section, $term, $resolver, final: true, curriculumFor: $curriculum),
                 $this->attendance->forSectionTerm($section, $term));
         }
 
@@ -191,6 +194,7 @@ class ResultFreezeService
             'term_id' => null,
             'rules' => $termFreeze->rules,
             'reason' => $termFreeze->reason,
+            'curriculum' => $termFreeze->curriculum,
             'frozen_at' => now(),
             'frozen_by' => $actor->id,
         ]);
@@ -199,16 +203,27 @@ class ResultFreezeService
         }
 
         $resolver = $this->snapshotResolver($year);
+        $curriculum = $this->curriculumResolver($year);
         foreach (Section::where('academic_year_id', $term->academic_year_id)->orderBy('id')->get() as $section) {
-            $this->store($year, $this->results->liveSectionYear($section, $resolver));
+            $this->store($year, $this->results->liveSectionYear($section, $resolver, $curriculum));
         }
 
         return $year;
     }
 
-    /** Copy every scheme's rules into the freeze: from $from (a previous freeze) where it has them, otherwise as they are now. */
+    /**
+     * Copy every scheme's rules and every grade level's curriculum into the freeze: from $from (a
+     * previous freeze) where it has them, otherwise as they are now.
+     */
     private function copyRules(ResultFreeze $freeze, ?ResultFreeze $from): void
     {
+        $curriculum = SubjectOffering::active()->ordered()->get()->groupBy('grade_level_id')
+            ->map(fn ($rows) => $rows->map->toSnapshot()->values()->all())->all();
+        foreach ($from?->curriculum ?? [] as $levelId => $rows) {
+            $curriculum[$levelId] = $rows;
+        }
+        $freeze->update(['curriculum' => $curriculum]);
+
         $previous = $from ? $from->schemes->keyBy('grading_scheme_id') : collect();
         foreach (GradingScheme::orderBy('id')->get() as $scheme) {
             $snapshot = $previous->has($scheme->id)
@@ -216,6 +231,20 @@ class ResultFreezeService
                 : SchemeRules::fromScheme($scheme)->toSnapshot();
             ResultFreezeScheme::create(['result_freeze_id' => $freeze->id, 'grading_scheme_id' => $scheme->id] + $snapshot);
         }
+    }
+
+    /** Maps a grade level id to the freeze's copy of its curriculum (null when the freeze has none for it). */
+    private function curriculumResolver(ResultFreeze $freeze): callable
+    {
+        $stored = $freeze->curriculum ?? [];
+        $subjects = Subject::whereIn('id', collect($stored)->flatten(1)->pluck('subject_id')->unique())->get()->keyBy('id');
+
+        return function (int $levelId) use ($stored, $subjects) {
+            $rows = $stored[$levelId] ?? $stored[(string) $levelId] ?? null;
+
+            return $rows === null ? null : collect($rows)->sortBy('sort_order')->values()
+                ->map(fn (array $row) => SubjectOffering::fromSnapshot($levelId, $row, $subjects->get($row['subject_id'])));
+        };
     }
 
     /** Maps a scheme id to the freeze's copy of its rules. */
@@ -261,7 +290,9 @@ class ResultFreezeService
                 'status_reason' => $r->reasons === [] ? null : json_encode($r->reasons),
                 'result_value' => $r->value,
                 'result_unrounded' => $r->unrounded,
+                'average_value' => $r->average,
                 'class_label' => $r->classLabel,
+                'class_pending' => $r->classPending,
                 'passed' => $r->passed,
                 'position' => $r->position,
                 'ranked_count' => $r->rankedCount,
@@ -279,6 +310,7 @@ class ResultFreezeService
                 'in_curriculum' => $s->inCurriculum,
                 'is_compulsory' => $s->compulsory,
                 'elective_slot' => $s->slot,
+                'track' => $s->track,
                 'taken' => $s->taken,
                 'counts_in_result' => $s->counted,
                 'grading_mode' => $s->gradingMode,
