@@ -61,6 +61,7 @@ use App\Http\Controllers\Registrar\StudentImportController;
 use App\Http\Controllers\Registrar\TeachingAssignmentController;
 use App\Http\Controllers\Student\StudentAttendanceController;
 use App\Http\Controllers\Student\StudentDashboardController;
+use App\Http\Controllers\Student\StudentFeeController;
 use App\Http\Controllers\Student\StudentGradeController;
 use App\Http\Controllers\Student\StudentNoticeController;
 use App\Http\Controllers\Student\StudentBehaviorController;
@@ -72,14 +73,10 @@ use App\Http\Controllers\Teacher\TeacherClassesController;
 use App\Http\Controllers\Teacher\TeacherDashboardController;
 use App\Http\Controllers\Teacher\TeacherGradebookController;
 use App\Http\Controllers\Teacher\TeacherLeaveRequestController;
-use App\Http\Controllers\Treasurer\FeeImportController;
 use App\Http\Controllers\Treasurer\FeeReportController;
 use App\Http\Controllers\Treasurer\FinanceInfoController;
-use App\Http\Controllers\Treasurer\ImportBatchController as TreasurerImportBatchController;
-use App\Http\Controllers\Treasurer\ImportedFeeRecordController;
 use App\Http\Controllers\Treasurer\TreasurerDashboardController;
 use App\Http\Controllers\Treasurer\SunLedgerController;
-use App\Http\Controllers\Treasurer\ValidateMatchController;
 use App\Http\Controllers\VpAcademic\SubjectCatalogController;
 use App\Http\Controllers\VpAcademic\VpApprovalController;
 use App\Http\Controllers\VpAcademic\VpDashboardController;
@@ -393,10 +390,8 @@ Route::middleware(['auth', 'role:treasurer'])->prefix('treasurer')->name('treasu
     Route::get('/dashboard', [TreasurerDashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/info/source-prep', [FinanceInfoController::class, 'sourcePrep'])->name('info.source-prep');
-    Route::get('/import-template', [FinanceInfoController::class, 'importTemplate'])->name('import-template');
     Route::get('/info/visibility-rules', [FinanceInfoController::class, 'visibilityRules'])->name('info.visibility-rules');
     Route::put('/info/visibility-rules/policy', [FinanceInfoController::class, 'updatePolicy'])->name('info.visibility-policy');
-    Route::post('/info/visibility-rules/batches/{importBatch}/confirm', [FinanceInfoController::class, 'confirmRestricted'])->name('info.confirm-restricted');
 
     // §10 fee schedule: the Treasurer edits and publishes it; reference data only.
     Route::get('/fee-schedule', [FeeScheduleController::class, 'index'])->name('fee-schedule.index');
@@ -417,6 +412,8 @@ Route::middleware(['auth', 'role:treasurer'])->prefix('treasurer')->name('treasu
     Route::post('/ledger/accounts/{account}/unlink', [SunLedgerController::class, 'unlink'])->name('ledger.unlink');
     Route::post('/ledger/accounts/{account}/not-isms', [SunLedgerController::class, 'notIsms'])->name('ledger.not-isms');
     Route::put('/ledger/lines/{line}', [SunLedgerController::class, 'line'])->name('ledger.line');
+    Route::post('/ledger/reviews/{review}/same', [SunLedgerController::class, 'reviewSame'])->name('ledger.review.same');
+    Route::post('/ledger/reviews/{review}/relink', [SunLedgerController::class, 'reviewRelink'])->name('ledger.review.relink');
     Route::get('/ledger/categories', [SunLedgerController::class, 'categories'])->name('ledger.categories');
     Route::put('/ledger/categories', [SunLedgerController::class, 'saveCategories'])->name('ledger.categories.update');
     Route::post('/ledger/categories/reapply', [SunLedgerController::class, 'reapply'])->name('ledger.categories.reapply');
@@ -425,25 +422,21 @@ Route::middleware(['auth', 'role:treasurer'])->prefix('treasurer')->name('treasu
     Route::post('/ledger/{batch}/revert', [SunLedgerController::class, 'revert'])->name('ledger.revert');
     Route::get('/ledger/{batch}/download', [SunLedgerController::class, 'download'])->name('ledger.download');
 
-    Route::get('/import', [FeeImportController::class, 'index'])->name('import.index');
-    Route::post('/import', [FeeImportController::class, 'store'])->name('import.store');
+    // The CSV import is retired (phase 8b-2): its pages redirect to the Sun ledger ones. The old
+    // import_batches and imported_fee_records tables are kept untouched until a clean-up PR.
+    Route::redirect('/import', '/treasurer/ledger')->name('import.index');
+    Route::redirect('/import-template', '/treasurer/info/source-prep')->name('import-template');
 
-    Route::get('/validate', [ValidateMatchController::class, 'index'])->name('validate.index');
-    Route::post('/validate/{importedFeeRecord}/resolve', [ValidateMatchController::class, 'resolve'])->name('validate.resolve');
-    Route::post('/validate/{importedFeeRecord}/unmatch', [ValidateMatchController::class, 'unmatch'])->name('validate.unmatch');
-    Route::post('/validate/{importedFeeRecord}/toggle-restrict', [ValidateMatchController::class, 'toggleRestrict'])->name('validate.toggle-restrict');
-    Route::post('/validate/{importedFeeRecord}/toggle-hold', [ValidateMatchController::class, 'toggleHold'])->name('validate.toggle-hold');
-    Route::post('/validate/batches/{importBatch}/publish', [ValidateMatchController::class, 'publish'])->name('validate.publish');
+    Route::redirect('/validate', '/treasurer/ledger/review')->name('validate.index');
 
-    Route::get('/records', [ImportedFeeRecordController::class, 'index'])->name('records.index');
-    Route::get('/records/{student}', [ImportedFeeRecordController::class, 'show'])->name('records.show');
+    Route::redirect('/records', '/treasurer/ledger/accounts')->name('records.index');
+    Route::get('/records/{student}', fn (App\Models\Student $student) => redirect()->route('treasurer.ledger.accounts', ['search' => $student->student_id_number]))->name('records.show');
 
-    Route::get('/history', [TreasurerImportBatchController::class, 'index'])->name('history.index');
-    Route::delete('/history/{importBatch}', [TreasurerImportBatchController::class, 'revert'])->name('history.revert');
+    Route::redirect('/history', '/treasurer/ledger')->name('history.index');
 
     Route::get('/reports', [FeeReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/outstanding', [FeeReportController::class, 'downloadOutstanding'])->name('reports.outstanding');
-    Route::get('/reports/aging', [FeeReportController::class, 'downloadAging'])->name('reports.aging');
+    Route::redirect('/reports/aging', '/treasurer/reports')->name('reports.aging');
     Route::get('/reports/find-statement', [FeeReportController::class, 'findStatement'])->name('reports.find-statement');
     Route::get('/reports/statement/{student}', [FeeReportController::class, 'downloadStatement'])->name('reports.statement');
 });
@@ -562,6 +555,8 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
     Route::get('/report-cards/{term}', [StudentGradeController::class, 'showReportCard'])->name('report-cards.show');
 
     Route::get('/schedule', [StudentScheduleController::class, 'index'])->name('schedule.index');
+    Route::get('/fees', [StudentFeeController::class, 'index'])->name('fees.index');
+    Route::get('/fees/statement', [StudentFeeController::class, 'statement'])->name('fees.statement');
     Route::get('/attendance', [StudentAttendanceController::class, 'index'])->name('attendance.index');
     Route::get('/notices', [StudentNoticeController::class, 'index'])->name('notices.index');
     Route::get('/behavior', [StudentBehaviorController::class, 'index'])->name('behavior.index');

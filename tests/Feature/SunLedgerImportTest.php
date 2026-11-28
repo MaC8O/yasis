@@ -7,6 +7,9 @@ use App\Models\FeeSchedule;
 use App\Models\StaffProfile;
 use App\Models\SunAccount;
 use App\Models\SunAccountBalance;
+use App\Models\SunAccountLink;
+use App\Models\SunAccountReview;
+use App\Models\SunFamilyStatement;
 use App\Models\SunImportBatch;
 use App\Models\SunLedgerLine;
 use App\Models\User;
@@ -14,18 +17,19 @@ use App\Services\RetentionService;
 use App\Services\Sun\AccountListingParser;
 use App\Services\Sun\FeeCategoriser;
 use App\Services\Sun\SunLedgerImporter;
+use App\Services\Sun\SunLinks;
 use App\Support\FeeSheet2026;
+use App\Support\Sun\ListingWriter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\Feature\Concerns\BuildsResults;
 use Tests\Feature\Concerns\SeedsCoreData;
-use Tests\Support\SunListingBuilder;
 use Tests\TestCase;
 
 /**
  * Phase 8b-1: the Sun Accounts ledger import (sdp_doc/YASIS_Sun_Finance_Import.md, gitignored).
- * Synthetic fixtures with invented names only (SunListingBuilder), never the real files.
+ * Synthetic fixtures with invented names only (ListingWriter), never the real files.
  */
 class SunLedgerImportTest extends TestCase
 {
@@ -43,9 +47,9 @@ class SunLedgerImportTest extends TestCase
     }
 
     /** The standard fixture: every line type, pages breaking mid-account. */
-    private function fixture(int $fy = 2021, int $pageLines = 30): SunListingBuilder
+    private function fixture(int $fy = 2021, int $pageLines = 30): ListingWriter
     {
-        return (new SunListingBuilder($fy, $pageLines))
+        return (new ListingWriter($fy, $pageLines))
             ->account('1000286000', 'Saw Example Student', '25000.00', [
                 [9, '52500.00', 'Charging tuition fee for Dec 2020'],
                 [9, '-10500.00', 'Providing 20% edu allow on tuition fee for Dec 2020'],
@@ -207,8 +211,8 @@ class SunLedgerImportTest extends TestCase
         $this->assertSame('reversal', $category('1000286200', 1));
         $this->assertSame('donation', $category('1000286300', 1));
 
-        // T4: only allowances are hidden from families by default; donations and cash advances are shown.
-        $this->assertSame([2, 4], SunLedgerLine::where('is_restricted', true)->orderBy('id')->pluck('journal_line')->all());
+        // T4 (the Treasurer's answer): families see every line, allowances included; nothing is hidden by default.
+        $this->assertSame(0, SunLedgerLine::where('is_restricted', true)->count());
         $this->assertSame(['2020-12-01', null], [$this->line('1000286000', 2)->billed_month->toDateString(), $this->line('1000286100', 6)->billed_month]);
         $this->assertSame('2020-01-01', FeeCategoriser::billedMonth('Charging instructional fee for January, 2020'));
     }
@@ -240,7 +244,7 @@ class SunLedgerImportTest extends TestCase
         $this->assertSame(16, SunLedgerLine::count());
 
         // Sun changed: one amount corrected, one line gone, one new line.
-        $changed = (new SunListingBuilder(2021, 30))
+        $changed = (new ListingWriter(2021, 30))
             ->account('1000286000', 'Saw Example Student', '25000.00', [
                 [9, '52500.00', 'Charging tuition fee for Dec 2020'],
                 [9, '-10500.00', 'Providing 20% edu allow on tuition fee for Dec 2020'],
@@ -279,7 +283,7 @@ class SunLedgerImportTest extends TestCase
         $first = $this->import($this->fixture()->render());
 
         // A second import that changes one line (built properly, so the file passes its checks).
-        $second = $this->import((new SunListingBuilder(2021, 30))
+        $second = $this->import((new ListingWriter(2021, 30))
             ->account('1000286000', 'Saw Example Student', '25000.00', [
                 [9, '52500.00', 'Charging tuition fee for Dec 2020'],
                 [9, '-10500.00', 'Providing 20% edu allow on tuition fee for Dec 2020'],
@@ -306,21 +310,22 @@ class SunLedgerImportTest extends TestCase
 
     // --- Year-to-year warnings ---------------------------------------------------------------------------
 
-    public function test_opening_balance_and_rename_warnings_compare_with_the_previous_year(): void
+    public function test_opening_balance_warnings_compare_with_the_previous_year(): void
     {
-        $this->import((new SunListingBuilder(2020, 30))
+        $this->import((new ListingWriter(2020, 30))
             ->account('1000286000', 'Saw Example Studnt', '0.00', [[1, '25000.00', 'Charging tuition fee for Apr 2019']])
             ->account('1000286100', 'Naw Example Girl', '0.00', [[1, '7000.00', 'Charging tuition fee for Apr 2019']])->render());
 
+        // An unlinked code printed under a new name needs no review: it isn't matched to anyone (T3 reviews are in SunAccountLinksTest).
         $this->upload($this->fixture()->render())->assertOk()
-            // 1000286100 closed 7,000 but opens at 0, and Student Control closed at 32,000 Cr but opens at 0.
+            // 1000286100 closed 7,000 but opens at 0, and Student Control closed at 32,000 Cr but opens at 0 (T8: kept as a warning).
             ->assertSee('2 accounts start the year on a different balance', false)
-            ->assertSee('1 account has a different name from last time', false);
+            ->assertDontSee('printed under a different name', false)
+            ->assertSee('Student Control balance');
         $this->import($this->fixture()->render());
 
         $this->actingAs($this->treasurer->user)->get('/treasurer/ledger/review?year=2021')->assertOk()
-            ->assertSee('Renamed accounts (1)')->assertSee('Saw Example Studnt → Saw Example Student', false)
-            ->assertSee('Opening balance differs from last year (2)');
+            ->assertSee('Opening balance differs from last year (2)')->assertSee('Possible reused codes (0)')->assertSee('Student Control balance:');
     }
 
     // --- Matching ------------------------------------------------------------------------------------------
@@ -334,7 +339,7 @@ class SunLedgerImportTest extends TestCase
         // Suggestions only: nothing is linked by name, and two accounts with one name stay separate.
         $this->actingAs($this->treasurer->user)->get('/treasurer/ledger/review?year=2021')->assertOk()
             ->assertSee('Accounts to match (4)')->assertSee('Link to Saw Example Student');
-        $this->assertSame(0, SunAccount::whereNotNull('student_id')->count());
+        $this->assertSame(0, SunAccountLink::count());
 
         $control = SunAccount::where('code', '1000285005')->sole();
         $this->actingAs($this->treasurer->user)->post("/treasurer/ledger/accounts/{$control->id}/link", ['student_id_number' => $saw->student_id_number])
@@ -345,14 +350,14 @@ class SunLedgerImportTest extends TestCase
         $this->actingAs($this->treasurer->user)->post("/treasurer/ledger/accounts/{$a->id}/link", ['student_id_number' => $ko->student_id_number])->assertSessionHas('status');
         $this->actingAs($this->treasurer->user)->post("/treasurer/ledger/accounts/{$b->id}/link", ['student_id_number' => $ko->student_id_number])
             ->assertSessionHas('warning', 'Ko Same Name is already linked to account 1000286200.');
-        $this->assertNull($b->fresh()->student_id);
+        $this->assertSame(0, SunAccountLink::where('sun_account_id', $b->id)->count());
 
         $this->actingAs($this->treasurer->user)->post("/treasurer/ledger/accounts/{$b->id}/not-isms", ['not_isms' => 1])->assertSessionHas('status');
         $this->actingAs($this->treasurer->user)->get('/treasurer/ledger/review?year=2021')->assertSee('Accounts to match (2)');
 
-        // A linked code stays linked in a later year; unlinking is refused once its lines are published.
+        // An open link covers later years; unlinking is refused once its lines are published.
         $batch = $this->import($this->fixture(2022)->render());
-        $this->assertSame($ko->id, SunAccount::where('code', '1000286200')->value('student_id'));
+        $this->assertSame($ko->id, app(SunLinks::class)->studentFor($a->id, 2022));
         $this->assertSame(1, $batch->matched_accounts);
         $this->actingAs($this->treasurer->user)->post("/treasurer/ledger/{$batch->id}/publish")->assertSessionHas('status');
         $this->actingAs($this->treasurer->user)->post("/treasurer/ledger/accounts/{$a->id}/unlink")
@@ -376,7 +381,7 @@ class SunLedgerImportTest extends TestCase
         $onTime = $this->pupil('Thiri Example', $nine);
         $joinedLate = $this->pupil('Zaw Example', $nine);
         $overcharged = $this->pupil('Hnin Example', $nine);
-        $this->import((new SunListingBuilder(2027, 30))
+        $this->import((new ListingWriter(2027, 30))
             ->account('1000291000', 'Thiri Example', '0.00', [[1, '300000.00', 'Charging yearly fee'], [1, '650000.00', 'Charging tuition fee 1st instalment'],
                 [4, '650000.00', 'Charging tuition fee 2nd instalment'], [7, '650000.00', 'Charging tuition fee 3rd instalment'], [10, '650000.00', 'Charging tuition fee 4th instalment']])
             ->account('1000291100', 'Zaw Example', '0.00', [[1, '300000.00', 'Charging yearly fee'], [7, '650000.00', 'Charging tuition fee 3rd instalment'], [10, '650000.00', 'Charging tuition fee 4th instalment']])
@@ -434,18 +439,29 @@ class SunLedgerImportTest extends TestCase
         $this->assertStringNotContainsString('Saw Example', json_encode(AuditLog::pluck('details')));
     }
 
-    public function test_erasing_a_student_clears_their_ledger_name_and_memos(): void
+    public function test_erasing_a_student_clears_their_ledger_names_memos_reviews_and_statements(): void
     {
-        $this->import($this->fixture()->render());
+        $batch = $this->import($this->fixture()->render());
         $student = $this->pupil('Saw Example Student', $this->levelSection('Grade 5-A', '5'));
         $account = SunAccount::where('code', '1000286000')->sole();
-        $account->update(['student_id' => $student->id]);
+        $this->actingAs($this->treasurer->user)->post("/treasurer/ledger/accounts/{$account->id}/link", ['student_id_number' => $student->student_id_number]);
+        $this->actingAs($this->treasurer->user)->post("/treasurer/ledger/{$batch->id}/publish")->assertSessionHas('status');
+        // The next year prints the code under another name: a review holds real names too.
+        $this->import(str_replace('Saw Example Student', 'Saw Another Person ', $this->fixture(2022)->render()));
+        $this->assertSame(1, SunAccountReview::count());
         $admin = $this->makeStaff('admin', 'Admin', 'admin@test.local');
 
         app(RetentionService::class)->eraseStudent($student, 'Erasure request', $admin->user);
 
-        $this->assertSame("Erased Record {$student->id}", $account->fresh()->name_as_printed);
+        $erased = "Erased Record {$student->id}";
+        $this->assertSame($erased, $account->fresh()->name_as_printed);
+        $this->assertSame([$erased], SunAccountBalance::where('sun_account_id', $account->id)->distinct()->pluck('account_name_as_printed')->all());
+        $this->assertSame([$erased, $erased], array_values(SunAccountReview::sole()->only(['previous_name', 'printed_name'])));
+        $this->assertSame($erased, SunAccountLink::sole()->accepted_name);
         $this->assertSame(0, SunLedgerLine::where('sun_account_id', $account->id)->where('memo', '!=', '')->count());
-        $this->assertSame('52500.00', (string) SunAccountBalance::where('sun_account_id', $account->id)->value('closing_balance'));
+        $content = json_encode(SunFamilyStatement::where('sun_account_id', $account->id)->pluck('content'));
+        $this->assertStringNotContainsString('tuition fee for Dec 2020', $content);
+        $this->assertStringContainsString('52500.00', $content); // amounts stay
+        $this->assertSame('52500.00', (string) SunAccountBalance::where('sun_account_id', $account->id)->where('fiscal_year', 2021)->value('closing_balance'));
     }
 }

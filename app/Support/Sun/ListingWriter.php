@@ -1,19 +1,22 @@
 <?php
 
-namespace Tests\Support;
+namespace App\Support\Sun;
 
 use Brick\Math\BigDecimal;
 
 /**
- * Builds a synthetic Sun Accounts "ACCOUNT LISTING" in the exact print layout of
+ * Writes a synthetic Sun Accounts "ACCOUNT LISTING" in the exact print layout of
  * sdp_doc/YASIS_Sun_Finance_Import.md §2: page headers repeated every $pageLines lines (so pages
  * break mid-account, and an account heading repeats on the new page), opening "Period Total"
  * lines, Cr amounts and balances, memo lines, period totals, closing lines, the report balance
  * and END OF REPORT. Invented names and amounts only: never real data.
  *
  * The Student Control account (1000285005) is added with one line that brings the report to 0.00.
+ *
+ * Used by the demo seeder (a synthetic 2026-2027 listing for the seeded invented students) and by
+ * the tests, which can also ask for a file broken in each way the import refuses ($break).
  */
-class SunListingBuilder
+class ListingWriter
 {
     private array $accounts = [];
 

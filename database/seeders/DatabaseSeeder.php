@@ -11,8 +11,6 @@ use App\Models\Enrollment;
 use App\Models\Grade;
 use App\Models\GradeLevel;
 use App\Models\Guardian;
-use App\Models\ImportBatch;
-use App\Models\ImportedFeeRecord;
 use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
@@ -337,28 +335,6 @@ class DatabaseSeeder extends Seeder
             ['reason' => 'Family travel', 'status' => 'Submitted']
         );
 
-        // A published fee-import batch with matched, restricted, and unmatched rows, so the Treasurer
-        // workflow (validate/match, imported records, reports) is demoable without an upload first.
-        $treasurerProfile = StaffProfile::where('staff_id_number', 'USR-0006')->first();
-        $feeBatch = ImportBatch::firstOrCreate(
-            ['period' => 'Q1 2026', 'uploaded_by' => $treasurerProfile->id],
-            ['source_file' => 'fee_export_Q1_2026.xlsx', 'row_count' => 4, 'uploaded_at' => now()->subDays(10), 'published_at' => now()->subDays(9),
-                'restricted_confirmed_at' => now()->subDays(9), 'restricted_confirmed_by' => $treasurerProfile->id]
-        );
-
-        $feeRows = [
-            ['student_id' => $childA->id, 'raw_student_key' => null, 'raw_student_name' => $childA->name, 'description' => 'Q1 tuition', 'amount' => 1200000, 'balance' => 300000, 'status' => 'Partial', 'is_restricted' => false],
-            ['student_id' => $childA->id, 'raw_student_key' => null, 'raw_student_name' => $childA->name, 'description' => 'SDA employee allowance', 'amount' => 200000, 'balance' => 0, 'status' => 'Paid', 'is_restricted' => true],
-            ['student_id' => $childB->id, 'raw_student_key' => null, 'raw_student_name' => $childB->name, 'description' => 'Q1 tuition', 'amount' => 1000000, 'balance' => 1000000, 'status' => 'Outstanding', 'is_restricted' => false],
-            ['student_id' => null, 'raw_student_key' => 'ACC-9911', 'raw_student_name' => 'Maung Thura', 'description' => 'Q1 tuition', 'amount' => 500000, 'balance' => 500000, 'status' => 'Owed', 'is_restricted' => false],
-        ];
-        foreach ($feeRows as $i => $row) {
-            ImportedFeeRecord::firstOrCreate(
-                ['import_batch_id' => $feeBatch->id, 'student_id' => $row['student_id'], 'raw_student_key' => $row['raw_student_key'], 'txn_date' => now()->subDays(10 - $i)->toDateString()],
-                ['raw_student_name' => $row['raw_student_name'], 'description' => $row['description'], 'amount' => $row['amount'], 'balance' => $row['balance'], 'status' => $row['status'], 'is_restricted' => $row['is_restricted']]
-            );
-        }
-
         // A VP-approved promotion batch (childC graduating from Grade 9-A) awaiting Principal co-approval,
         // and a VP-approved transcript, so the Principal's Approvals queue is demoable immediately.
         $registrarProfile = StaffProfile::where('staff_id_number', 'USR-0004')->first();
@@ -430,5 +406,8 @@ class DatabaseSeeder extends Seeder
                 'published_at' => now(), 'published_by' => User::where('email', 'treasurer@yasis.edu')->value('id'),
             ]);
         }
+
+        // A synthetic 2026-2027 Sun ledger for the seeded students, imported, linked and published.
+        $this->call(SunLedgerDemoSeeder::class);
     }
 }

@@ -11,12 +11,16 @@ use App\Models\FeeCategory;
 use App\Models\Student;
 use App\Models\SunAccount;
 use App\Models\SunAccountBalance;
+use App\Models\SunAccountLink;
+use App\Models\SunAccountReview;
 use App\Models\SunImportBatch;
 use App\Models\SunLedgerLine;
 use App\Services\AuditService;
 use App\Services\Sun\FeeCategoryService;
 use App\Services\Sun\SunAccountService;
 use App\Services\Sun\SunLedgerImporter;
+use App\Services\Sun\SunLinks;
+use App\Services\Sun\SunPeriods;
 use App\Services\Sun\SunScheduleCheck;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -96,25 +100,29 @@ class SunLedgerController extends Controller
         $data = ['years' => $years, 'fy' => $fy];
         if ($fy) {
             $balances = SunAccountBalance::current()->where('fiscal_year', $fy);
-            $unmatched = SunAccount::unmatched()->whereIn('id', (clone $balances)->select('sun_account_id'))->orderBy('code')->paginate(25, ['*'], 'unmatched')->withQueryString();
-            $closing = SunAccountBalance::current()->where('fiscal_year', $fy)->whereIn('sun_account_id', $unmatched->pluck('id'))->pluck('closing_balance', 'sun_account_id');
+            $unmatched = $accounts->unmatchedQuery($fy)->orderBy('code')->paginate(25, ['*'], 'unmatched')->withQueryString();
             $previous = SunAccountBalance::current()->where('fiscal_year', $fy - 1)->get()->keyBy('sun_account_id');
             $thisYear = (clone $balances)->with('account')->get();
-            $lines = fn () => SunLedgerLine::current()->where('fiscal_year', $fy)->with('account.student')->orderBy('sun_account_code')->orderBy('period');
+            $lines = fn () => SunLedgerLine::current()->where('fiscal_year', $fy)->with('account')->orderBy('sun_account_code')->orderBy('period');
             $latest = SunImportBatch::current()->where('fiscal_year', $fy)->latest('id')->first();
+            $reviews = SunAccountReview::with('account')->where('fiscal_year', $fy)->orderByRaw("status = 'pending' DESC")->orderBy('sun_account_id')->get();
+            $reviewLinks = SunAccountLink::with('student')->covering($fy)->whereIn('sun_account_id', $reviews->pluck('sun_account_id'))->get()->keyBy('sun_account_id');
 
             $data += [
                 'unmatched' => $unmatched,
-                'unmatchedClosing' => $closing,
+                'unmatchedClosing' => SunAccountBalance::current()->where('fiscal_year', $fy)->whereIn('sun_account_id', $unmatched->pluck('id'))->pluck('closing_balance', 'sun_account_id'),
                 'suggestions' => $unmatched->mapWithKeys(fn ($a) => [$a->id => $accounts->suggestions($a)]),
+                'reviews' => $reviews,
+                'reviewLinks' => $reviewLinks,
+                'reviewClosing' => $thisYear->pluck('closing_balance', 'sun_account_id'),
+                'reviewSuggestions' => $reviews->where('status', SunAccountReview::PENDING)
+                    ->mapWithKeys(fn ($r) => [$r->id => $accounts->suggestions($r->account, name: $r->printed_name)]),
                 'unclassified' => $lines()->where('category', 'unclassified')->limit(self::LIST_LIMIT)->get(),
                 'unclassifiedCount' => SunLedgerLine::current()->where('fiscal_year', $fy)->where('category', 'unclassified')->count(),
                 'suspect' => $lines()->where('date_suspect', true)->limit(self::LIST_LIMIT)->get(),
                 'suspectCount' => SunLedgerLine::current()->where('fiscal_year', $fy)->where('date_suspect', true)->count(),
                 'missing' => $lines()->where('missing_from_latest', true)->limit(self::LIST_LIMIT)->get(),
                 'changed' => SunLedgerLine::current()->whereIn('id', $latest?->warnings['changed_line_ids'] ?? [])->with('account')->get(),
-                'renamed' => $thisYear->filter(fn ($b) => isset($previous[$b->sun_account_id]) && $previous[$b->sun_account_id]->account_name_as_printed !== $b->account_name_as_printed)
-                    ->map(fn ($b) => ['balance' => $b, 'before' => $previous[$b->sun_account_id]->account_name_as_printed])->values(),
                 'openingDiffers' => $thisYear->filter(fn ($b) => isset($previous[$b->sun_account_id]) && (string) $previous[$b->sun_account_id]->closing_balance !== (string) $b->opening_balance)
                     ->map(fn ($b) => ['balance' => $b, 'previous_closing' => (string) $previous[$b->sun_account_id]->closing_balance])->values(),
                 'schedule' => $check->forYear($fy),
@@ -125,6 +133,23 @@ class SunLedgerController extends Controller
         return view('treasurer.ledger.review', $data);
     }
 
+    /** T3: the same student under a corrected name. */
+    public function reviewSame(Request $request, SunAccountReview $review, SunAccountService $service)
+    {
+        $service->confirmSameStudent($review, $request->user());
+
+        return back()->with('status', "Account {$review->account->code}: same student. Its {$review->fiscal_year} lines are matched again.");
+    }
+
+    /** T3: the code now belongs to another student. */
+    public function reviewRelink(LinkSunAccountRequest $request, SunAccountReview $review, SunAccountService $service)
+    {
+        $student = Student::where('student_id_number', $request->validated('student_id_number'))->firstOrFail();
+        $service->relink($review, $student, $request->user());
+
+        return back()->with('status', "Account {$review->account->code} is now linked to {$student->name} from ".SunPeriods::label($review->fiscal_year).'.');
+    }
+
     // --- Accounts ---------------------------------------------------------------------------------------
 
     public function accounts(Request $request)
@@ -133,15 +158,22 @@ class SunLedgerController extends Controller
         $fy = (int) ($years->contains($request->integer('year')) ? $request->integer('year') : $years->first());
         $search = trim((string) $request->input('search'));
 
-        $balances = SunAccountBalance::current()->where('fiscal_year', $fy)->with('account.student')
-            ->when($search !== '', fn ($q) => $q->whereHas('account', fn ($a) => $a->where('code', 'like', "%{$search}%")
-                ->orWhere('name_as_printed', 'like', "%{$search}%")
-                ->orWhereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%")->orWhere('student_id_number', 'like', "%{$search}%"))))
+        $matchingStudents = $search === '' ? collect() : Student::where('name', 'like', "%{$search}%")->orWhere('student_id_number', 'like', "%{$search}%")->pluck('id');
+        $linkedAccounts = $search === '' ? collect() : SunAccountLink::covering($fy)->whereIn('student_id', $matchingStudents)->pluck('sun_account_id');
+        $balances = SunAccountBalance::current()->where('fiscal_year', $fy)->with('account')
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w->whereHas('account', fn ($a) => $a->where('code', 'like', "%{$search}%")
+                ->orWhere('name_as_printed', 'like', "%{$search}%"))->orWhereIn('sun_account_balances.sun_account_id', $linkedAccounts)))
             ->join('sun_accounts', 'sun_accounts.id', '=', 'sun_account_balances.sun_account_id')
             ->orderBy('sun_accounts.code')->select('sun_account_balances.*')
             ->paginate(50)->withQueryString();
 
-        return view('treasurer.ledger.accounts', ['years' => $years, 'fy' => $fy, 'balances' => $balances, 'search' => $search]);
+        $owners = $fy ? app(SunLinks::class)->forYear($fy, $balances->pluck('sun_account_id')) : [];
+
+        return view('treasurer.ledger.accounts', [
+            'years' => $years, 'fy' => $fy, 'balances' => $balances, 'search' => $search,
+            'students' => Student::whereIn('id', array_values($owners))->get()->keyBy('id'), 'owners' => $owners,
+            'held' => $fy ? app(SunLinks::class)->held($fy) : [],
+        ]);
     }
 
     public function account(Request $request, SunAccount $account, SunAccountService $service)
@@ -149,14 +181,25 @@ class SunLedgerController extends Controller
         $years = $account->balances()->current()->orderByDesc('fiscal_year')->pluck('fiscal_year');
         $fy = (int) ($years->contains($request->integer('year')) ? $request->integer('year') : $years->first());
 
+        $owner = $fy ? app(SunLinks::class)->studentFor($account->id, $fy) : null;
+        // §3.8 access logging: who opened a student's financial record.
+        $studentId = $owner ?? $account->links()->whereNull('voided_at')->orderByDesc('from_fiscal_year')->value('student_id');
+        if ($studentId) {
+            app(AuditService::class)->log($request->user(), 'Viewed student financial record', 'Student', $studentId, ['account' => $account->code]);
+        }
+
         return view('treasurer.ledger.account', [
-            'account' => $account->load('student'),
+            'account' => $account,
+            'links' => $account->links()->with('student')->orderBy('from_fiscal_year')->orderBy('id')->get(),
+            'openLink' => $account->openLink(),
+            'owner' => $owner ? Student::find($owner) : null,
+            'review' => $fy ? $account->reviews()->pending()->where('fiscal_year', $fy)->first() : null,
             'years' => $years,
             'fy' => $fy,
             'balance' => $account->balances()->current()->where('fiscal_year', $fy)->first(),
             'lines' => $account->lines()->current()->where('fiscal_year', $fy)->orderBy('period')->orderBy('id')->get(),
             'categories' => FeeCategory::orderBy('position')->pluck('label', 'key'),
-            'suggestions' => $account->student_id || $account->is_control ? [] : $service->suggestions($account),
+            'suggestions' => $account->openLink() || $account->is_control ? [] : $service->suggestions($account),
         ]);
     }
 

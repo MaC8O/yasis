@@ -3,67 +3,59 @@
 namespace App\Http\Controllers\Leadership;
 
 use App\Http\Controllers\Controller;
-use App\Models\ImportedFeeRecord;
 use App\Models\Student;
 use App\Services\AuditService;
-use App\Services\FeeSummaryService;
+use App\Services\Sun\SunFamilyStatements;
+use App\Services\Sun\SunFeeOverview;
 use App\Support\FeeVisibility;
+use App\Support\LedgerFormat;
 use Illuminate\Http\Request;
 
 /**
- * Read-only fee visibility for Principal / VP Academic / Registrar (§2.2 fees.view_readonly).
- * Everything here is scoped to FeeVisibility::LEADERSHIP — published, matched, non-held rows,
- * and restricted (SDA) rows only when the Treasurer's policy allows it.
+ * §2.2 fees.view_readonly: the Principal, VP Academic and Registrar read the published fee
+ * statements (the same figures families see), read-only. Lines the Treasurer hid by hand show
+ * only as "Adjustments" unless the Treasurer's policy switch lets leadership see them, marked.
  */
 class FeeVisibilityController extends Controller
 {
-    public function index(Request $request, FeeSummaryService $service)
+    public function index(Request $request, SunFeeOverview $overview, SunFamilyStatements $statements)
     {
         $role = $request->user()->getRoleNames()->first();
-        $all = $service->studentSummaries(FeeVisibility::LEADERSHIP);
-        $summaries = $all;
+        $all = $overview->publishedRows();
+        $rows = $all;
 
         if ($search = $request->string('search')->trim()->lower()->value()) {
-            $summaries = $summaries->filter(fn ($s) => str_contains(mb_strtolower($s->student->name), $search)
-                || str_contains(mb_strtolower($s->student->student_id_number), $search)
-                || str_contains(mb_strtolower((string) $s->section?->name), $search));
+            $rows = $rows->filter(fn ($r) => str_contains(mb_strtolower($r->student->name), $search)
+                || str_contains(mb_strtolower($r->student->student_id_number), $search)
+                || str_contains(mb_strtolower((string) $r->section?->name), $search));
         }
-
-        if ($status = $request->string('status')->value()) {
-            $summaries = $status === 'Outstanding'
-                ? $summaries->whereIn('status', ['Owed', 'Outstanding'])
-                : $summaries->where('status', $status);
+        if (in_array($status = $request->string('status')->value(), ['Owing', 'Settled', 'In credit'], true)) {
+            $rows = $rows->where('status', $status);
         }
-
-        $billed = $all->sum('total_billed');
+        $year = $statements->latestYear();
 
         return view('leadership.fees.index', [
             'role' => $role,
-            'summaries' => $summaries->sortBy(fn ($s) => $s->student->name)->values(),
+            'rows' => $rows->values(),
             'filters' => $request->only(['search', 'status']),
-            'outstandingTotal' => $all->sum('balance'),
-            'paidTotal' => $all->sum('paid'),
-            'collectionRate' => $billed > 0 ? round($all->sum('paid') / $billed * 100, 1) : null,
-            'aging' => $service->agingTotals($all),
-            'byDepartment' => $service->outstandingByDepartment(summaries: $all),
-            'showsRestricted' => FeeVisibility::leadershipSeesRestricted(),
+            'yearLabel' => $year ? LedgerFormat::year($year) : null,
+            'totals' => $overview->totals($all),
+            'distribution' => $overview->distribution($all),
+            'byDepartment' => $overview->groupBy($all, fn ($r) => $r->student->department?->name),
+            'showsHidden' => FeeVisibility::leadershipSeesRestricted(),
         ]);
     }
 
-    public function show(Request $request, Student $student, FeeSummaryService $service, AuditService $audit)
+    public function show(Request $request, Student $student, SunFamilyStatements $statements, AuditService $audit)
     {
         // §3.8 access logging: record who opened a student's financial record.
         $audit->log($request->user(), 'Viewed student financial record', 'Student', $student->id);
 
-        $records = ImportedFeeRecord::query()->visibleTo(FeeVisibility::LEADERSHIP)
-            ->where('student_id', $student->id)->with('importBatch')->get();
-        $lines = $service->statementLines($records);
-
         return view('leadership.fees.show', [
             'role' => $request->user()->getRoleNames()->first(),
-            'student' => $student->load(['department', 'enrollments.section', 'guardians.user']),
-            'lines' => $lines,
-            'aging' => $service->aging($lines),
+            'student' => $student->load(['department', 'enrollments.section']),
+            'statements' => $statements->forStudent($student),
+            'showsHidden' => FeeVisibility::leadershipSeesRestricted(),
         ]);
     }
 }

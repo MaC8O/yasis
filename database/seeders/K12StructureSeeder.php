@@ -8,8 +8,6 @@ use App\Models\Department;
 use App\Models\Enrollment;
 use App\Models\GradeLevel;
 use App\Models\Guardian;
-use App\Models\ImportBatch;
-use App\Models\ImportedFeeRecord;
 use App\Models\LeaveBalance;
 use App\Models\LeaveType;
 use App\Models\Section;
@@ -292,37 +290,6 @@ class K12StructureSeeder extends Seeder
                     );
                 }
             }
-        }
-
-        // ------------------------------------------------------------------
-        // Fee records: a published Q2 batch covering the high-school roster,
-        // so treasurer/leadership fee reports and charts have real spread.
-        // ------------------------------------------------------------------
-        $treasurer = StaffProfile::where('staff_id_number', 'USR-0006')->first();
-        if ($treasurer) {
-            $batch = ImportBatch::firstOrCreate(
-                ['period' => 'Q2 2026', 'uploaded_by' => $treasurer->id],
-                ['source_file' => 'fee_export_Q2_2026.xlsx', 'row_count' => 0, 'uploaded_at' => now()->subDays(3), 'published_at' => now()->subDays(2)]
-            );
-
-            $hsStudents = Student::where('department_id', $departments['High School'])
-                ->where('enrollment_status', 'Enrolled')->orderBy('id')->get();
-
-            foreach ($hsStudents as $i => $student) {
-                [$amount, $balance, $status] = match ($i % 4) {
-                    0 => [1500000, 0, 'Paid'],
-                    1 => [1500000, 500000, 'Partial'],
-                    2 => [1500000, 1500000, 'Outstanding'],
-                    default => [1500000, 250000, 'Partial'],
-                };
-
-                ImportedFeeRecord::firstOrCreate(
-                    ['import_batch_id' => $batch->id, 'student_id' => $student->id, 'txn_date' => now()->subDays(5)->toDateString()],
-                    ['raw_student_key' => null, 'amount' => $amount, 'balance' => $balance, 'status' => $status, 'is_restricted' => false]
-                );
-            }
-
-            $batch->update(['row_count' => $batch->importedFeeRecords()->count()]);
         }
     }
 }

@@ -42,7 +42,7 @@ class BackupController extends Controller
             'Guardians' => DB::table('guardians')->count(),
             'Grades' => DB::table('grades')->count(),
             'Attendance records' => DB::table('attendance_records')->count(),
-            'Fee records' => DB::table('imported_fee_records')->count(),
+            'Fee ledger lines' => DB::table('sun_ledger_lines')->whereNull('removed_at')->count(),
             'Audit log entries' => DB::table('audit_logs')->count(),
         ];
     }

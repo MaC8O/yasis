@@ -1,185 +1,110 @@
-@use('App\Support\Money')
-@php
-    $sections = [
-        'who-owes' => 'Who still owes money?',
-        'how-long' => 'How long has it been owed?',
-        'collected' => 'How much have we collected?',
-        'departments' => 'Which departments owe the most?',
-        'statement' => "Print a student's statement",
-    ];
-    $download = 'inline-flex items-center gap-2 border border-brand text-brand font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand-soft transition-colors';
-    $q = 'text-lg font-bold text-ink';
-@endphp
-<x-app-layout title="Fee Reports" subtitle="School-wide fee totals. Each report answers one question — read it here or download it for Excel." badge="Treasurer" role="treasurer">
-    {{-- The four numbers that matter --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <x-stat-tile label="Total charged" color="blue" :hint="Money::CURRENCY">{{ Money::format($billedTotal) }}</x-stat-tile>
-        <x-stat-tile label="Collected" color="green" :hint="$collectionRate !== null ? $collectionRate.'% of everything charged' : null">{{ Money::format($paidTotal) }}</x-stat-tile>
-        <x-stat-tile label="Still owed" color="yellow" :hint="$owingCount.' '.Str::plural('student', $owingCount).' owing'" :href="route('treasurer.records.index', ['view' => 'owing', 'sort' => 'owed'])">{{ Money::format($owedTotal) }}</x-stat-tile>
-        <x-stat-tile label="Unpaid over 90 days" color="pink" hint="Most urgent to follow up" :href="route('treasurer.records.index', ['view' => 'overdue', 'sort' => 'overdue'])">{{ Money::format($aging['over_90']) }}</x-stat-tile>
-    </div>
+@use('App\Support\LedgerFormat')
+<x-app-layout title="Fee Reports" subtitle="From the live Sun ledger, published or not. Families see only published statements." badge="Treasurer" role="treasurer">
+    @php $download = 'inline-flex items-center gap-1.5 min-h-[40px] border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-3 py-2 text-xs hover:bg-neutral-50'; @endphp
+    @if ($years->isEmpty())
+        <x-card><p class="text-sm text-neutral-400">Nothing imported yet. Start on <a href="{{ route('treasurer.ledger.index') }}" class="text-brand font-semibold hover:underline">Ledger Import</a>.</p></x-card>
+    @else
+        <x-card>
+            <form method="GET" class="flex flex-wrap items-end gap-4">
+                <div>
+                    <label for="fr-year" class="block text-sm font-semibold mb-1">Financial year</label>
+                    <select id="fr-year" name="year" onchange="this.form.submit()" class="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm min-h-[44px]">
+                        @foreach ($years as $y)<option value="{{ $y }}" @selected($y === $fy)>{{ LedgerFormat::year($y) }}</option>@endforeach
+                    </select>
+                </div>
+                <a href="{{ route('treasurer.reports.outstanding', ['year' => $fy]) }}" class="{{ $download }}"><x-icon name="download" class="w-4 h-4" /> Students owing (CSV)</a>
+            </form>
+        </x-card>
 
-    {{-- Jump to a report --}}
-    <nav aria-label="Reports on this page" class="flex flex-wrap items-center gap-2">
-        <span class="text-sm font-semibold text-neutral-500 mr-1">Jump to:</span>
-        @foreach ($sections as $id => $label)
-            <a href="#{{ $id }}" class="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm font-medium text-ink hover:border-brand hover:text-brand">{{ $label }}</a>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" data-report-tiles>
+            <x-stat-tile label="Owing" color="yellow" :hint="number_format($totals['owing']).' Ks'">{{ $distribution['Owing'] }}</x-stat-tile>
+            <x-stat-tile label="Settled" color="green" hint="balance 0">{{ $distribution['Settled'] }}</x-stat-tile>
+            <x-stat-tile label="In credit" color="blue" :hint="number_format($totals['credit']).' Ks'">{{ $distribution['In credit'] }}</x-stat-tile>
+            <x-stat-tile label="Matched students" color="pink">{{ array_sum($distribution) }}</x-stat-tile>
+        </div>
+
+        @foreach (['By grade (class this year)' => $byGrade, 'By department' => $byDepartment] as $title => $groups)
+            <x-card :title="$title">
+                @if ($groups->isEmpty())
+                    <p class="text-sm text-neutral-400">No matched accounts this year.</p>
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead><tr class="text-left text-neutral-500 border-b border-neutral-200">
+                                <th class="py-2 pr-3 font-semibold"></th><th class="py-2 pr-3 font-semibold text-right">Owing</th><th class="py-2 pr-3 font-semibold text-right">Owed (Ks)</th>
+                                <th class="py-2 pr-3 font-semibold text-right">Settled</th><th class="py-2 pr-3 font-semibold text-right">In credit</th><th class="py-2 font-semibold text-right">Credit (Ks)</th>
+                            </tr></thead>
+                            <tbody>
+                                @foreach ($groups as $g)
+                                    <tr class="border-b border-neutral-100">
+                                        <td class="py-2 pr-3 font-medium whitespace-nowrap">{{ $g->name }}</td>
+                                        <td class="py-2 pr-3 text-right tabular-nums">{{ $g->owing }}</td>
+                                        <td class="py-2 pr-3 text-right tabular-nums">{{ number_format($g->owing_total) }}</td>
+                                        <td class="py-2 pr-3 text-right tabular-nums">{{ $g->settled }}</td>
+                                        <td class="py-2 pr-3 text-right tabular-nums">{{ $g->credit }}</td>
+                                        <td class="py-2 text-right tabular-nums">{{ number_format($g->credit_total) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </x-card>
         @endforeach
-    </nav>
 
-    {{-- 1. Who owes --}}
-    <section id="who-owes" class="bg-white rounded-2xl border border-neutral-200 overflow-hidden scroll-mt-6">
-        <div class="flex flex-wrap items-start justify-between gap-4 px-6 py-5 border-b border-neutral-200">
-            <div>
-                <h2 class="{{ $q }}">1. Who still owes money?</h2>
-                <p class="text-sm text-neutral-500 mt-1">The {{ $topOwing->count() < $owingCount ? '10 largest of '.$owingCount : $owingCount }} unpaid {{ Str::plural('account', $owingCount) }}. The download has every one, with the guardian's name and phone for follow-up calls.</p>
+        <x-card title="Charges, payments and allowances by month" subtitle="Student accounts only (Student Control is left out). Months come from the accounting period, not the typed date.">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm" data-by-month>
+                    <thead><tr class="text-left text-neutral-500 border-b border-neutral-200">
+                        <th class="py-2 pr-3 font-semibold">Month</th><th class="py-2 pr-3 font-semibold text-right">Charged</th><th class="py-2 pr-3 font-semibold text-right">Payments</th>
+                        <th class="py-2 pr-3 font-semibold text-right">Allowances</th><th class="py-2 font-semibold text-right">Other credits</th>
+                    </tr></thead>
+                    <tbody>
+                        @foreach ($byMonth as $m)
+                            <tr class="border-b border-neutral-100">
+                                <td class="py-2 pr-3 whitespace-nowrap">{{ \Illuminate\Support\Carbon::parse($m->period_month)->format('M Y') }}</td>
+                                <td class="py-2 pr-3 text-right tabular-nums">{{ number_format((float) $m->charges) }}</td>
+                                <td class="py-2 pr-3 text-right tabular-nums">{{ number_format((float) $m->payments) }}</td>
+                                <td class="py-2 pr-3 text-right tabular-nums">{{ number_format((float) $m->allowances) }}</td>
+                                <td class="py-2 text-right tabular-nums">{{ number_format((float) $m->other_credits) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-            <a href="{{ route('treasurer.reports.outstanding') }}" class="{{ $download }}"><x-icon name="upload" class="w-4 h-4 rotate-180" /> Download full list (Excel/CSV)</a>
-        </div>
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="text-[11px] uppercase tracking-wider text-neutral-500 border-b border-neutral-200 bg-neutral-50">
-                    <th class="py-2 pl-6 pr-2 text-left font-semibold">Student</th>
-                    <th class="py-2 px-2 text-left font-semibold">Class</th>
-                    <th class="py-2 px-2 text-right font-semibold">Still owed</th>
-                    <th class="py-2 pl-2 pr-6 text-left font-semibold">Unpaid for</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($topOwing as $row)
-                    <tr class="border-b border-neutral-100 last:border-0 hover:bg-neutral-50">
-                        <td class="py-2 pl-6 pr-2"><a href="{{ route('treasurer.records.show', $row->student) }}" class="font-medium text-ink hover:underline">{{ $row->student->name }}</a> <span class="text-xs text-neutral-400 tabular-nums">{{ $row->student->student_id_number }}</span></td>
-                        <td class="py-2 px-2 text-neutral-600">{{ $row->section?->name ?? '—' }}</td>
-                        <td class="py-2 px-2 text-right tabular-nums font-bold">{{ Money::format($row->balance) }}</td>
-                        <td class="py-2 pl-2 pr-6 text-sm {{ ($row->overdue_days ?? 0) > 90 ? 'text-danger font-semibold' : (($row->overdue_days ?? 0) > 0 ? 'text-warning font-semibold' : 'text-neutral-500') }}">
-                            {{ $row->overdue_days ? $row->overdue_days.' days' : 'Under 30 days' }}
-                        </td>
-                    </tr>
-                @empty
-                    <tr><td colspan="4" class="py-6 px-6 text-center text-success font-semibold">Nobody owes money right now.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
-        @if ($owingCount > $topOwing->count())
-            <p class="px-6 py-3 border-t border-neutral-200 bg-neutral-50 text-sm">
-                <a href="{{ route('treasurer.records.index', ['view' => 'owing', 'sort' => 'owed']) }}" class="font-semibold text-brand hover:underline">See all {{ $owingCount }} in Student Accounts →</a>
-            </p>
-        @endif
-    </section>
+        </x-card>
 
-    {{-- 2. How long --}}
-    <section id="how-long" class="bg-white rounded-2xl border border-neutral-200 overflow-hidden scroll-mt-6">
-        <div class="flex flex-wrap items-start justify-between gap-4 px-6 py-5 border-b border-neutral-200">
-            <div>
-                <h2 class="{{ $q }}">2. How long has it been owed?</h2>
-                <p class="text-sm text-neutral-500 mt-1">All unpaid money, grouped by how long ago it was charged. The older it is, the harder it is to collect.</p>
-            </div>
-            <a href="{{ route('treasurer.reports.aging') }}" class="{{ $download }}"><x-icon name="upload" class="w-4 h-4 rotate-180" /> Download by student (Excel/CSV)</a>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <x-card title="By category">
+                <ul class="divide-y divide-neutral-100 text-sm" data-by-category>
+                    @foreach ($byCategory as $c)
+                        <li class="flex justify-between gap-3 py-2">
+                            <span>{{ ucfirst(str_replace('_', ' ', $c->category)) }} <span class="text-xs text-neutral-500">· {{ number_format($c->line_count) }} {{ Str::plural('line', $c->line_count) }}</span></span>
+                            <span class="tabular-nums text-right">{{ number_format((float) $c->debits) }} charged<span class="block text-xs text-neutral-500">{{ number_format((float) $c->credits) }} credited</span></span>
+                        </li>
+                    @endforeach
+                </ul>
+            </x-card>
+            <x-card title="Student Control balance at each import" subtitle="It carries charges as well as receipts that aren't on a student's own account (T7).">
+                <ul class="divide-y divide-neutral-100 text-sm" data-control-history>
+                    @forelse ($control as $b)
+                        <li class="flex justify-between gap-3 py-2">
+                            <span class="min-w-0">#{{ $b->id }} · {{ LedgerFormat::year($b->fiscal_year) }}<span class="block text-xs text-neutral-500">{{ $b->created_at->format('j M Y') }}{{ $b->published_at ? '' : ' · not published' }}</span></span>
+                            <span class="tabular-nums font-semibold">{{ LedgerFormat::money($b->control_balance) }}</span>
+                        </li>
+                    @empty
+                        <li class="py-2 text-neutral-400">No imports.</li>
+                    @endforelse
+                </ul>
+            </x-card>
         </div>
-        <div class="px-6 py-5">
-            <x-finance.aging-strip :aging="$aging" :counts="$agingCounts" />
-        </div>
-    </section>
 
-    {{-- 3. Collected --}}
-    <section id="collected" class="bg-white rounded-2xl border border-neutral-200 overflow-hidden scroll-mt-6">
-        <div class="px-6 py-5 border-b border-neutral-200">
-            <h2 class="{{ $q }}">3. How much have we collected?</h2>
-            <p class="text-sm text-neutral-500 mt-1">For each import period: what was charged, how much of it has been paid, and what is still outstanding.</p>
-        </div>
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="text-[11px] uppercase tracking-wider text-neutral-500 border-b border-neutral-200 bg-neutral-50">
-                    <th class="py-2 pl-6 pr-2 text-left font-semibold">Period</th>
-                    <th class="py-2 px-2 text-right font-semibold">Charged</th>
-                    <th class="py-2 px-2 text-right font-semibold">Collected</th>
-                    <th class="py-2 px-2 text-right font-semibold">Still owed</th>
-                    <th class="py-2 pl-4 pr-6 text-left font-semibold w-1/3">Collected so far</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($byPeriod as $row)
-                    <tr class="border-b border-neutral-100 last:border-0">
-                        <td class="py-2.5 pl-6 pr-2 font-medium text-ink">{{ $row->period }}</td>
-                        <td class="py-2.5 px-2 text-right tabular-nums">{{ Money::format($row->billed) }}</td>
-                        <td class="py-2.5 px-2 text-right tabular-nums text-success">{{ Money::format($row->collected) }}</td>
-                        <td class="py-2.5 px-2 text-right tabular-nums font-semibold">{{ Money::format($row->owed, true) }}</td>
-                        <td class="py-2.5 pl-4 pr-6">
-                            <div class="flex items-center gap-2">
-                                <div class="flex-1 h-2 rounded-full bg-neutral-100 overflow-hidden" aria-hidden="true">
-                                    <div class="h-full bg-success" @style(['width: '.min(100, $row->rate).'%'])></div>
-                                </div>
-                                <span class="w-12 text-right tabular-nums font-semibold">{{ $row->rate }}%</span>
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr><td colspan="5" class="py-6 px-6 text-center text-neutral-400">No imported periods yet.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
-    </section>
-
-    {{-- 4. Departments --}}
-    <section id="departments" class="bg-white rounded-2xl border border-neutral-200 overflow-hidden scroll-mt-6">
-        <div class="px-6 py-5 border-b border-neutral-200">
-            <h2 class="{{ $q }}">4. Which departments owe the most?</h2>
-            <p class="text-sm text-neutral-500 mt-1">Unpaid money by school department, so follow-up can be shared out.</p>
-        </div>
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="text-[11px] uppercase tracking-wider text-neutral-500 border-b border-neutral-200 bg-neutral-50">
-                    <th class="py-2 pl-6 pr-2 text-left font-semibold">Department</th>
-                    <th class="py-2 px-2 text-right font-semibold">Students owing</th>
-                    <th class="py-2 px-2 text-right font-semibold">Still owed</th>
-                    <th class="py-2 pl-4 pr-6 text-left font-semibold w-1/3">Share of all unpaid money</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($byDepartment as $row)
-                    @php $share = $owedTotal > 0 ? round($row->outstanding / $owedTotal * 100) : 0; @endphp
-                    <tr class="border-b border-neutral-100 last:border-0">
-                        <td class="py-2.5 pl-6 pr-2 font-medium text-ink">{{ $row->department }}</td>
-                        <td class="py-2.5 px-2 text-right tabular-nums">{{ $row->students }}</td>
-                        <td class="py-2.5 px-2 text-right tabular-nums font-semibold">{{ Money::format($row->outstanding) }}</td>
-                        <td class="py-2.5 pl-4 pr-6">
-                            <div class="flex items-center gap-2">
-                                <div class="flex-1 h-2 rounded-full bg-neutral-100 overflow-hidden" aria-hidden="true">
-                                    <div class="h-full bg-danger" @style(['width: '.$share.'%'])></div>
-                                </div>
-                                <span class="w-12 text-right tabular-nums font-semibold">{{ $share }}%</span>
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr><td colspan="4" class="py-6 px-6 text-center text-success font-semibold">No unpaid money in any department.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
-    </section>
-
-    {{-- 5. One student's statement --}}
-    <section id="statement" class="bg-white rounded-2xl border border-neutral-200 px-6 py-5 scroll-mt-6">
-        <h2 class="{{ $q }}">5. Print a student's statement</h2>
-        <p class="text-sm text-neutral-500 mt-1">Pick a student to open their statement. From there you can print an office copy, or a copy that is safe to give the family.</p>
-        @if (session('warning'))
-            <p role="alert" class="mt-3 flex items-center gap-2 text-sm text-warning font-semibold"><x-icon name="alert" class="w-4 h-4" />{{ session('warning') }}</p>
-        @endif
-        <form method="GET" action="{{ route('treasurer.reports.find-statement') }}" class="mt-4 flex flex-wrap gap-2" x-data="{ v: '' }">
-            <label for="statement-student" class="sr-only">Student name or ID</label>
-            <input id="statement-student" name="student" x-model="v" list="statement-students" autocomplete="off" placeholder="Type a student's name or ID…"
-                   class="w-80 max-w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">
-            <datalist id="statement-students">
-                @foreach ($statementStudents as $s)
-                    <option value="{{ $s->student_id_number }}">{{ $s->name }}</option>
-                @endforeach
-            </datalist>
-            <button type="submit" :disabled="!v.trim()" class="bg-brand text-white font-semibold rounded-lg px-4 py-2 text-sm hover:bg-brand-dark transition-colors">Open statement</button>
-        </form>
-    </section>
-
-    <p class="text-xs text-neutral-400">
-        These reports include every imported line. Principal, VP and Registrar see the same figures under their own
-        <a href="{{ route('treasurer.info.visibility-rules') }}" class="font-semibold text-brand hover:underline">visibility rules</a>. Each download is recorded in the audit log.
-    </p>
+        <x-card title="A family's statement" subtitle="Open a student's ledger account; its page links to the family copy of the statement." id="statement">
+            <form method="GET" action="{{ route('treasurer.reports.find-statement') }}" class="flex flex-col sm:flex-row gap-3">
+                <label for="find-student" class="sr-only">Student ID or name</label>
+                <input id="find-student" type="text" name="student" required placeholder="Student ID or name" class="flex-1 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm min-h-[44px]">
+                <button type="submit" class="bg-brand text-white font-semibold rounded-lg px-5 py-2.5 text-sm min-h-[44px] hover:bg-brand-dark">Find</button>
+            </form>
+        </x-card>
+    @endif
 </x-app-layout>

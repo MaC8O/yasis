@@ -5,6 +5,8 @@ namespace App\Services\Sun;
 use App\Exceptions\ActionRefused;
 use App\Models\SunAccount;
 use App\Models\SunAccountBalance;
+use App\Models\SunAccountLink;
+use App\Models\SunAccountReview;
 use App\Models\SunImportBatch;
 use App\Models\SunLedgerLine;
 use App\Models\SunLedgerVersion;
@@ -38,7 +40,7 @@ class SunLedgerImporter
 
     public const PENDING_MINUTES = 60;
 
-    public function __construct(private AccountListingParser $parser, private AuditService $audit) {}
+    public function __construct(private AccountListingParser $parser, private AuditService $audit, private SunFamilyStatements $statements) {}
 
     // --- Upload, summary, cancel --------------------------------------------------------------------
 
@@ -94,11 +96,16 @@ class SunLedgerImporter
         $control = self::controlCode();
         $firstMonth = self::firstMonth();
 
-        $matched = $known->whereNotNull('student_id')->count();
         $newAccounts = count(array_diff_key($accounts, $known->all()));
-        // Waiting to be linked: every code except the control account, linked ones and "not an ISMS student".
-        $unmatched = collect(array_keys($accounts))->filter(fn ($code) => (string) $code !== $control
-            && (! $known->has($code) || (! $known[$code]->student_id && ! $known[$code]->not_isms_student && ! $known[$code]->is_control)))->count();
+        // T3: a linked code printed under a name other than the one accepted for its student is held for review.
+        $links = SunAccountLink::covering($fy)->whereIn('sun_account_id', $known->pluck('id'))->get()->keyBy('sun_account_id');
+        $byId = $known->keyBy('id');
+        $pending = SunAccountReview::pending()->where('fiscal_year', $fy)->whereIn('sun_account_id', $known->pluck('id'))->pluck('sun_account_id')->flip();
+        $held = $links->keys()->filter(fn ($id) => $pending->has($id) || ! SunLinks::sameName($links[$id]->accepted_name, $accounts[$byId[$id]->code]['name']));
+        $matched = $links->count() - $held->count();
+        // Waiting to be linked: every code except the control account, linked or held ones and "not an ISMS student".
+        $unmatched = collect($accounts)->filter(fn ($a) => $a['code'] !== $control && (! $known->has($a['code'])
+            || (! $links->has($known[$a['code']]->id) && ! $known[$a['code']]->not_isms_student && ! $known[$a['code']]->is_control)))->count();
 
         $suspect = 0;
         foreach ($accounts as $a) {
@@ -109,7 +116,6 @@ class SunLedgerImporter
 
         $previous = SunAccountBalance::current()->where('fiscal_year', $fy - 1)->whereIn('sun_account_id', $known->pluck('id'))->get()->keyBy('sun_account_id');
         $openingDiffers = $known->filter(fn ($k) => isset($previous[$k->id]) && (string) $previous[$k->id]->closing_balance !== $accounts[$k->code]['opening'])->count();
-        $renamed = $known->filter(fn ($k) => $k->name_as_printed !== $accounts[$k->code]['name'])->count();
 
         $existing ??= $this->existingLines($fy, $parsed['header']['account_from'], $parsed['header']['account_to']);
         $changed = 0;
@@ -142,7 +148,7 @@ class SunLedgerImporter
                 'duplicate_file' => SunImportBatch::current()->where('file_sha256', $sha)->exists(),
                 'opening_differs' => $openingDiffers,
                 'suspect_dates' => $suspect,
-                'renamed' => $renamed,
+                'possible_reused' => $held->count(),
                 'unallocated' => $parsed['unallocated'],
                 'changed_amounts' => $changed,
                 'missing_lines' => $missing,
@@ -213,6 +219,7 @@ class SunLedgerImporter
             SunAccount::insert($chunk);
         }
         $accountIds = SunAccount::whereIn('code', array_keys($parsed['accounts']))->pluck('id', 'code');
+        $this->openReviews($parsed, $fy, $accountIds);
 
         // Lines. New rows and version rows are written in chunks as they come, to keep memory low.
         $flush = function (array &$rows, string $table, int $at = 500) {
@@ -317,6 +324,28 @@ class SunLedgerImporter
         return $batch;
     }
 
+    /**
+     * T3: a linked code whose printed name differs from the name accepted for its student (case
+     * and spacing ignored) gets a pending "possible reused code" review for the year; its lines for
+     * that year match nobody until the Treasurer resolves it. A review resolved for this exact name
+     * isn't reopened (the accepted name was updated); a third name reopens it.
+     */
+    private function openReviews(array $parsed, int $fy, $accountIds): void
+    {
+        $links = SunAccountLink::covering($fy)->whereIn('sun_account_id', $accountIds->values())->get()->keyBy('sun_account_id');
+        $reviews = SunAccountReview::where('fiscal_year', $fy)->whereIn('sun_account_id', $links->keys())->get()->keyBy('sun_account_id');
+        foreach ($parsed['accounts'] as $a) {
+            $id = $accountIds[$a['code']];
+            $link = $links[$id] ?? null;
+            if (! $link || SunLinks::sameName($link->accepted_name, $a['name'])) {
+                continue;
+            }
+            $values = ['previous_name' => $link->accepted_name, 'printed_name' => mb_substr($a['name'], 0, 80), 'status' => SunAccountReview::PENDING, 'resolved_by' => null, 'resolved_at' => null];
+            $review = $reviews[$id] ?? null;
+            $review ? $review->update($values) : SunAccountReview::create($values + ['sun_account_id' => $id, 'fiscal_year' => $fy]);
+        }
+    }
+
     // --- Publish and revert ---------------------------------------------------------------------------
 
     public function publish(SunImportBatch $batch, bool $publish, User $user): void
@@ -328,6 +357,14 @@ class SunLedgerImporter
             }
             if ($batch->isPublished() === $publish) {
                 throw new ActionRefused($publish ? 'This import is already published.' : 'This import is not published.');
+            }
+            if ($publish) {
+                // Statements are built from the current ledger, which is the newest import's.
+                $newer = SunImportBatch::current()->where('fiscal_year', $batch->fiscal_year)->where('id', '>', $batch->id)->value('id');
+                if ($newer) {
+                    throw new ActionRefused("Import #{$newer} is newer for {$batch->yearLabel()}. Publish that one instead.");
+                }
+                $this->statements->buildForBatch($batch);
             }
             $batch->update($publish ? ['published_at' => now(), 'published_by' => $user->id] : ['published_at' => null, 'published_by' => null]);
             $this->audit->log($user, $publish ? 'Published Sun ledger import' : 'Unpublished Sun ledger import', 'SunImportBatch', $batch->id,

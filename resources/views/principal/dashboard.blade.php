@@ -4,7 +4,7 @@
         <x-stat-tile label="Total enrollment" :href="route('principal.board-reports.index')" color="blue">{{ $totalEnrollment }}</x-stat-tile>
         <x-stat-tile label="Attendance rate" color="green">{{ $attendanceRate !== null ? $attendanceRate.'%' : '—' }}</x-stat-tile>
         <x-stat-tile label="Academic average" color="green">{{ $academicAverage !== null ? $academicAverage.'%' : '—' }}</x-stat-tile>
-        <x-stat-tile label="Fee collection" color="yellow">{{ $feeCollectionRate !== null ? $feeCollectionRate.'%' : '—' }}</x-stat-tile>
+        <x-stat-tile label="Students owing fees" :href="route('principal.fees.index', ['status' => 'Owing'])" color="yellow">{{ $feeStudents ? $feeOwingCount : '—' }}</x-stat-tile>
         <x-stat-tile label="Pending approvals" :href="route('principal.approvals.index')" color="pink">{{ $pendingApprovals }}</x-stat-tile>
     </div>
 
@@ -20,10 +20,10 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <x-card title="Fee collection status" subtitle="Imported fee records by account status (read-only).">
-            <x-chart.donut :segments="$feeStatusSegments" center-label="total billed"
-                :center="number_format(collect($feeStatusSegments)->sum('value') / 1000000, 1).'M'"
-                :format="fn ($v) => number_format($v / 1000000, 1).'M'" />
+        <x-card title="Fee collection status" subtitle="Students by balance, from the published fee statements (read-only).">
+            <x-chart.donut :segments="$feeStatusSegments" center-label="students"
+                :center="(string) collect($feeStatusSegments)->sum('value')"
+                :format="fn ($v) => (string) $v" />
         </x-card>
 
         <x-card title="Approval queue" subtitle="Two-key items — VP has signed; awaiting you.">
@@ -40,9 +40,9 @@
 
         <x-card title="Finance oversight">
             <x-badge color="blue">Read-only</x-badge>
-            <p class="text-sm text-neutral-500 mt-3">Outstanding balance</p>
+            <p class="text-sm text-neutral-500 mt-3">Owed to the school (Ks)</p>
             <p class="text-xl font-bold text-gold">{{ number_format($outstandingTotal) }}</p>
-            <p class="text-sm text-neutral-500 mt-2">Collected this term <span class="font-semibold text-success">{{ $feeCollectionRate !== null ? $feeCollectionRate.'%' : '—' }}</span></p>
+            <p class="text-sm text-neutral-500 mt-2">In credit <span class="font-semibold text-success">{{ number_format($creditTotal) }}</span> · {{ $feeOwingCount }} of {{ $feeStudents }} {{ Str::plural('student', $feeStudents) }} owing</p>
             <a href="{{ route('principal.fees.index') }}" class="inline-block mt-4 border border-neutral-300 text-neutral-700 font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-neutral-50 transition-colors">View fee records</a>
         </x-card>
 

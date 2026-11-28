@@ -21,7 +21,7 @@
                 <div><dt class="text-neutral-500">Accounts</dt><dd class="text-lg font-bold tabular-nums">{{ number_format($summary['accounts']) }}</dd><dd class="text-xs text-neutral-500">{{ $summary['account_from'] }} to {{ $summary['account_to'] }}</dd></div>
                 <div><dt class="text-neutral-500">Lines</dt><dd class="text-lg font-bold tabular-nums">{{ number_format($summary['lines']) }}</dd><dd class="text-xs text-neutral-500">{{ number_format($summary['new_lines']) }} new</dd></div>
                 <div><dt class="text-neutral-500">Matched to students</dt><dd class="text-lg font-bold tabular-nums">{{ number_format($summary['matched']) }}</dd><dd class="text-xs text-neutral-500">{{ number_format($summary['unmatched']) }} to match · {{ number_format($summary['new_accounts']) }} new codes</dd></div>
-                <div><dt class="text-neutral-500">Unallocated in Student Control</dt><dd class="text-lg font-bold tabular-nums">{{ LedgerFormat::money($summary['control_balance']) }}</dd><dd class="text-xs text-neutral-500">Money received but not yet on a student's account</dd></div>
+                <div><dt class="text-neutral-500">Student Control balance</dt><dd class="text-lg font-bold tabular-nums">{{ LedgerFormat::money($summary['control_balance']) }}</dd><dd class="text-xs text-neutral-500">Never matched to a student or shown to families</dd></div>
             </dl>
             <p class="mt-4 text-sm text-success">Every check passed: each running balance follows from the one before, each account ends on its closing balance, and the report sums to 0.00.</p>
         </x-card>
@@ -33,7 +33,7 @@
                 $w['duplicate_file'] ? 'This exact file was imported before. Importing it again changes nothing unless lines were changed since.' : null,
                 $w['opening_differs'] ? $say($w['opening_differs'], 'account starts', 'accounts start').' the year on a different balance from last year\'s closing balance in the ISMS.' : null,
                 $w['suspect_dates'] ? $say($w['suspect_dates'], 'line has', 'lines have').' a typed date more than a month away from its accounting period. The period is used; the typed date is kept and marked.' : null,
-                $w['renamed'] ? $say($w['renamed'], 'account has', 'accounts have').' a different name from last time.' : null,
+                ($w['possible_reused'] ?? 0) ? $say($w['possible_reused'], 'linked account is', 'linked accounts are').' printed under a different name. '.($w['possible_reused'] === 1 ? 'Its' : 'Their').' lines for this year are held, matched to nobody, until you confirm on Ledger Review whether the code still belongs to the same student.' : null,
                 $w['unallocated'] ? $say($w['unallocated'], 'line is', 'lines are').' not allocated in Sun (no *).' : null,
                 $w['changed_amounts'] ? $say($w['changed_amounts'], 'line already in the ISMS has', 'lines already in the ISMS have').' a different amount in this file.' : null,
                 $w['missing_lines'] ? $say($w['missing_lines'], 'line in the ISMS for this year is not in this file. It is', 'lines in the ISMS for this year are not in this file. They are').' kept and marked, not deleted.' : null,

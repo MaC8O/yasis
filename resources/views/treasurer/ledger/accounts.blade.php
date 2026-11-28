@@ -28,13 +28,14 @@
                     </tr></thead>
                     <tbody>
                         @foreach ($balances as $b)
-                            @php $a = $b->account; @endphp
+                            @php $a = $b->account; $owner = isset($owners[$a->id]) ? $students[$owners[$a->id]] ?? null : null; @endphp
                             <tr class="border-b border-neutral-100">
                                 <td class="py-2 pr-3"><a href="{{ route('treasurer.ledger.account', [$a, 'year' => $fy]) }}" class="font-semibold text-brand hover:underline tabular-nums">{{ $a->code }}</a>
                                     <span class="block text-xs text-neutral-500">{{ $b->account_name_as_printed }}</span></td>
                                 <td class="py-2 pr-3">
                                     @if ($a->is_control) <x-badge color="blue">Student Control</x-badge>
-                                    @elseif ($a->student) {{ $a->student->name }} <span class="block text-xs text-neutral-500">{{ $a->student->student_id_number }}</span>
+                                    @elseif (in_array($a->id, $held)) <x-badge color="yellow">Held: possible reused code</x-badge>
+                                    @elseif ($owner) {{ $owner->name }} <span class="block text-xs text-neutral-500">{{ $owner->student_id_number }}</span>
                                     @elseif ($a->not_isms_student) <span class="text-neutral-500">Not an ISMS student</span>
                                     @else <x-badge color="yellow">Not matched</x-badge>
                                     @endif

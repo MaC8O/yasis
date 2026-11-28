@@ -71,8 +71,11 @@ class AuditReadAccessTest extends TestCase
         $this->seedRoles();
         $treasurer = $this->makeStaff('treasurer', 'Treasurer');
         $student = $this->makeStudent();
+        // The Treasurer opens the student's Sun ledger account (the CSV Student Accounts page is retired).
+        $account = \App\Models\SunAccount::create(['code' => '1000286000', 'name_as_printed' => 'Invented Student', 'first_seen_year' => 2027]);
+        \App\Models\SunAccountLink::create(['sun_account_id' => $account->id, 'student_id' => $student->id, 'from_fiscal_year' => 2027, 'accepted_name' => 'Invented Student']);
 
-        $this->actingAs($treasurer->user)->get(route('treasurer.records.show', $student))->assertOk();
+        $this->actingAs($treasurer->user)->get(route('treasurer.ledger.account', $account))->assertOk();
 
         $this->assertDatabaseHas('audit_logs', [
             'user_id' => $treasurer->user->id,

@@ -44,7 +44,7 @@
         @endif
     </x-card>
 
-    <x-card title="Data retention &amp; erasure" subtitle="§6.2 — action an erasure request against a student or guardian. Records are anonymized, never hard-deleted; academic history is retained without PII. This action is audited.">
+    <x-card title="Data retention & erasure" subtitle="§6.2 — action an erasure request against a student or guardian. Records are anonymized, never hard-deleted; academic history is retained without PII. This action is audited.">
         <form method="POST" action="{{ route('admin.retention-actions.store') }}" class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
             @csrf
             <div>

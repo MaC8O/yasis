@@ -4,27 +4,25 @@ namespace App\Support;
 
 use App\Models\SystemSetting;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Who may see which imported fee rows (§2.2 scope guards, §9.8).
- *
- * Every fee query that leaves the Treasurer's own workspace goes through apply(),
- * and the Visibility Rules page renders rules() — so the page always describes
- * exactly what the code enforces.
+ * Who sees what of the Sun ledger (§2.2 scope guards, T4). The Visibility Rules page renders
+ * rules(), so it describes what the pages do:
+ * - the Treasurer: the live ledger, every line, published or not;
+ * - leadership (Principal, VP Academic, Registrar): the published statements, read-only; lines
+ *   the Treasurer hid by hand only if the policy switch allows, marked;
+ * - families (guardians and students): their own published statements, every line (T4), with
+ *   lines hidden by hand shown only as one "Adjustments" amount.
  */
 final class FeeVisibility
 {
-    /** Full import data: unpublished, held, unmatched and restricted rows. */
     public const TREASURER = 'treasurer';
 
-    /** Principal / VP Academic / Registrar — `fees.view_readonly`. */
     public const LEADERSHIP = 'leadership';
 
-    /** Guardians — own linked children only (the caller scopes to the child). */
     public const FAMILY = 'family';
 
-    /** Policy switch on the Visibility Rules page; off by default per §2.2. */
+    /** Policy switch on the Visibility Rules page: leadership sees lines hidden by hand. Off by default (§2.2). */
     public const LEADERSHIP_SEES_RESTRICTED = 'fees.leadership_sees_restricted';
 
     public static function audienceFor(User $user): string
@@ -41,58 +39,36 @@ final class FeeVisibility
         return SystemSetting::get(self::LEADERSHIP_SEES_RESTRICTED, '0') === '1';
     }
 
-    /** Constrain an ImportedFeeRecord query to what $audience may see. */
-    public static function apply(Builder $query, string $audience): Builder
-    {
-        if ($audience === self::TREASURER) {
-            return $query;
-        }
-
-        $query->whereNotNull('student_id')
-            ->where('is_held', false)
-            ->whereHas('importBatch', fn ($q) => $q->whereNotNull('published_at'));
-
-        $hideRestricted = $audience === self::FAMILY || ! self::leadershipSeesRestricted();
-
-        return $query->when($hideRestricted, fn ($q) => $q->where('is_restricted', false));
-    }
-
-    /**
-     * Human-readable rule set for the Visibility Rules page, generated from the same
-     * conditions apply() enforces.
-     *
-     * @return array<string, array{label: string, roles: string, sees: list<string>, hidden: list<string>}>
-     */
+    /** @return array<string, array{label: string, roles: string, sees: list<string>, hidden: list<string>}> */
     public static function rules(): array
     {
-        $leadershipRestricted = self::leadershipSeesRestricted();
+        $leadership = self::leadershipSeesRestricted();
 
         return [
             self::TREASURER => [
                 'label' => 'Treasurer',
                 'roles' => 'Treasurer',
-                'sees' => ['Every imported row, in every batch', 'Draft (unpublished) batches', 'Unmatched and held rows', 'Restricted (SDA) rows, flagged'],
+                'sees' => ['The live ledger: every import, published or not', 'Every line, including lines hidden by hand (marked)', 'Unmatched accounts, held accounts and Student Control'],
                 'hidden' => [],
             ],
             self::LEADERSHIP => [
                 'label' => 'Leadership (read-only)',
                 'roles' => 'Principal · VP Academic · Registrar',
                 'sees' => array_values(array_filter([
-                    'All students, from published batches only',
-                    'Matched rows only',
-                    $leadershipRestricted ? 'Restricted (SDA) rows, flagged' : null,
+                    'Every student\'s published statements, the same as the family sees',
+                    $leadership ? 'Lines hidden from families by hand, marked' : null,
                 ])),
                 'hidden' => array_values(array_filter([
-                    'Draft (unpublished) batches',
-                    'Unmatched and held rows',
-                    $leadershipRestricted ? null : 'Restricted (SDA) rows',
+                    'Imports not yet published',
+                    'Unmatched and held accounts, Student Control',
+                    $leadership ? null : 'Lines hidden by hand (shown as one "Adjustments" amount)',
                 ])),
             ],
             self::FAMILY => [
-                'label' => 'Guardian',
-                'roles' => 'Guardian (own linked children)',
-                'sees' => ['Their own children only', 'Published, matched rows'],
-                'hidden' => ['Other students', 'Draft (unpublished) batches', 'Unmatched and held rows', 'Restricted (SDA) rows — always'],
+                'label' => 'Families',
+                'roles' => 'Guardians (their own children) · Students (themselves)',
+                'sees' => ['Their own published statements', 'Every line, allowances included (T4)'],
+                'hidden' => ['Other students', 'Imports not yet published', 'A year held as a possible reused code', 'Lines hidden by hand (shown as one "Adjustments" amount)'],
             ],
         ];
     }
